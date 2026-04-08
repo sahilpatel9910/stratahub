@@ -71,10 +71,10 @@ strata-hub/
 │   │   │   │   ├── residents/page.tsx ✅ wired to tRPC
 │   │   │   │   ├── units/page.tsx        ✅ wired to tRPC (list, create, occupancy tabs)
 │   │   │   │   ├── rent/page.tsx         ✅ wired to tRPC (rent roll, payments, record payment)
-│   │   │   │   ├── keys/            ❌ page not created
+│   │   │   │   ├── keys/page.tsx         ✅ wired to tRPC (list, create, issue, return, deactivate)
 │   │   │   │   ├── maintenance/page.tsx  ✅ wired to tRPC (list, create, status transitions)
-│   │   │   │   ├── visitors/        ❌ page not created
-│   │   │   │   ├── parcels/         ❌ page not created
+│   │   │   │   ├── visitors/page.tsx     ✅ wired to tRPC (list by date, create, log arrival/departure)
+│   │   │   │   ├── parcels/page.tsx      ✅ wired to tRPC (list, create, notify/collect/return)
 │   │   │   │   ├── announcements/   ❌ page not created
 │   │   │   │   ├── documents/       ❌ page not created
 │   │   │   │   ├── messages/        ❌ page not created
@@ -371,12 +371,13 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 - **Units page** (`/manager/units`) — `units.listByBuilding` + `units.create`; occupancy tabs, unit type, resident name shown
 - **Rent page** (`/manager/rent`) — `rent.getRentRoll` + `rent.listByBuilding`; two tabs (Rent Roll / Payments); record payment dialog calls `rent.recordPayment`
 - **Maintenance page** (`/manager/maintenance`) — `maintenance.listByBuilding` + `maintenance.create` + `maintenance.updateStatus`; status/priority filters, status transition dropdown per row
+- **Keys page** (`/manager/keys`) — `keys.listByBuilding` + `keys.create` + `keys.issue` + `keys.returnKey` + `keys.deactivate`; rotation-due warning banner; type filter; issue/return/deactivate via dropdown
+- **Visitors page** (`/manager/visitors`) — `visitors.listByBuilding` (date-filtered, defaults to today) + `visitors.create` + `visitors.logArrival` + `visitors.logDeparture`; Expected/Present/Departed status badges; inline Arrive/Depart action buttons
+- **Parcels page** (`/manager/parcels`) — `parcels.listByBuilding` + `parcels.create` + `parcels.markNotified` + `parcels.markCollected` + `parcels.markReturned`; Pending/All/Collected/Returned tabs; Mark Collected dialog captures collected-by name
 - **Organisations page** (`/super-admin/organisations`) — `organisations.list` + `organisations.create` + `organisations.update` (deactivate/reactivate)
 
 ### ❌ Not yet built (pages missing entirely)
 Every sidebar nav item below has a tRPC router ready but no UI page:
-- `/manager/keys` — router: `keys`
-- `/manager/visitors` — router: `visitors`
 - `/manager/parcels` — router: `parcels`
 - `/manager/announcements` — router: `announcements`
 - `/manager/documents` — router: none yet
