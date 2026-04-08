@@ -69,10 +69,10 @@ strata-hub/
 │   │   │   ├── manager/
 │   │   │   │   ├── page.tsx         ✅ wired to tRPC (getStats, maintenance, announcements)
 │   │   │   │   ├── residents/page.tsx ✅ wired to tRPC
-│   │   │   │   ├── units/           ❌ page not created
-│   │   │   │   ├── rent/            ❌ page not created
+│   │   │   │   ├── units/page.tsx        ✅ wired to tRPC (list, create, occupancy tabs)
+│   │   │   │   ├── rent/page.tsx         ✅ wired to tRPC (rent roll, payments, record payment)
 │   │   │   │   ├── keys/            ❌ page not created
-│   │   │   │   ├── maintenance/     ❌ page not created
+│   │   │   │   ├── maintenance/page.tsx  ✅ wired to tRPC (list, create, status transitions)
 │   │   │   │   ├── visitors/        ❌ page not created
 │   │   │   │   ├── parcels/         ❌ page not created
 │   │   │   │   ├── announcements/   ❌ page not created
@@ -368,14 +368,14 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 - **Dashboard layout** — fetches real buildings from DB for the building switcher
 - **Manager dashboard** (`/manager`) — `buildings.getStats`, `maintenance.listByBuilding`, `announcements.listByBuilding`
 - **Residents page** (`/manager/residents`) — `residents.listByBuilding` with search and role filter
+- **Units page** (`/manager/units`) — `units.listByBuilding` + `units.create`; occupancy tabs, unit type, resident name shown
+- **Rent page** (`/manager/rent`) — `rent.getRentRoll` + `rent.listByBuilding`; two tabs (Rent Roll / Payments); record payment dialog calls `rent.recordPayment`
+- **Maintenance page** (`/manager/maintenance`) — `maintenance.listByBuilding` + `maintenance.create` + `maintenance.updateStatus`; status/priority filters, status transition dropdown per row
 - **Organisations page** (`/super-admin/organisations`) — `organisations.list` + `organisations.create` + `organisations.update` (deactivate/reactivate)
 
 ### ❌ Not yet built (pages missing entirely)
 Every sidebar nav item below has a tRPC router ready but no UI page:
-- `/manager/units` — router: `units`
-- `/manager/rent` — router: `rent` (includes rent roll, payment recording, schedule generation)
 - `/manager/keys` — router: `keys`
-- `/manager/maintenance` — router: `maintenance`
 - `/manager/visitors` — router: `visitors`
 - `/manager/parcels` — router: `parcels`
 - `/manager/announcements` — router: `announcements`
