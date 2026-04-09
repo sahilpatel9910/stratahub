@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
   const publicRoutes = ["/", "/login", "/register", "/forgot-password"];
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith("/api/webhooks")
-  );
+  ) || pathname.startsWith("/invite");
 
   // Redirect unauthenticated users to login
   if (!user && !isPublicRoute) {
