@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ import { Building2 } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,20 +65,31 @@ export default function RegisterPage() {
 
     // If the user is immediately confirmed (no email verification), create the Prisma record now
     if (signUpData.session) {
-      const res = await fetch("/api/auth/create-user", {
+      const createRes = await fetch("/api/auth/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName }),
       });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
+      if (!createRes.ok) {
+        const json = await createRes.json().catch(() => ({}));
         setError(json.error ?? "Account created but profile setup failed. Please contact support.");
         setLoading(false);
         return;
       }
+
+      // If registered via an invite link, auto-accept it
+      if (inviteToken) {
+        await fetch("/api/invite/accept", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: inviteToken }),
+        });
+        router.push("/manager");
+        return;
+      }
     }
 
-    router.push("/login?registered=true");
+    router.push(inviteToken ? `/invite/${inviteToken}` : "/login?registered=true");
   }
 
   return (
