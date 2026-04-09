@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Building2, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,13 @@ interface BuildingSwitcherProps {
 export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
   const { selectedBuildingId, selectedBuildingName, setSelectedBuilding } =
     useBuildingContext();
+
+  // Auto-select when there is exactly one building and none is selected yet
+  useEffect(() => {
+    if (buildings.length === 1 && !selectedBuildingId) {
+      setSelectedBuilding(buildings[0].id, buildings[0].name);
+    }
+  }, [buildings, selectedBuildingId, setSelectedBuilding]);
 
   return (
     <DropdownMenu>

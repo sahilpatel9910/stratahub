@@ -10,6 +10,10 @@ import { visitorsRouter } from "./routers/visitors";
 import { parcelsRouter } from "./routers/parcels";
 import { announcementsRouter } from "./routers/announcements";
 import { messagingRouter } from "./routers/messaging";
+import { financialsRouter } from "./routers/financials";
+import { strataRouter } from "./routers/strata";
+import { documentsRouter } from "./routers/documents";
+import { usersRouter } from "./routers/users";
 
 export const appRouter = createTRPCRouter({
   organisations: organisationsRouter,
@@ -23,6 +27,10 @@ export const appRouter = createTRPCRouter({
   parcels: parcelsRouter,
   announcements: announcementsRouter,
   messaging: messagingRouter,
+  financials: financialsRouter,
+  strata: strataRouter,
+  documents: documentsRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;

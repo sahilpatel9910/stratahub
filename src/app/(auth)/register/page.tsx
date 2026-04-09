@@ -44,7 +44,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -59,6 +59,21 @@ export default function RegisterPage() {
       setError(error.message);
       setLoading(false);
       return;
+    }
+
+    // If the user is immediately confirmed (no email verification), create the Prisma record now
+    if (signUpData.session) {
+      const res = await fetch("/api/auth/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error ?? "Account created but profile setup failed. Please contact support.");
+        setLoading(false);
+        return;
+      }
     }
 
     router.push("/login?registered=true");
