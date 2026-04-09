@@ -2,7 +2,7 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-09** — All manager pages and super-admin pages are now fully built and wired to real data.
+> **Last updated: 2026-04-09** — All manager pages, super-admin pages, and user onboarding (invite links + direct assignment) are fully built.
 
 ## Project Overview
 
@@ -88,8 +88,14 @@ strata-hub/
 │   │   │       ├── buildings/page.tsx    ✅ wired to tRPC (list all, create under org, delete)
 │   │   │       └── users/page.tsx        ✅ wired to tRPC (list all users, roles, deactivate)
 │   │   ├── api/
-│   │   │   ├── auth/create-user/route.ts # POST: creates Prisma User after Supabase signUp
-│   │   │   └── trpc/[trpc]/route.ts      # tRPC HTTP handler
+│   │   │   ├── auth/create-user/route.ts     # POST: creates Prisma User after Supabase signUp
+│   │   │   ├── invite/[token]/route.ts        # GET: public fetch of invite details by token
+│   │   │   ├── invite/accept/route.ts         # POST: accept invite → OrgMembership + BuildingAssignment
+│   │   │   └── trpc/[trpc]/route.ts           # tRPC HTTP handler
+│   │   ├── invite/
+│   │   │   └── [token]/
+│   │   │       ├── page.tsx                   # Public invite acceptance page (server component)
+│   │   │       └── accept-invite-button.tsx   # Client button: calls /api/invite/accept then redirects
 │   │   ├── globals.css
 │   │   ├── layout.tsx               # Root layout
 │   │   └── page.tsx                 # Root → redirects to /manager
@@ -155,7 +161,9 @@ strata-hub/
 - **Supabase `auth.users`**: Managed by Supabase Auth. Has a UUID (`supabaseUser.id`).
 - **Prisma `users` table**: Application user record. Links via `supabaseAuthId` field.
 
-When a new user registers, the register page calls `supabase.auth.signUp()` and then, **if the session is immediately available** (no email verification required), calls `POST /api/auth/create-user` to create the Prisma record. If email verification is required, the Prisma record will not exist until the user is manually seeded or the flow is extended with a Supabase webhook on `SIGNED_IN`.
+When a new user registers, the register page calls `supabase.auth.signUp()` and then, **if the session is immediately available** (no email verification required), calls `POST /api/auth/create-user` to create the Prisma record. If the user arrived via an invite link (`?invite=<token>`), it also calls `POST /api/invite/accept` to create their `OrganisationMembership` and `BuildingAssignment`, then redirects to `/manager`.
+
+If email verification is required, the Prisma user will not exist until they verify and re-visit the invite link, at which point they can click "Accept Invite" while logged in.
 
 ---
 
@@ -192,8 +200,11 @@ Roles are stored in two places:
 
 ### Auth routes (no sidebar, centered card layout)
 - `/login` — email/password login
-- `/register` — registration
+- `/register` — registration; reads `?invite=<token>` to auto-accept an invite after signup
 - `/forgot-password` — password reset request
+
+### Public routes (no auth required, no sidebar)
+- `/invite/[token]` — invite acceptance page; whitelisted in middleware (`/invite/**`)
 
 ### Manager routes (`/manager/**`) — sidebar shows "Property Management" nav
 - `/manager` — dashboard (stats, recent maintenance, announcements)
@@ -354,6 +365,10 @@ Direct messaging between users (sender/recipient model with thread support).
 | Procedure | Type | Auth | Description |
 |---|---|---|---|
 | `list` | query | SUPER_ADMIN | All users with orgMemberships + active buildingAssignments; searchable |
+| `assignToBuilding` | mutation | SUPER_ADMIN | Upserts OrgMembership + creates/updates BuildingAssignment for an existing user |
+| `createInvite` | mutation | SUPER_ADMIN | Creates an Invitation record (7-day expiry); returns invite with token |
+| `listInvites` | query | SUPER_ADMIN | All pending (non-expired, non-accepted) invitations |
+| `revokeInvite` | mutation | SUPER_ADMIN | Hard deletes an invitation |
 | `deactivateAssignments` | mutation | SUPER_ADMIN | Set all BuildingAssignments for a user to isActive=false |
 
 ---
@@ -427,14 +442,14 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 - **Analytics page** (`/manager/analytics`) — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding`; KPI cards + 4 Recharts charts (occupancy pie, maintenance-by-priority pie, maintenance-by-status bar, parcels bar)
 - **Organisations page** (`/super-admin/organisations`) — `organisations.list` + `organisations.create` + `organisations.update` (deactivate/reactivate)
 - **Buildings page** (`/super-admin/buildings`) — `buildings.list` + `buildings.create` (linked to org) + `buildings.delete`; search by name/suburb/org
-- **Users page** (`/super-admin/users`) — `users.list` (searchable) + `users.deactivateAssignments`; shows role, org, assigned buildings, joined date
+- **Users page** (`/super-admin/users`) — `users.list` + `users.assignToBuilding` + `users.createInvite` + `users.listInvites` + `users.revokeInvite` + `users.deactivateAssignments`; two tabs (Users / Pending Invites); "Assign to Building" and "Invite User" dialogs
+- **Invite page** (`/invite/[token]`) — public server-component page; shows org/building/role details; Accept button if logged in, Register/Sign In buttons if not; `AcceptInviteButton` client component calls `/api/invite/accept` then redirects to `/manager`
 
 ### ❌ Not yet built
-- Nothing — all sidebar nav items now have pages.
+- Nothing — all sidebar nav items and onboarding flows have pages.
 
 ### ⚠️ Known gaps / remaining work
-- **User registration → org onboarding** — `POST /api/auth/create-user` creates the Prisma `User` record, but does NOT create `OrganisationMembership` or `BuildingAssignment`. New users can log in but will see no buildings and all tRPC manager procedures will fail auth. A full onboarding flow (invite link or admin assignment) is still needed.
-- **Email verification case** — If Supabase requires email confirmation, `signUp` returns no session; the `/api/auth/create-user` call is skipped. The Prisma user will not exist. Consider adding a Supabase webhook on `SIGNED_IN` as a fallback.
+- **Email verification fallback** — If Supabase requires email confirmation before login, the Prisma user and invite acceptance are deferred until the user verifies their email and visits `/invite/[token]` again while logged in. A Supabase webhook on `SIGNED_IN` could automate this.
 - **Keys to Rotate stat** — Dashboard quick-action card shows "—" for keys to rotate. The `keys` router is not yet called from the dashboard page.
 - **Document file upload** — The documents page accepts a file URL manually pasted by the user. There is no Supabase Storage upload integration yet.
 - **Strata levies** — The levies tab on the strata page shows a placeholder. The `StrataLevy` model exists in the schema but no UI or router procedures manage levies yet.
