@@ -2,6 +2,8 @@
 
 # StrataHub — Claude Code Context
 
+> **Last updated: 2026-04-09** — All manager pages and super-admin pages are now fully built and wired to real data.
+
 ## Project Overview
 
 StrataHub is an Australian apartment/strata property management SaaS. It allows property managers to manage multiple buildings, track residents (owners & tenants), handle rent collection, maintenance requests, visitor logs, parcel tracking, keys/access, announcements, and strata financials.
@@ -75,17 +77,19 @@ strata-hub/
 │   │   │   │   ├── maintenance/page.tsx  ✅ wired to tRPC (list, create, status transitions)
 │   │   │   │   ├── visitors/page.tsx     ✅ wired to tRPC (list by date, create, log arrival/departure)
 │   │   │   │   ├── parcels/page.tsx      ✅ wired to tRPC (list, create, notify/collect/return)
-│   │   │   │   ├── announcements/   ❌ page not created
-│   │   │   │   ├── documents/       ❌ page not created
-│   │   │   │   ├── messages/        ❌ page not created
-│   │   │   │   ├── strata/          ❌ page not created
-│   │   │   │   ├── financials/      ❌ page not created
-│   │   │   │   └── analytics/       ❌ page not created
+│   │   │   │   ├── announcements/page.tsx ✅ wired to tRPC (list, create, delete; priority/scope badges)
+│   │   │   │   ├── documents/page.tsx    ✅ wired to tRPC (list by category, create with URL, delete)
+│   │   │   │   ├── messages/page.tsx     ✅ wired to tRPC (thread list, conversation view, send/reply)
+│   │   │   │   ├── strata/page.tsx       ✅ wired to tRPC (info, meetings, bylaws, levies tabs)
+│   │   │   │   ├── financials/page.tsx   ✅ wired to tRPC (income/expense records, summary cards)
+│   │   │   │   └── analytics/page.tsx    ✅ wired to tRPC (KPI cards + recharts bar/pie charts)
 │   │   │   └── super-admin/
 │   │   │       ├── organisations/page.tsx ✅ wired to tRPC
-│   │   │       ├── buildings/       ❌ page not created
-│   │   │       └── users/           ❌ page not created
-│   │   ├── api/trpc/[trpc]/route.ts # tRPC HTTP handler
+│   │   │       ├── buildings/page.tsx    ✅ wired to tRPC (list all, create under org, delete)
+│   │   │       └── users/page.tsx        ✅ wired to tRPC (list all users, roles, deactivate)
+│   │   ├── api/
+│   │   │   ├── auth/create-user/route.ts # POST: creates Prisma User after Supabase signUp
+│   │   │   └── trpc/[trpc]/route.ts      # tRPC HTTP handler
 │   │   ├── globals.css
 │   │   ├── layout.tsx               # Root layout
 │   │   └── page.tsx                 # Root → redirects to /manager
@@ -124,7 +128,11 @@ strata-hub/
 │   │           ├── visitors.ts
 │   │           ├── parcels.ts
 │   │           ├── announcements.ts
-│   │           └── messaging.ts
+│   │           ├── messaging.ts
+│   │           ├── financials.ts   # listByBuilding, getSummary, create, delete
+│   │           ├── strata.ts       # getByBuilding, upsertInfo, createMeeting, deleteMeeting
+│   │           ├── documents.ts    # listByBuilding, create, delete
+│   │           └── users.ts        # list, deactivateAssignments (SUPER_ADMIN only)
 │   └── types/
 │       └── auth.ts                 # AuthUser, SessionContext types
 └── generated/prisma/               # Prisma-generated client (never edit)
@@ -147,7 +155,7 @@ strata-hub/
 - **Supabase `auth.users`**: Managed by Supabase Auth. Has a UUID (`supabaseUser.id`).
 - **Prisma `users` table**: Application user record. Links via `supabaseAuthId` field.
 
-When a new user registers, a Prisma user record must be created (this flow is not yet fully implemented — the register page exists but doesn't create the Prisma record).
+When a new user registers, the register page calls `supabase.auth.signUp()` and then, **if the session is immediately available** (no email verification required), calls `POST /api/auth/create-user` to create the Prisma record. If email verification is required, the Prisma record will not exist until the user is manually seeded or the flow is extended with a Supabase webhook on `SIGNED_IN`.
 
 ---
 
@@ -190,23 +198,23 @@ Roles are stored in two places:
 ### Manager routes (`/manager/**`) — sidebar shows "Property Management" nav
 - `/manager` — dashboard (stats, recent maintenance, announcements)
 - `/manager/residents` — residents table (owners + tenants)
-- `/manager/units` — ❌ not built
-- `/manager/rent` — ❌ not built
-- `/manager/keys` — ❌ not built
-- `/manager/maintenance` — ❌ not built
-- `/manager/visitors` — ❌ not built
-- `/manager/parcels` — ❌ not built
-- `/manager/announcements` — ❌ not built
-- `/manager/documents` — ❌ not built
-- `/manager/messages` — ❌ not built
-- `/manager/strata` — ❌ not built
-- `/manager/financials` — ❌ not built
-- `/manager/analytics` — ❌ not built
+- `/manager/units` — units list, create, occupancy tabs
+- `/manager/rent` — rent roll + payments tabs, record payment
+- `/manager/keys` — key records, issue/return/deactivate
+- `/manager/maintenance` — requests with status transitions
+- `/manager/visitors` — date-filtered visitor log, arrive/depart
+- `/manager/parcels` — parcel lifecycle (received→notified→collected/returned)
+- `/manager/announcements` — create/delete notices with priority + scope
+- `/manager/documents` — file library with category filter + external link
+- `/manager/messages` — threaded messaging, send/reply
+- `/manager/strata` — strata plan info, meetings, bylaws, levies tabs
+- `/manager/financials` — income/expense ledger with summary cards
+- `/manager/analytics` — KPI cards + 4 live Recharts charts
 
 ### Super-admin routes (`/super-admin/**`) — sidebar shows "Administration" nav + "Property Management" nav
 - `/super-admin/organisations` — list/create/deactivate orgs
-- `/super-admin/buildings` — ❌ not built
-- `/super-admin/users` — ❌ not built
+- `/super-admin/buildings` — list all buildings, create under org, delete
+- `/super-admin/users` — list all users, roles, building assignments, deactivate
 
 ---
 
@@ -311,6 +319,43 @@ CRUD for parcel tracking — received, notified, collected, returned statuses.
 ### `messaging`
 Direct messaging between users (sender/recipient model with thread support).
 
+| Procedure | Type | Auth | Description |
+|---|---|---|---|
+| `listThreads` | query | protected | All threads the current user is part of (distinct by threadId) |
+| `getThread` | query | protected | All messages in a thread ordered by createdAt asc |
+| `send` | mutation | protected | Send message; auto-generates threadId if not provided |
+| `markRead` | mutation | protected | Mark all unread messages in a thread as read |
+| `unreadCount` | query | protected | Count of unread messages for current user |
+
+### `financials`
+| Procedure | Type | Auth | Description |
+|---|---|---|---|
+| `listByBuilding` | query | manager | FinancialRecords filtered by type (INCOME/EXPENSE) and date range |
+| `getSummary` | query | manager | Aggregate totalIncome, totalExpense, net for a building |
+| `create` | mutation | manager | Create record (type, category, description, amountCents, date) |
+| `delete` | mutation | manager | Hard delete |
+
+### `strata`
+| Procedure | Type | Auth | Description |
+|---|---|---|---|
+| `getByBuilding` | query | protected | StrataInfo with levies, bylaws, meetings included |
+| `upsertInfo` | mutation | manager | Create or update StrataInfo for a building |
+| `createMeeting` | mutation | manager | Add a StrataMeeting (requires StrataInfo to exist first) |
+| `deleteMeeting` | mutation | manager | Hard delete a meeting |
+
+### `documents`
+| Procedure | Type | Auth | Description |
+|---|---|---|---|
+| `listByBuilding` | query | protected | Documents filtered by category (DocCategory enum) |
+| `create` | mutation | manager | Create document record (title, fileUrl, category, isPublic) |
+| `delete` | mutation | manager | Hard delete |
+
+### `users` (super-admin)
+| Procedure | Type | Auth | Description |
+|---|---|---|---|
+| `list` | query | SUPER_ADMIN | All users with orgMemberships + active buildingAssignments; searchable |
+| `deactivateAssignments` | mutation | SUPER_ADMIN | Set all BuildingAssignments for a user to isActive=false |
+
 ---
 
 ## Data Model Summary
@@ -365,7 +410,7 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 ## What Is and Isn't Wired Up
 
 ### ✅ Wired to real data (tRPC + Prisma)
-- **Dashboard layout** — fetches real buildings from DB for the building switcher
+- **Dashboard layout** — fetches real buildings from DB for the building switcher; auto-selects if only one building
 - **Manager dashboard** (`/manager`) — `buildings.getStats`, `maintenance.listByBuilding`, `announcements.listByBuilding`
 - **Residents page** (`/manager/residents`) — `residents.listByBuilding` with search and role filter
 - **Units page** (`/manager/units`) — `units.listByBuilding` + `units.create`; occupancy tabs, unit type, resident name shown
@@ -374,25 +419,25 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 - **Keys page** (`/manager/keys`) — `keys.listByBuilding` + `keys.create` + `keys.issue` + `keys.returnKey` + `keys.deactivate`; rotation-due warning banner; type filter; issue/return/deactivate via dropdown
 - **Visitors page** (`/manager/visitors`) — `visitors.listByBuilding` (date-filtered, defaults to today) + `visitors.create` + `visitors.logArrival` + `visitors.logDeparture`; Expected/Present/Departed status badges; inline Arrive/Depart action buttons
 - **Parcels page** (`/manager/parcels`) — `parcels.listByBuilding` + `parcels.create` + `parcels.markNotified` + `parcels.markCollected` + `parcels.markReturned`; Pending/All/Collected/Returned tabs; Mark Collected dialog captures collected-by name
+- **Announcements page** (`/manager/announcements`) — `announcements.listByBuilding` + `announcements.create` + `announcements.delete`; priority colour badges (Low/Medium/High/Urgent), scope badges, expiry date
+- **Documents page** (`/manager/documents`) — `documents.listByBuilding` + `documents.create` + `documents.delete`; category filter dropdown, external link button, staff/public visibility toggle
+- **Messages page** (`/manager/messages`) — `messaging.listThreads` + `messaging.getThread` + `messaging.send` + `messaging.markRead`; split-pane thread list + message view; Enter to send
+- **Strata page** (`/manager/strata`) — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting`; four tabs: Info, Meetings, Levies, Bylaws
+- **Financials page** (`/manager/financials`) — `financials.listByBuilding` + `financials.getSummary` + `financials.create` + `financials.delete`; All/Income/Expense tabs; live summary cards (income, expenses, net)
+- **Analytics page** (`/manager/analytics`) — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding`; KPI cards + 4 Recharts charts (occupancy pie, maintenance-by-priority pie, maintenance-by-status bar, parcels bar)
 - **Organisations page** (`/super-admin/organisations`) — `organisations.list` + `organisations.create` + `organisations.update` (deactivate/reactivate)
+- **Buildings page** (`/super-admin/buildings`) — `buildings.list` + `buildings.create` (linked to org) + `buildings.delete`; search by name/suburb/org
+- **Users page** (`/super-admin/users`) — `users.list` (searchable) + `users.deactivateAssignments`; shows role, org, assigned buildings, joined date
 
-### ❌ Not yet built (pages missing entirely)
-Every sidebar nav item below has a tRPC router ready but no UI page:
-- `/manager/parcels` — router: `parcels`
-- `/manager/announcements` — router: `announcements`
-- `/manager/documents` — router: none yet
-- `/manager/messages` — router: `messaging`
-- `/manager/strata` — router: none yet
-- `/manager/financials` — router: none yet (FinancialRecord model exists)
-- `/manager/analytics` — router: none yet
-- `/super-admin/buildings` — router: `buildings`
-- `/super-admin/users` — router: none yet
+### ❌ Not yet built
+- Nothing — all sidebar nav items now have pages.
 
-### ⚠️ Partially implemented / known gaps
-- **User registration** — The register page exists and calls `supabase.auth.signUp()`, but it does NOT create the Prisma `User` record or `OrganisationMembership`. New users will fail tRPC auth until a Prisma user is created. This needs a Supabase webhook or an after-signup API route.
-- **Building-context auto-select** — If a user has only one building, it is NOT auto-selected. The user must manually pick from the switcher. Consider auto-selecting on first load.
-- **Keys to Rotate stat** — The dashboard quick-action card shows "—" for keys to rotate. The `keys` router is not yet called from the dashboard.
-- **Register page** — Does not onboard user into an organisation. Full onboarding flow is needed.
+### ⚠️ Known gaps / remaining work
+- **User registration → org onboarding** — `POST /api/auth/create-user` creates the Prisma `User` record, but does NOT create `OrganisationMembership` or `BuildingAssignment`. New users can log in but will see no buildings and all tRPC manager procedures will fail auth. A full onboarding flow (invite link or admin assignment) is still needed.
+- **Email verification case** — If Supabase requires email confirmation, `signUp` returns no session; the `/api/auth/create-user` call is skipped. The Prisma user will not exist. Consider adding a Supabase webhook on `SIGNED_IN` as a fallback.
+- **Keys to Rotate stat** — Dashboard quick-action card shows "—" for keys to rotate. The `keys` router is not yet called from the dashboard page.
+- **Document file upload** — The documents page accepts a file URL manually pasted by the user. There is no Supabase Storage upload integration yet.
+- **Strata levies** — The levies tab on the strata page shows a placeholder. The `StrataLevy` model exists in the schema but no UI or router procedures manage levies yet.
 
 ---
 
@@ -406,7 +451,7 @@ Every sidebar nav item below has a tRPC router ready but no UI page:
 
 4. **Supabase + Prisma dual-layer auth**: Supabase handles session management and cookie refresh; Prisma stores the application user with role data. The link is `User.supabaseAuthId = supabase auth user UUID`.
 
-5. **Building switcher state in Zustand + localStorage**: `useBuildingContext` (Zustand with persist) stores which building is active. This survives page refreshes but is client-only.
+5. **Building switcher state in Zustand + localStorage**: `useBuildingContext` (Zustand with persist) stores which building is active. This survives page refreshes but is client-only. `BuildingSwitcher` auto-selects when the user has exactly one building (via `useEffect` on mount).
 
 6. **tRPC v11 + React Query v5**: Uses the `httpBatchLink` with SuperJSON transformer. Query client has `staleTime: 5 minutes` and `refetchOnWindowFocus: false`. Cache invalidation after mutations uses `utils.routerName.procedureName.invalidate()`.
 
