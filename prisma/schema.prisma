@@ -630,6 +630,7 @@ model Document {
   description  String?
   category     DocCategory
   fileUrl      String
+  storagePath  String?
   fileSize     Int
   mimeType     String
   isPublic     Boolean     @default(false)

@@ -45,6 +45,7 @@ export const documentsRouter = createTRPCRouter({
         description: z.string().optional(),
         category: z.enum(DOC_CATEGORIES),
         fileUrl: z.string().url(),
+        storagePath: z.string().optional(),
         fileSize: z.number().int().nonnegative(),
         mimeType: z.string(),
         isPublic: z.boolean().default(false),
