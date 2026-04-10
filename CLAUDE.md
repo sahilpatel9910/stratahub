@@ -19,7 +19,7 @@ StrataHub is an Australian apartment/strata property management SaaS. It allows 
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS v4 |
-| UI Components | shadcn/ui (via `shadcn` CLI) |
+| UI Components | shadcn/ui via `shadcn` CLI (backed by `@base-ui/react`, NOT `@radix-ui`) |
 | Auth | Supabase Auth (SSR via `@supabase/ssr`) |
 | Database | PostgreSQL (hosted on Supabase) |
 | ORM | Prisma 7 (`prisma-client` generator, output → `src/generated/prisma`) |
@@ -28,14 +28,16 @@ StrataHub is an Australian apartment/strata property management SaaS. It allows 
 | Data Transformer | SuperJSON (tRPC serialisation) |
 | Date Handling | date-fns v4 |
 | Charts | Recharts v3 |
-| Email | Resend |
+| Email | Resend (installed, not yet implemented) |
 | Toast | Sonner |
 | Icons | Lucide React |
 | Package Manager | npm |
 
-### Critical: Prisma 7 Generator + Driver Adapter
+---
 
-The Prisma generator uses the new `prisma-client` provider (not the old `prisma-client-js`).
+## Critical: Prisma 7 Patterns
+
+### Generator + datasource
 
 ```prisma
 generator client {
@@ -45,14 +47,13 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // ⚠️ No `url` field here — Prisma 7 reads it from prisma.config.ts
+  // ⚠️ No `url` field — Prisma 7 reads it from prisma.config.ts
 }
 ```
 
-The connection URL lives in `prisma.config.ts` (root of project), not in the schema:
+### prisma.config.ts (root of project)
 
 ```ts
-// prisma.config.ts
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
@@ -63,7 +64,9 @@ export default defineConfig({
 });
 ```
 
-**Prisma 7 requires a driver adapter** — `new PrismaClient()` with no args is a type error. Use `@prisma/adapter-pg`:
+### Driver adapter (required in Prisma 7)
+
+`new PrismaClient()` with no args is a **type error** in Prisma 7. Must use a driver adapter:
 
 ```ts
 // src/server/db/client.ts
@@ -74,13 +77,55 @@ function createPrismaClient() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
   return new PrismaClient({ adapter });
 }
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+export const db = globalForPrisma.prisma ?? createPrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 ```
 
-All Prisma imports come from `@/generated/prisma/client` (note the `/client` suffix), NOT from `@prisma/client` or `@/generated/prisma`.
+### Import paths
+
+All Prisma imports come from `@/generated/prisma/client` (note the `/client` suffix):
 
 ```ts
 import { PrismaClient } from "@/generated/prisma/client";
 import type { UserRole } from "@/generated/prisma/client";
+```
+
+---
+
+## Critical: Base UI Patterns
+
+The shadcn/ui components use `@base-ui/react` (not `@radix-ui/react-*`). Two breaking differences from Radix:
+
+### 1. No `asChild` — use `render` prop
+
+```tsx
+// ❌ Wrong (Radix pattern)
+<DialogTrigger asChild>
+  <Button disabled={!selectedBuildingId}>New</Button>
+</DialogTrigger>
+
+// ✅ Correct (Base UI pattern)
+<DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+  New
+</DialogTrigger>
+
+// Same for DropdownMenuTrigger, SidebarMenuButton, Button with Link:
+<Button render={<Link href="/register" />}>Create Account</Button>
+<SidebarMenuButton render={<Link href={item.href} />} isActive={...}>
+  <Icon /> <span>{item.title}</span>
+</SidebarMenuButton>
+```
+
+### 2. Select `onValueChange` receives `null`
+
+```tsx
+// ❌ Wrong — type error, setState only accepts string
+<Select onValueChange={setFormStatus}>
+
+// ✅ Correct — guard against null
+<Select onValueChange={(v) => v !== null && setFormStatus(v)}>
 ```
 
 ---
@@ -91,130 +136,147 @@ import type { UserRole } from "@/generated/prisma/client";
 strata-hub/
 ├── prisma/
 │   ├── schema.prisma           # Full data model — source of truth
-│   └── seed.ts                 # Seed script: creates super-admin + demo org/building
+│   └── seed.ts                 # Seed: creates super-admin + demo org/building
+├── prisma.config.ts            # Prisma 7 config: connection URL for migrations
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/             # Public auth pages (no sidebar)
-│   │   │   ├── layout.tsx      # Centered card layout
-│   │   │   ├── login/page.tsx       ✅ wired to Supabase auth
-│   │   │   ├── register/page.tsx    ✅ wired to Supabase auth
-│   │   │   └── forgot-password/page.tsx ✅
+│   │   │   ├── layout.tsx      # Centered card layout (max-w-md, bg-gray-50)
+│   │   │   ├── login/page.tsx
+│   │   │   ├── register/page.tsx    # Wrapped in <Suspense> (uses useSearchParams)
+│   │   │   └── forgot-password/page.tsx
 │   │   ├── (dashboard)/        # Protected pages (sidebar + topbar)
-│   │   │   ├── layout.tsx           ✅ async server component, fetches real buildings
+│   │   │   ├── layout.tsx           # Async server component — fetches buildings from Prisma directly
 │   │   │   ├── manager/
-│   │   │   │   ├── page.tsx         ✅ wired to tRPC (getStats, maintenance, announcements)
-│   │   │   │   ├── residents/page.tsx ✅ wired to tRPC
-│   │   │   │   ├── units/page.tsx        ✅ wired to tRPC (list, create, occupancy tabs)
-│   │   │   │   ├── rent/page.tsx         ✅ wired to tRPC (rent roll, payments, record payment)
-│   │   │   │   ├── keys/page.tsx         ✅ wired to tRPC (list, create, issue, return, deactivate)
-│   │   │   │   ├── maintenance/page.tsx  ✅ wired to tRPC (list, create, status transitions)
-│   │   │   │   ├── visitors/page.tsx     ✅ wired to tRPC (list by date, create, log arrival/departure)
-│   │   │   │   ├── parcels/page.tsx      ✅ wired to tRPC (list, create, notify/collect/return)
-│   │   │   │   ├── announcements/page.tsx ✅ wired to tRPC (list, create, delete; priority/scope badges)
-│   │   │   │   ├── documents/page.tsx    ✅ wired to tRPC (list by category, create with URL, delete)
-│   │   │   │   ├── messages/page.tsx     ✅ wired to tRPC (thread list, conversation view, send/reply)
-│   │   │   │   ├── strata/page.tsx       ✅ wired to tRPC (info, meetings, bylaws, levies tabs)
-│   │   │   │   ├── financials/page.tsx   ✅ wired to tRPC (income/expense records, summary cards)
-│   │   │   │   └── analytics/page.tsx    ✅ wired to tRPC (KPI cards + recharts bar/pie charts)
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── residents/page.tsx
+│   │   │   │   ├── units/page.tsx
+│   │   │   │   ├── rent/page.tsx
+│   │   │   │   ├── keys/page.tsx
+│   │   │   │   ├── maintenance/page.tsx
+│   │   │   │   ├── visitors/page.tsx
+│   │   │   │   ├── parcels/page.tsx
+│   │   │   │   ├── announcements/page.tsx
+│   │   │   │   ├── documents/page.tsx
+│   │   │   │   ├── messages/page.tsx
+│   │   │   │   ├── strata/page.tsx
+│   │   │   │   ├── financials/page.tsx
+│   │   │   │   └── analytics/page.tsx
 │   │   │   └── super-admin/
-│   │   │       ├── organisations/page.tsx ✅ wired to tRPC
-│   │   │       ├── buildings/page.tsx    ✅ wired to tRPC (list all, create under org, delete)
-│   │   │       └── users/page.tsx        ✅ wired to tRPC (list all users, roles, deactivate)
+│   │   │       ├── organisations/page.tsx
+│   │   │       ├── buildings/page.tsx
+│   │   │       └── users/page.tsx
 │   │   ├── api/
-│   │   │   ├── auth/create-user/route.ts     # POST: creates Prisma User after Supabase signUp
-│   │   │   ├── invite/[token]/route.ts        # GET: public fetch of invite details by token
-│   │   │   ├── invite/accept/route.ts         # POST: accept invite → OrgMembership + BuildingAssignment
-│   │   │   └── trpc/[trpc]/route.ts           # tRPC HTTP handler
+│   │   │   ├── auth/create-user/route.ts   # POST: creates Prisma User after Supabase signUp
+│   │   │   ├── invite/[token]/route.ts     # GET: public fetch of invite details by token
+│   │   │   ├── invite/accept/route.ts      # POST: accept invite → OrgMembership + BuildingAssignment
+│   │   │   └── trpc/[trpc]/route.ts        # tRPC HTTP handler (GET + POST)
 │   │   ├── invite/
 │   │   │   └── [token]/
-│   │   │       ├── page.tsx                   # Public invite acceptance page (server component)
-│   │   │       └── accept-invite-button.tsx   # Client button: calls /api/invite/accept then redirects
+│   │   │       ├── page.tsx                # Public invite page (server component)
+│   │   │       └── accept-invite-button.tsx
 │   │   ├── globals.css
-│   │   ├── layout.tsx               # Root layout
-│   │   └── page.tsx                 # Root → redirects to /manager
+│   │   ├── layout.tsx          # Root layout — Geist fonts, html lang="en"
+│   │   └── page.tsx            # Root → redirect("/manager")
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── app-sidebar.tsx      # Role-aware sidebar nav
-│   │   │   ├── building-switcher.tsx # Dropdown to pick active building
-│   │   │   └── topbar.tsx           # Top bar with building switcher + search
-│   │   └── ui/                      # Full shadcn/ui component set
+│   │   │   ├── app-sidebar.tsx
+│   │   │   ├── building-switcher.tsx
+│   │   │   └── topbar.tsx
+│   │   └── ui/                 # shadcn/ui components (never edit directly)
 │   ├── hooks/
-│   │   ├── use-building-context.ts  # Zustand store: selectedBuildingId/Name
+│   │   ├── use-building-context.ts
 │   │   └── use-mobile.ts
 │   ├── lib/
-│   │   ├── constants.ts             # Labels, formatCurrency, state lists
+│   │   ├── constants.ts
 │   │   ├── supabase/
-│   │   │   ├── client.ts            # Browser Supabase client
-│   │   │   ├── server.ts            # Server Supabase client (async, uses cookies)
-│   │   │   └── middleware.ts        # Session refresh + route protection logic
+│   │   │   ├── client.ts       # createBrowserClient (client-side)
+│   │   │   ├── server.ts       # createServerClient with cookie handlers (server-side)
+│   │   │   └── middleware.ts   # updateSession + route protection logic
 │   │   └── trpc/
-│   │       ├── client.ts            # `trpc = createTRPCReact<AppRouter>()`
-│   │       └── provider.tsx         # TRPCProvider (QueryClient + httpBatchLink)
-│   ├── middleware.ts                # Next.js middleware: calls updateSession
+│   │       ├── client.ts       # trpc = createTRPCReact<AppRouter>()
+│   │       └── provider.tsx    # TRPCProvider: QueryClient + httpBatchLink + superjson
+│   ├── middleware.ts            # Next.js entry — calls updateSession()
 │   ├── server/
-│   │   ├── db/client.ts            # Prisma singleton (global for dev HMR)
+│   │   ├── db/client.ts        # Prisma singleton with PrismaPg adapter
 │   │   └── trpc/
-│   │       ├── trpc.ts             # Context, middleware, procedure factories
-│   │       ├── router.ts           # AppRouter — combines all sub-routers
-│   │       └── routers/
-│   │           ├── organisations.ts
-│   │           ├── buildings.ts    # Includes getStats procedure
-│   │           ├── units.ts
-│   │           ├── residents.ts
-│   │           ├── rent.ts
-│   │           ├── keys.ts
-│   │           ├── maintenance.ts
-│   │           ├── visitors.ts
-│   │           ├── parcels.ts
-│   │           ├── announcements.ts
-│   │           ├── messaging.ts
-│   │           ├── financials.ts   # listByBuilding, getSummary, create, delete
-│   │           ├── strata.ts       # getByBuilding, upsertInfo, createMeeting, deleteMeeting
-│   │           ├── documents.ts    # listByBuilding, create, delete
-│   │           └── users.ts        # list, deactivateAssignments (SUPER_ADMIN only)
+│   │       ├── trpc.ts         # Context, procedure factories, role guards
+│   │       ├── router.ts       # AppRouter — combines all sub-routers
+│   │       └── routers/        # 15 domain routers
 │   └── types/
-│       └── auth.ts                 # AuthUser, SessionContext types
-└── generated/prisma/               # Prisma-generated client (never edit)
+│       └── auth.ts             # AuthUser, SessionContext types
+└── src/generated/prisma/       # Generated Prisma client (gitignored, never edit)
 ```
 
 ---
 
 ## Authentication Flow
 
-1. **Middleware** (`src/middleware.ts`) runs on every request, calls `updateSession()` from `src/lib/supabase/middleware.ts`
-2. `updateSession` refreshes the Supabase session via cookies, then:
-   - Redirects unauthenticated users → `/login?redirect=<path>`
-   - Redirects authenticated users away from `/login`, `/register` → `/manager`
-3. **Login page** calls `supabase.auth.signInWithPassword()` directly (client-side Supabase)
-4. **tRPC context** (`src/server/trpc/trpc.ts`): On each API call, calls `supabase.auth.getUser()` server-side, then looks up the Prisma `User` record via `supabaseAuthId`. Attaches `ctx.user`, `ctx.db`, `ctx.supabase`.
-5. **Dashboard layout** (`src/app/(dashboard)/layout.tsx`): Async server component. Calls Supabase server client + Prisma directly to fetch the user's assigned buildings and passes them to the `Topbar`.
+### Two user records
 
-### Important: Two User Records
+- **Supabase `auth.users`** — managed by Supabase Auth. UUID is `supabaseUser.id`
+- **Prisma `users` table** — application record. Links via `User.supabaseAuthId`
 
-- **Supabase `auth.users`**: Managed by Supabase Auth. Has a UUID (`supabaseUser.id`).
-- **Prisma `users` table**: Application user record. Links via `supabaseAuthId` field.
+### Registration flow
 
-When a new user registers, the register page calls `supabase.auth.signUp()` and then, **if the session is immediately available** (no email verification required), calls `POST /api/auth/create-user` to create the Prisma record. If the user arrived via an invite link (`?invite=<token>`), it also calls `POST /api/invite/accept` to create their `OrganisationMembership` and `BuildingAssignment`, then redirects to `/manager`.
+1. `supabase.auth.signUp({ email, password, options: { data: { first_name, last_name } } })`
+2. **If session returned immediately** (no email verification):
+   - `POST /api/auth/create-user` → creates Prisma user
+   - If `?invite=<token>`: `POST /api/invite/accept` → creates memberships → redirect `/manager`
+3. **If email verification required** (session is null):
+   - Redirect to `/login?registered=true` or `/invite/<token>`
+   - On first login after verification, Prisma user is **auto-created** in both:
+     - `createTRPCContext()` in `src/server/trpc/trpc.ts`
+     - Dashboard layout in `src/app/(dashboard)/layout.tsx`
+   - Uses `supabaseUser.user_metadata.first_name` / `first_name` stored at signup
 
-If email verification is required, the Prisma user will not exist until they verify and re-visit the invite link, at which point they can click "Accept Invite" while logged in.
+### Login flow
+
+`supabase.auth.signInWithPassword()` → middleware refreshes session via cookies → redirect `/manager`
+
+### tRPC context (every API call)
+
+```ts
+// src/server/trpc/trpc.ts — createTRPCContext()
+supabase.auth.getUser()                    // verify session server-side
+db.user.findUnique({ supabaseAuthId })     // fetch Prisma user + memberships
+// auto-creates Prisma user if missing (email verification fallback)
+return { db, supabase, supabaseUser, user }
+```
+
+### Middleware route protection
+
+**File:** `src/lib/supabase/middleware.ts`
+
+Public (no auth required):
+- `/`, `/login`, `/register`, `/forgot-password`
+- `/api/webhooks/**`
+- `/invite/**`
+
+Protected: everything else → unauthenticated users redirected to `/login?redirect=<path>`
+
+Auth pages (`/login`, `/register`): authenticated users redirected to `/manager`
 
 ---
 
 ## Role System
 
-Roles are defined in the `UserRole` enum:
-
 ```
-SUPER_ADMIN → full access to all orgs/buildings
+SUPER_ADMIN      → full access, all orgs/buildings
 BUILDING_MANAGER → manages assigned buildings
-RECEPTION → front desk ops (visitors, parcels, keys)
-OWNER → unit owner self-service
-TENANT → tenant self-service
+RECEPTION        → front desk (visitors, parcels, keys)
+OWNER            → unit owner self-service
+TENANT           → tenant self-service
 ```
 
-Roles are stored in two places:
-- `OrganisationMembership.role` — what role the user has within an org
-- `BuildingAssignment.role` — what role the user has within a specific building
+Roles are stored in **two junction tables** — NOT on the `users` row:
+
+| Table | Key columns |
+|---|---|
+| `organisation_memberships` | `userId`, `organisationId`, `role`, `isActive` |
+| `building_assignments` | `userId`, `buildingId`, `role`, `isActive` |
+
+Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 
 ### tRPC Procedure Guards
 
@@ -222,56 +284,242 @@ Roles are stored in two places:
 |---|---|
 | `publicProcedure` | Anyone |
 | `protectedProcedure` | Any authenticated user with a Prisma record |
-| `tenantOrAboveProcedure` | TENANT and above |
-| `managerProcedure` | SUPER_ADMIN, BUILDING_MANAGER, RECEPTION |
-| `ownerProcedure` | SUPER_ADMIN, BUILDING_MANAGER, OWNER |
+| `tenantOrAboveProcedure` | TENANT, OWNER, RECEPTION, BUILDING_MANAGER, SUPER_ADMIN |
+| `managerProcedure` | RECEPTION, BUILDING_MANAGER, SUPER_ADMIN |
+| `ownerProcedure` | OWNER, BUILDING_MANAGER, SUPER_ADMIN |
 | `superAdminProcedure` | SUPER_ADMIN only |
 
 ---
 
 ## Routing Structure
 
-### Auth routes (no sidebar, centered card layout)
-- `/login` — email/password login
-- `/register` — registration; reads `?invite=<token>` to auto-accept an invite after signup
-- `/forgot-password` — password reset request
+### Auth routes (no sidebar)
+- `/login` — `supabase.auth.signInWithPassword()`
+- `/register` — signup + optional invite acceptance
+- `/forgot-password` — `supabase.auth.resetPasswordForEmail()` with `redirectTo: '/reset-password'`
 
-### Public routes (no auth required, no sidebar)
-- `/invite/[token]` — invite acceptance page; whitelisted in middleware (`/invite/**`)
+### Public routes
+- `/invite/[token]` — invite acceptance page (whitelisted in middleware)
 
-### Manager routes (`/manager/**`) — sidebar shows "Property Management" nav
-- `/manager` — dashboard (stats, recent maintenance, announcements)
-- `/manager/residents` — residents table (owners + tenants)
-- `/manager/units` — units list, create, occupancy tabs
-- `/manager/rent` — rent roll + payments tabs, record payment
-- `/manager/keys` — key records, issue/return/deactivate
-- `/manager/maintenance` — requests with status transitions
-- `/manager/visitors` — date-filtered visitor log, arrive/depart
-- `/manager/parcels` — parcel lifecycle (received→notified→collected/returned)
-- `/manager/announcements` — create/delete notices with priority + scope
-- `/manager/documents` — file library with category filter + external link
-- `/manager/messages` — threaded messaging, send/reply
-- `/manager/strata` — strata plan info, meetings, bylaws, levies tabs
-- `/manager/financials` — income/expense ledger with summary cards
-- `/manager/analytics` — KPI cards + 4 live Recharts charts
+### Manager routes (`/manager/**`)
+- `/manager` — dashboard: `buildings.getStats`, `maintenance.listByBuilding`, `announcements.listByBuilding`
+- `/manager/residents` — `residents.listByBuilding` (search, role filter)
+- `/manager/units` — `units.listByBuilding` + `units.create`
+- `/manager/rent` — `rent.getRentRoll` + `rent.listByBuilding` + `rent.recordPayment`
+- `/manager/keys` — `keys.listByBuilding` + `keys.create` + `keys.issue` + `keys.returnKey` + `keys.deactivate`
+- `/manager/maintenance` — `maintenance.listByBuilding` + `maintenance.create` + `maintenance.updateStatus`
+- `/manager/visitors` — `visitors.listByBuilding` + `visitors.create` + `visitors.logArrival` + `visitors.logDeparture`
+- `/manager/parcels` — `parcels.listByBuilding` + `parcels.create` + `parcels.markNotified` + `parcels.markCollected` + `parcels.markReturned`
+- `/manager/announcements` — `announcements.listByBuilding` + `announcements.create` + `announcements.delete`
+- `/manager/documents` — `documents.listByBuilding` + `documents.create` + `documents.delete`
+- `/manager/messages` — `messaging.listThreads` + `messaging.getThread` + `messaging.send` + `messaging.markRead`
+- `/manager/strata` — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting`
+- `/manager/financials` — `financials.listByBuilding` + `financials.getSummary` + `financials.create` + `financials.delete`
+- `/manager/analytics` — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding` + Recharts
 
-### Super-admin routes (`/super-admin/**`) — sidebar shows "Administration" nav + "Property Management" nav
-- `/super-admin/organisations` — list/create/deactivate orgs
-- `/super-admin/buildings` — list all buildings, create under org, delete
-- `/super-admin/users` — list all users, roles, building assignments, deactivate
+### Super-admin routes (`/super-admin/**`)
+- `/super-admin/organisations` — `organisations.list` + `organisations.create` + `organisations.update`
+- `/super-admin/buildings` — `buildings.list` + `buildings.create` + `buildings.delete`
+- `/super-admin/users` — `users.list` + `users.assignToBuilding` + `users.createInvite` + `users.listInvites` + `users.revokeInvite` + `users.deactivateAssignments`
+
+---
+
+## API Routes
+
+### `POST /api/auth/create-user`
+- **Auth:** Requires Supabase session (`supabase.auth.getUser()`)
+- **Body:** `{ firstName: string, lastName: string }`
+- **Returns:** `{ user }` (201) or `{ error }` (400/401)
+- **Behaviour:** Idempotent — returns existing record if already created. Called from register page when session is available immediately after signup.
+
+### `GET /api/invite/[token]`
+- **Auth:** Public
+- **Returns:** `{ id, email, role, expiresAt, acceptedAt, organisation, building, expired, accepted }`
+- **Note:** Fetches org + building names in parallel via `Promise.all`. Used by the invite page.
+
+### `POST /api/invite/accept`
+- **Auth:** Requires Supabase session
+- **Body:** `{ token: string }`
+- **Returns:** `{ success: true }` or `{ error }` (401/404/409/410)
+- **Behaviour:** Upserts `OrganisationMembership`, creates `BuildingAssignment` (if buildingId set), marks `Invitation.acceptedAt`. Validates: exists, not already accepted, not expired.
+
+### `GET|POST /api/trpc/[trpc]`
+- **Handler:** `fetchRequestHandler` from `@trpc/server/adapters/fetch`
+- **Router:** `appRouter` from `src/server/trpc/router.ts`
+
+---
+
+## tRPC Router Reference
+
+All routers in `src/server/trpc/routers/`. Combined in `src/server/trpc/router.ts`.
+
+### `organisations`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `list` | query | SUPER_ADMIN | — | All orgs with `_count.buildings`, `_count.members` |
+| `getById` | query | protected | `id` | Single org with buildings and members |
+| `create` | mutation | SUPER_ADMIN | `name, abn?, state` | Create org |
+| `update` | mutation | SUPER_ADMIN | `id, name?, abn?, state?, isActive?` | Update fields |
+| `delete` | mutation | SUPER_ADMIN | `id` | Hard delete |
+
+### `buildings`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `list` | query | protected | — | SUPER_ADMIN gets all; others get assigned only |
+| `getById` | query | protected | `id` | Full detail with units, floors, strataInfo |
+| `create` | mutation | SUPER_ADMIN | `organisationId, name, address, suburb, state, postcode, totalFloors, totalUnits, strataSchemeNo?` | Create building |
+| `update` | mutation | manager | `id, ...fields` | Update fields |
+| `delete` | mutation | SUPER_ADMIN | `id` | Hard delete |
+| `getStats` | query | protected | `buildingId` | `totalUnits, occupiedUnits, residentCount, openMaintenanceCount, pendingParcelCount, overdueRentCount, rentCollectedThisMonthCents, occupancyRate` |
+
+### `units`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId` | Units with ownerships, tenancies, parking, storage |
+| `getById` | query | protected | `id` | Full unit with 12-month rent history |
+| `create` | mutation | manager | `buildingId, unitNumber, unitType, bedrooms?, bathrooms?, parkingSpaces, storageSpaces, squareMetres?, lotNumber?, unitEntitlement?` | Create unit |
+| `update` | mutation | manager | `id, ...fields` | Update unit |
+| `delete` | mutation | manager | `id` | Hard delete |
+
+Unit types: `APARTMENT`, `STUDIO`, `PENTHOUSE`, `TOWNHOUSE`, `COMMERCIAL`, `STORAGE`, `PARKING`
+
+### `residents`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, role?, search?` | Active assignments with user detail |
+| `getById` | query | protected | `id` | Full profile with ownerships, tenancies, emergency contacts |
+| `addEmergencyContact` | mutation | manager | `userId, name, relationship, phone, email?` | Add contact |
+| `removeEmergencyContact` | mutation | manager | `id` | Remove contact |
+
+### `rent`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | manager | `buildingId, status?` | Payments filtered by status |
+| `listByTenancy` | query | protected | `tenancyId` | Rent history for tenancy |
+| `recordPayment` | mutation | manager | `id, amountCents, paidDate, paymentMethod?, notes?` | Mark paid (PAID or PARTIAL) |
+| `generateSchedule` | mutation | manager | `tenancyId, months?` | Generate payment schedule |
+| `getRentRoll` | query | manager | `buildingId` | `unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, overduePayments, nextDue` |
+
+### `keys`
+Key types: `PHYSICAL_KEY`, `FOB`, `ACCESS_CODE`, `REMOTE`, `SWIPE_CARD`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, keyType?` | All keys with latest log |
+| `getById` | query | protected | `id` | Full key with log history |
+| `create` | mutation | manager | `buildingId, unitId?, keyType, identifier, issuedTo?, issuedDate?, rotationDue?, notes?` | Creates CREATED log entry |
+| `issue` | mutation | manager | `id, issuedTo` | Sets issuedDate=now, creates ISSUED log |
+| `returnKey` | mutation | manager | `id, notes?` | Sets returnedDate=now, creates RETURNED log |
+| `deactivate` | mutation | manager | `id, notes?` | Sets isActive=false, creates DEACTIVATED log |
+
+### `maintenance`
+Categories: `PLUMBING`, `ELECTRICAL`, `HVAC`, `STRUCTURAL`, `APPLIANCE`, `PEST_CONTROL`, `CLEANING`, `SECURITY`, `LIFT`, `COMMON_AREA`, `OTHER`
+Priorities: `LOW`, `MEDIUM`, `HIGH`, `URGENT`
+Statuses: `SUBMITTED`, `ACKNOWLEDGED`, `IN_PROGRESS`, `AWAITING_PARTS`, `SCHEDULED`, `COMPLETED`, `CLOSED`, `CANCELLED`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, status?, priority?` | Filtered requests |
+| `getById` | query | protected | `id` | Full request with images and comments |
+| `create` | mutation | tenantOrAbove | `unitId, title, description, category, priority?` | Submit request |
+| `updateStatus` | mutation | manager | `id, status` | Auto-sets `completedDate` if status=COMPLETED |
+| `assign` | mutation | manager | `id, assignedTo` | Assign + set status=ACKNOWLEDGED |
+| `addComment` | mutation | protected | `maintenanceRequestId, content` | Adds comment as current user |
+
+### `visitors`
+Purposes: `PERSONAL`, `DELIVERY`, `TRADESPERSON`, `REAL_ESTATE`, `INSPECTION`, `OTHER`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, date?` | Entries, includes registeredBy user |
+| `create` | mutation | tenantOrAbove | `buildingId, visitorName, visitorPhone?, visitorCompany?, purpose, unitToVisit?, preApproved?, vehiclePlate?, deliveryInstructions?, notes?` | Create entry |
+| `logArrival` | mutation | manager | `id` | Sets `arrivalTime` to now |
+| `logDeparture` | mutation | manager | `id` | Sets `departureTime` to now |
+
+### `parcels`
+Statuses: `RECEIVED`, `NOTIFIED`, `COLLECTED`, `RETURNED`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, status?` | Filtered parcels |
+| `create` | mutation | manager | `buildingId, unitNumber, recipientName, carrier?, trackingNumber?, storageLocation?, notes?` | Status auto-set to RECEIVED |
+| `markNotified` | mutation | manager | `id` | Status → NOTIFIED |
+| `markCollected` | mutation | manager | `id, collectedBy` | Status → COLLECTED, sets collectedAt |
+| `markReturned` | mutation | manager | `id, notes?` | Status → RETURNED |
+
+### `announcements`
+Scopes: `BUILDING`, `FLOOR`, `ALL_BUILDINGS`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId` | Non-expired announcements |
+| `create` | mutation | manager | `buildingId, title, content, priority?, scope?, targetFloors?, expiresAt?` | Sets `authorId`, `publishedAt` |
+| `delete` | mutation | manager | `id` | Hard delete |
+
+### `messaging`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listThreads` | query | protected | — | Distinct threads (sender or recipient) with latest message |
+| `getThread` | query | protected | `threadId` | All messages ordered by `createdAt` asc |
+| `send` | mutation | protected | `recipientId, subject?, content, threadId?` | Auto-generates `threadId` if not provided |
+| `markRead` | mutation | protected | `threadId` | Marks all unread messages in thread as read |
+| `unreadCount` | query | protected | — | Count of unread messages for current user |
+
+### `financials`
+Types: `INCOME`, `EXPENSE`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | manager | `buildingId, type?, from?, to?` | Records with date range filter |
+| `getSummary` | query | manager | `buildingId` | `totalIncome, totalExpense, net` (all cents) |
+| `create` | mutation | manager | `buildingId, type, category, description, amountCents, date, receiptUrl?` | Create record |
+| `delete` | mutation | manager | `id` | Hard delete |
+
+### `strata`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `getByBuilding` | query | protected | `buildingId` | StrataInfo with levies, bylaws, meetings |
+| `upsertInfo` | mutation | manager | `buildingId, strataPlanNumber, strataManagerName?, strataManagerEmail?, strataManagerPhone?, adminFundBalance?, capitalWorksBalance?, insurancePolicyNo?, insuranceExpiry?, nextAgmDate?` | Create or update |
+| `createMeeting` | mutation | manager | `buildingId, title, meetingDate, location?, notes?` | Requires StrataInfo to exist first |
+| `deleteMeeting` | mutation | manager | `id` | Hard delete |
+
+### `documents`
+Categories: `LEASE_AGREEMENT`, `BUILDING_RULES`, `STRATA_MINUTES`, `FINANCIAL_REPORT`, `INSURANCE`, `COMPLIANCE`, `NOTICE`, `OTHER`
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | protected | `buildingId, category?` | Filtered by category |
+| `create` | mutation | manager | `buildingId, title, description?, category, fileUrl, fileSize, mimeType, isPublic?` | Create record |
+| `delete` | mutation | manager | `id` | Hard delete |
+
+### `users` (super-admin)
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `list` | query | SUPER_ADMIN | `search?` | All users with orgMemberships + active buildingAssignments |
+| `assignToBuilding` | mutation | SUPER_ADMIN | `userId, organisationId, buildingId, role` | Upserts OrgMembership + BuildingAssignment |
+| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, role` | Creates Invitation (7-day expiry), returns with token |
+| `listInvites` | query | SUPER_ADMIN | `organisationId?` | Pending (non-expired, non-accepted) invites |
+| `revokeInvite` | mutation | SUPER_ADMIN | `id` | Hard delete |
+| `deactivateAssignments` | mutation | SUPER_ADMIN | `userId` | Sets all BuildingAssignments `isActive=false` |
 
 ---
 
 ## Building Context (Zustand)
 
-The building switcher in the topbar lets users select which building they're working in. The selected building is persisted to `localStorage` via Zustand `persist` middleware.
-
 ```ts
 // src/hooks/use-building-context.ts
-const { selectedBuildingId, selectedBuildingName, setSelectedBuilding } = useBuildingContext();
+// Persisted to localStorage key: "strata-hub-building"
+const {
+  selectedBuildingId,   // string | null
+  selectedBuildingName, // string | null
+  setSelectedBuilding,  // (id: string, name: string) => void
+  clearSelectedBuilding // () => void
+} = useBuildingContext();
 ```
 
-**All building-scoped tRPC queries use `skipToken`** when no building is selected:
+**Auto-select:** `BuildingSwitcher` auto-selects when user has exactly one building (via `useEffect` on mount).
+
+**`skipToken` pattern** — all building-scoped queries:
 
 ```ts
 import { skipToken } from "@tanstack/react-query";
@@ -281,134 +529,49 @@ const query = trpc.residents.listByBuilding.useQuery(
 );
 ```
 
-Pages should show a "select a building" prompt when `selectedBuildingId` is null.
+Pages show a "select a building" prompt when `selectedBuildingId` is null.
 
 ---
 
-## tRPC Router Reference
+## tRPC Client Config
 
-All routers are in `src/server/trpc/routers/`. The combined `AppRouter` is in `src/server/trpc/router.ts`.
+```ts
+// src/lib/trpc/provider.tsx
+QueryClient config:
+  staleTime: 5 * 60 * 1000  // 5 minutes
+  refetchOnWindowFocus: false
 
-### `organisations`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `list` | query | SUPER_ADMIN | All orgs with `_count.buildings` and `_count.members` |
-| `getById` | query | protected | Single org with buildings and members |
-| `create` | mutation | SUPER_ADMIN | Create org (name, abn?, state) |
-| `update` | mutation | SUPER_ADMIN | Update any field including isActive |
-| `delete` | mutation | SUPER_ADMIN | Hard delete |
+tRPC link:
+  httpBatchLink({ url: `${process.env.NEXT_PUBLIC_APP_URL}/api/trpc` })
+  transformer: superjson
+```
 
-### `buildings`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `list` | query | protected | Buildings visible to user (all for SUPER_ADMIN, assigned for others). Includes `_count.units`, `_count.assignments` |
-| `getById` | query | protected | Full building detail with units, floors, strata info |
-| `create` | mutation | SUPER_ADMIN | Create building under an org |
-| `update` | mutation | manager | Update building fields |
-| `delete` | mutation | SUPER_ADMIN | Hard delete |
-| `getStats` | query | protected | Stats for a building: totalUnits, occupiedUnits, residentCount, openMaintenanceCount, pendingParcelCount, overdueRentCount, rentCollectedThisMonthCents, occupancyRate |
+Cache invalidation after mutations: `utils.routerName.procedureName.invalidate()`
 
-### `units`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | protected | All units with ownerships, tenancies, parking, storage |
-| `getById` | query | protected | Full unit detail |
-| `create` | mutation | manager | Create unit in building |
-| `update` | mutation | manager | Update unit (including isOccupied) |
-| `delete` | mutation | manager | Hard delete |
+---
 
-### `residents`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | protected | Active building assignments with user detail. Inputs: buildingId, role?, search?. Returns users with `buildingRole`, `ownerships`, `tenancies`, `emergencyContacts` |
-| `getById` | query | protected | Full resident profile |
-| `addEmergencyContact` | mutation | manager | Add emergency contact to a user |
-| `removeEmergencyContact` | mutation | manager | Remove emergency contact |
+## Constants (`src/lib/constants.ts`)
 
-### `rent`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | manager | Rent payments for building, optionally filtered by status |
-| `listByTenancy` | query | protected | Rent history for a tenancy |
-| `recordPayment` | mutation | manager | Mark a payment as paid (full or partial) |
-| `generateSchedule` | mutation | manager | Generate monthly/weekly/fortnightly payment schedule |
-| `getRentRoll` | query | manager | Rent roll: all active tenancies with overdue payment counts |
+```ts
+APP_NAME                    // "StrataHub"
+AUSTRALIAN_STATES           // [{ value, label }] for NSW, VIC, QLD, SA, WA, TAS, NT, ACT
+USER_ROLE_LABELS            // Record<UserRole, string>
+UNIT_TYPE_LABELS            // Record<UnitType, string>
+MAINTENANCE_CATEGORY_LABELS // Record<MaintenanceCategory, string>
+PRIORITY_LABELS             // Record<Priority, string>
+BOND_LODGEMENT_AUTHORITIES  // Record<AustralianState, string>
+BOND_LODGEMENT_DEADLINES_DAYS // Record<AustralianState, number>
 
-### `keys`
-Full CRUD for key records (physical keys, fobs, access codes, remotes, swipe cards) with key log history.
+formatCurrency(cents: number) // → "$1,234.56" AUD via Intl.NumberFormat
+centsToDollars(cents: number) // → "$X.XX" string
+dollarsToCents(dollars: number) // → integer cents
+```
 
-### `maintenance`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | protected | Maintenance requests filtered by status/priority |
-| `getById` | query | protected | Full request with images and comments |
-| `create` | mutation | tenantOrAbove | Submit new request |
-| `updateStatus` | mutation | manager | Change status (sets completedDate on COMPLETED) |
-| `assign` | mutation | manager | Assign to a person |
-| `addComment` | mutation | protected | Add comment to a request |
-
-### `visitors`
-CRUD for visitor entries with pre-approval, arrival/departure times, vehicle plates.
-
-### `parcels`
-CRUD for parcel tracking — received, notified, collected, returned statuses.
-
-### `announcements`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | protected | Non-expired announcements for a building |
-| `create` | mutation | manager | Create announcement with scope (BUILDING/FLOOR/ALL_BUILDINGS) |
-| `delete` | mutation | manager | Delete announcement |
-
-### `messaging`
-Direct messaging between users (sender/recipient model with thread support).
-
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listThreads` | query | protected | All threads the current user is part of (distinct by threadId) |
-| `getThread` | query | protected | All messages in a thread ordered by createdAt asc |
-| `send` | mutation | protected | Send message; auto-generates threadId if not provided |
-| `markRead` | mutation | protected | Mark all unread messages in a thread as read |
-| `unreadCount` | query | protected | Count of unread messages for current user |
-
-### `financials`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | manager | FinancialRecords filtered by type (INCOME/EXPENSE) and date range |
-| `getSummary` | query | manager | Aggregate totalIncome, totalExpense, net for a building |
-| `create` | mutation | manager | Create record (type, category, description, amountCents, date) |
-| `delete` | mutation | manager | Hard delete |
-
-### `strata`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `getByBuilding` | query | protected | StrataInfo with levies, bylaws, meetings included |
-| `upsertInfo` | mutation | manager | Create or update StrataInfo for a building |
-| `createMeeting` | mutation | manager | Add a StrataMeeting (requires StrataInfo to exist first) |
-| `deleteMeeting` | mutation | manager | Hard delete a meeting |
-
-### `documents`
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `listByBuilding` | query | protected | Documents filtered by category (DocCategory enum) |
-| `create` | mutation | manager | Create document record (title, fileUrl, category, isPublic) |
-| `delete` | mutation | manager | Hard delete |
-
-### `users` (super-admin)
-| Procedure | Type | Auth | Description |
-|---|---|---|---|
-| `list` | query | SUPER_ADMIN | All users with orgMemberships + active buildingAssignments; searchable |
-| `assignToBuilding` | mutation | SUPER_ADMIN | Upserts OrgMembership + creates/updates BuildingAssignment for an existing user |
-| `createInvite` | mutation | SUPER_ADMIN | Creates an Invitation record (7-day expiry); returns invite with token |
-| `listInvites` | query | SUPER_ADMIN | All pending (non-expired, non-accepted) invitations |
-| `revokeInvite` | mutation | SUPER_ADMIN | Hard deletes an invitation |
-| `deactivateAssignments` | mutation | SUPER_ADMIN | Set all BuildingAssignments for a user to isActive=false |
+All monetary values stored as **cents** (integers) in DB. Always use `formatCurrency(cents)` for display.
 
 ---
 
 ## Data Model Summary
-
-Key relationships:
 
 ```
 Organisation
@@ -417,13 +580,16 @@ Organisation
         │     ├── Ownership (→ User)
         │     ├── Tenancy (→ User)
         │     │     └── RentPayment (many)
-        │     └── MaintenanceRequest (many)
+        │     ├── MaintenanceRequest (many)
+        │     ├── ParkingSpot (many)
+        │     └── StorageUnit (many)
         ├── BuildingAssignment (→ User, role)
         ├── VisitorEntry (many)
         ├── Parcel (many)
-        ├── KeyRecord (many)
+        ├── KeyRecord (many) → KeyLog (many)
         ├── Announcement (many)
         ├── Document (many)
+        ├── FinancialRecord (many)
         └── StrataInfo (one)
               ├── StrataLevy (many)
               ├── StrataBylaw (many)
@@ -434,91 +600,38 @@ User
   ├── BuildingAssignment (→ Building, role)
   ├── Ownership (→ Unit)
   ├── Tenancy (→ Unit)
-  └── EmergencyContact (many)
+  ├── EmergencyContact (many)
+  ├── MaintenanceRequest (many, as requester)
+  ├── MaintenanceComment (many)
+  ├── Message (many, as sender)
+  ├── Message (many, as recipient)
+  ├── VisitorEntry (many, as registeredBy)
+  ├── Parcel (many, as loggedBy)
+  ├── Announcement (many, as author)
+  ├── Document (many, as uploadedBy)
+  └── KeyLog (many, as performedBy)
+
+Invitation (standalone — no Prisma relations to org/building)
+  Fields: email, organisationId, buildingId?, unitId?, role, token, expiresAt, acceptedAt
 ```
-
-All monetary values are stored in **cents** as integers (e.g. `rentAmountCents`, `amountCents`). Use `formatCurrency(cents)` from `src/lib/constants.ts` to display.
-
-All Australian states use the `AustralianState` enum: NSW, VIC, QLD, SA, WA, TAS, NT, ACT.
 
 ---
 
 ## Environment Variables
 
-Required in `.env`:
-```
-# Supabase session pooler URL (use session pooler, not direct — direct requires IPv6)
-# Format: postgresql://postgres.PROJECT_REF:PASSWORD@aws-X-REGION.pooler.supabase.com:5432/postgres
+```bash
+# Supabase session pooler URL (IPv4-safe — direct connection requires IPv6 or paid add-on)
+# Username format: postgres.PROJECT_REF (not just postgres)
 # Encode special chars in password: @ → %40, # → %23, $ → %24
-DATABASE_URL=
+DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-X-REGION.pooler.supabase.com:5432/postgres"
 
-NEXT_PUBLIC_SUPABASE_URL=      # e.g. https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY= # anon/public key from Supabase dashboard → Settings → API
-SUPABASE_SERVICE_ROLE_KEY=     # service_role key — only used server-side (seed script, admin ops)
+NEXT_PUBLIC_SUPABASE_URL="https://PROJECT_REF.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."   # Settings → API → anon/public key
+SUPABASE_SERVICE_ROLE_KEY="..."       # Settings → API → service_role key (server-side only)
 
-NEXT_PUBLIC_APP_URL=           # e.g. http://localhost:3000
-NEXT_PUBLIC_APP_NAME=          # e.g. StrataHub
+NEXT_PUBLIC_APP_URL="http://localhost:3000"  # Full URL — used in tRPC httpBatchLink for SSR
+NEXT_PUBLIC_APP_NAME="StrataHub"
 ```
-
-### Supabase connection note
-Supabase's direct connection (port 5432 on `db.*.supabase.co`) requires IPv6. On a standard IPv4 network (home/office), use the **Session Pooler** URL from Settings → Database → "Session pooler". The pooler host looks like `aws-1-ap-southeast-2.pooler.supabase.com` and the username is `postgres.PROJECT_REF`.
-
----
-
-## What Is and Isn't Wired Up
-
-### ✅ Wired to real data (tRPC + Prisma)
-- **Dashboard layout** — fetches real buildings from DB for the building switcher; auto-selects if only one building
-- **Manager dashboard** (`/manager`) — `buildings.getStats`, `maintenance.listByBuilding`, `announcements.listByBuilding`
-- **Residents page** (`/manager/residents`) — `residents.listByBuilding` with search and role filter
-- **Units page** (`/manager/units`) — `units.listByBuilding` + `units.create`; occupancy tabs, unit type, resident name shown
-- **Rent page** (`/manager/rent`) — `rent.getRentRoll` + `rent.listByBuilding`; two tabs (Rent Roll / Payments); record payment dialog calls `rent.recordPayment`
-- **Maintenance page** (`/manager/maintenance`) — `maintenance.listByBuilding` + `maintenance.create` + `maintenance.updateStatus`; status/priority filters, status transition dropdown per row
-- **Keys page** (`/manager/keys`) — `keys.listByBuilding` + `keys.create` + `keys.issue` + `keys.returnKey` + `keys.deactivate`; rotation-due warning banner; type filter; issue/return/deactivate via dropdown
-- **Visitors page** (`/manager/visitors`) — `visitors.listByBuilding` (date-filtered, defaults to today) + `visitors.create` + `visitors.logArrival` + `visitors.logDeparture`; Expected/Present/Departed status badges; inline Arrive/Depart action buttons
-- **Parcels page** (`/manager/parcels`) — `parcels.listByBuilding` + `parcels.create` + `parcels.markNotified` + `parcels.markCollected` + `parcels.markReturned`; Pending/All/Collected/Returned tabs; Mark Collected dialog captures collected-by name
-- **Announcements page** (`/manager/announcements`) — `announcements.listByBuilding` + `announcements.create` + `announcements.delete`; priority colour badges (Low/Medium/High/Urgent), scope badges, expiry date
-- **Documents page** (`/manager/documents`) — `documents.listByBuilding` + `documents.create` + `documents.delete`; category filter dropdown, external link button, staff/public visibility toggle
-- **Messages page** (`/manager/messages`) — `messaging.listThreads` + `messaging.getThread` + `messaging.send` + `messaging.markRead`; split-pane thread list + message view; Enter to send
-- **Strata page** (`/manager/strata`) — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting`; four tabs: Info, Meetings, Levies, Bylaws
-- **Financials page** (`/manager/financials`) — `financials.listByBuilding` + `financials.getSummary` + `financials.create` + `financials.delete`; All/Income/Expense tabs; live summary cards (income, expenses, net)
-- **Analytics page** (`/manager/analytics`) — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding`; KPI cards + 4 Recharts charts (occupancy pie, maintenance-by-priority pie, maintenance-by-status bar, parcels bar)
-- **Organisations page** (`/super-admin/organisations`) — `organisations.list` + `organisations.create` + `organisations.update` (deactivate/reactivate)
-- **Buildings page** (`/super-admin/buildings`) — `buildings.list` + `buildings.create` (linked to org) + `buildings.delete`; search by name/suburb/org
-- **Users page** (`/super-admin/users`) — `users.list` + `users.assignToBuilding` + `users.createInvite` + `users.listInvites` + `users.revokeInvite` + `users.deactivateAssignments`; two tabs (Users / Pending Invites); "Assign to Building" and "Invite User" dialogs
-- **Invite page** (`/invite/[token]`) — public server-component page; shows org/building/role details; Accept button if logged in, Register/Sign In buttons if not; `AcceptInviteButton` client component calls `/api/invite/accept` then redirects to `/manager`
-
-### ❌ Not yet built
-- Nothing — all sidebar nav items and onboarding flows have pages.
-
-### ⚠️ Known gaps / remaining work
-- **Email verification fallback** — If Supabase requires email confirmation before login, the Prisma user and invite acceptance are deferred until the user verifies their email and visits `/invite/[token]` again while logged in. A Supabase webhook on `SIGNED_IN` could automate this.
-- **Keys to Rotate stat** — Dashboard quick-action card shows "—" for keys to rotate. The `keys` router is not yet called from the dashboard page.
-- **Document file upload** — The documents page accepts a file URL manually pasted by the user. There is no Supabase Storage upload integration yet.
-- **Strata levies** — The levies tab on the strata page shows a placeholder. The `StrataLevy` model exists in the schema but no UI or router procedures manage levies yet.
-- **Middleware deprecation** — Next.js 16 deprecated the `middleware` file convention in favour of `proxy`. Low priority — still functional, just shows a warning in the build output.
-
----
-
-## Architectural Decisions
-
-1. **Server component layout + client pages**: `(dashboard)/layout.tsx` is an async server component that fetches buildings directly from Prisma (bypassing the HTTP tRPC layer for efficiency). Page components that need Zustand state (building context) are client components.
-
-2. **`skipToken` pattern for optional queries**: All building-scoped queries use `skipToken` from `@tanstack/react-query` when no building is selected, rather than passing an empty string or using `enabled: false`.
-
-3. **Cents for money**: All monetary values stored as integers in cents to avoid floating-point issues. `formatCurrency(cents)` in `constants.ts` formats as AUD.
-
-4. **Supabase + Prisma dual-layer auth**: Supabase handles session management and cookie refresh; Prisma stores the application user with role data. The link is `User.supabaseAuthId = supabase auth user UUID`.
-
-5. **Building switcher state in Zustand + localStorage**: `useBuildingContext` (Zustand with persist) stores which building is active. This survives page refreshes but is client-only. `BuildingSwitcher` auto-selects when the user has exactly one building (via `useEffect` on mount).
-
-6. **tRPC v11 + React Query v5**: Uses the `httpBatchLink` with SuperJSON transformer. Query client has `staleTime: 5 minutes` and `refetchOnWindowFocus: false`. Cache invalidation after mutations uses `utils.routerName.procedureName.invalidate()`.
-
-7. **shadcn/ui with Base UI**: The installed shadcn components use `@base-ui/react` (not the older `@radix-ui/react-*` packages). This has two key API differences from what older examples show:
-   - **No `asChild`** — use the `render` prop instead: `<DialogTrigger render={<Button />}>label</DialogTrigger>`
-   - **`Select.onValueChange` receives `null`** — always guard: `onValueChange={(v) => v !== null && setState(v)}`
-
-   Components are in `src/components/ui/`. Never edit generated shadcn files — re-run the CLI to update. Installed: button, input, label, card, table, tabs, badge, avatar, dropdown-menu, dialog, select, textarea, separator, sheet, sidebar, skeleton, sonner, tooltip.
 
 ---
 
@@ -526,29 +639,73 @@ Supabase's direct connection (port 5432 on `db.*.supabase.co`) requires IPv6. On
 
 ```bash
 cd strata-hub
-npm run dev        # Start dev server (http://localhost:3000)
-npm run build      # Type-check + build
-npm run lint       # ESLint
-npm run db:seed    # Seed super-admin account + demo org/building (run once)
+npm run dev          # http://localhost:3000
+npm run build        # type-check + production build
+npm run lint         # ESLint
+npm run db:seed      # Create super-admin + demo org/building (run once)
 
-npx prisma generate  # Re-generate Prisma client after schema changes
-npx prisma db push   # Push schema changes to Supabase (uses prisma.config.ts for URL)
-npx prisma studio    # Open Prisma Studio GUI
+npx prisma generate  # Re-generate client after schema changes
+npx prisma db push   # Push schema to Supabase (reads URL from prisma.config.ts)
+npx prisma studio    # Prisma Studio GUI
 ```
 
-### First-time setup checklist
-1. Copy `.env` values: `DATABASE_URL` (session pooler), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-2. `npx prisma generate` — generate the client
-3. `npx prisma db push` — create all tables in Supabase
-4. `npm run db:seed` — create the super-admin user and demo data
-5. `npm run dev` — start the app
-6. Log in at http://localhost:3000 with `admin@stratahub.com.au` / `Admin1234!`
+### First-time setup
+1. Set all 6 env vars in `.env`
+2. `npx prisma generate`
+3. `npx prisma db push`
+4. `npm run db:seed`
+5. `npm run dev`
+6. Login: `admin@stratahub.com.au` / `Admin1234!`
 
-### Seed account credentials (local dev only)
-| Field | Value |
+### Seed account (local dev)
+| | |
 |---|---|
 | Email | `admin@stratahub.com.au` |
 | Password | `Admin1234!` |
 | Role | `SUPER_ADMIN` |
 | Org | StrataHub Demo Org |
 | Building | Harbour View Apartments, Sydney NSW |
+
+---
+
+## Deployment (Vercel)
+
+- **Root directory in Vercel:** set to `strata-hub` (app is in a subdirectory)
+- **Build command:** default (`npm run build`) — Vercel runs `npm install` first which triggers `postinstall: prisma generate`
+- **Generated client** (`src/generated/prisma`) is gitignored — regenerated on every deploy via postinstall
+- **Add all 6 env vars** in Vercel → Settings → Environment Variables
+- **After first deploy:** update `NEXT_PUBLIC_APP_URL` to the live Vercel URL, and set the same URL as Site URL in Supabase → Auth → URL Configuration
+
+---
+
+## Known Gaps / Remaining Work
+
+- **`/reset-password` page missing** — `forgot-password` page calls `resetPasswordForEmail` with `redirectTo: '/reset-password'` but that page doesn't exist yet. Password reset emails will 404 on click.
+- **Keys to Rotate stat** — Dashboard shows "—". The `keys` router is not called from the dashboard page.
+- **Document file upload** — Documents page accepts a manually pasted URL. No Supabase Storage integration yet.
+- **Strata levies** — Levies tab is a placeholder. `StrataLevy` model exists but no UI or router procedures manage it.
+- **Notification bell** — Topbar shows a hardcoded "3" badge. No real notification system yet.
+- **Root layout metadata** — `title` and `description` in `src/app/layout.tsx` are still the Next.js boilerplate defaults ("Create Next App"). Should be updated to StrataHub.
+- **Email not implemented** — Resend is installed but never called. No transactional emails (parcel notifications, maintenance updates, etc.) are sent yet.
+- **Middleware deprecation** — Next.js 16 prefers `proxy` over `middleware` convention. Low priority — still functional, just a build warning.
+- **Email verification fallback** — If Supabase requires email confirmation, Prisma user is auto-created on first login using Supabase `user_metadata`. Invite acceptance in this flow is deferred — user must visit `/invite/[token]` while logged in to complete it.
+
+---
+
+## Architectural Decisions
+
+1. **Server component layout + client pages** — `(dashboard)/layout.tsx` fetches buildings directly from Prisma (no HTTP tRPC layer). Page components that need Zustand state are client components.
+
+2. **`skipToken` for conditional queries** — All building-scoped queries use `skipToken` (not `enabled: false`) when no building is selected.
+
+3. **Cents for money** — All monetary values stored as integers in cents. `formatCurrency(cents)` formats as AUD.
+
+4. **Dual-layer auth** — Supabase manages sessions + cookie refresh. Prisma stores app user with role data. Link: `User.supabaseAuthId = supabase auth UUID`.
+
+5. **Zustand + localStorage for building context** — Survives page refresh. Auto-selects when exactly one building exists.
+
+6. **Auto-create Prisma user** — On first tRPC call or dashboard load after email verification, both `createTRPCContext()` and the dashboard layout auto-create the Prisma user from Supabase metadata. Idempotent.
+
+7. **Base UI render prop** — shadcn uses Base UI (`@base-ui/react`). Use `render={<Component />}` instead of `asChild`. Select `onValueChange` guards against `null`.
+
+8. **Prisma 7 + driver adapter** — Connection URL in `prisma.config.ts` (for migrations). `PrismaPg` adapter passed to `PrismaClient` constructor (for queries). `postinstall: prisma generate` in `package.json` for Vercel.
