@@ -159,11 +159,9 @@ export default function FinancialsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Record
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Record
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

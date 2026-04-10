@@ -3,7 +3,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import { db } from "@/server/db/client";
 import { createClient } from "@/lib/supabase/server";
-import type { UserRole } from "@/generated/prisma";
+import type { UserRole } from "@/generated/prisma/client";
 
 export async function createTRPCContext() {
   const supabase = await createClient();

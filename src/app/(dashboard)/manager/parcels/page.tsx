@@ -206,11 +206,9 @@ export default function ParcelsPage() {
             if (!open) resetCreateForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Log Parcel
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Log Parcel
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -425,18 +423,8 @@ export default function ParcelsPage() {
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  disabled={
-                                    parcel.status === "COLLECTED" ||
-                                    parcel.status === "RETURNED"
-                                  }
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" disabled={parcel.status === "COLLECTED" || parcel.status === "RETURNED"} />}>
+                                <MoreHorizontal className="h-4 w-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {parcel.status === "RECEIVED" && (

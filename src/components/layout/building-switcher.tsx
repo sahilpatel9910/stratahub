@@ -34,16 +34,14 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-full justify-between">
-          <div className="flex items-center gap-2 truncate">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">
-              {selectedBuildingName ?? "Select building"}
-            </span>
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+      <DropdownMenuTrigger render={<Button variant="outline" className="w-full justify-between" />}>
+        <div className="flex items-center gap-2 truncate">
+          <Building2 className="h-4 w-4 shrink-0" />
+          <span className="truncate">
+            {selectedBuildingName ?? "Select building"}
+          </span>
+        </div>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[240px]" align="start">
         {buildings.map((building) => (

@@ -158,11 +158,9 @@ export default function DocumentsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Document
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Document
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -347,15 +345,9 @@ export default function DocumentsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              asChild
+                              render={<a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" />}
                             >
-                              <a
-                                href={doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
+                              <ExternalLink className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"

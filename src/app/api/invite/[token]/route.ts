@@ -9,9 +9,6 @@ export async function GET(
 
   const invite = await db.invitation.findUnique({
     where: { token },
-    include: {
-      // Prisma relations not auto-defined on Invitation — fetch manually
-    },
   });
 
   if (!invite) {

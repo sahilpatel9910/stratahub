@@ -2,7 +2,7 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-09** — All manager pages, super-admin pages, and user onboarding (invite links + direct assignment) are fully built.
+> **Last updated: 2026-04-10** — Database live on Supabase, all TypeScript errors resolved, seed script working. App fully runnable end-to-end.
 
 ## Project Overview
 
@@ -33,7 +33,7 @@ StrataHub is an Australian apartment/strata property management SaaS. It allows 
 | Icons | Lucide React |
 | Package Manager | npm |
 
-### Critical: Prisma 7 Generator
+### Critical: Prisma 7 Generator + Driver Adapter
 
 The Prisma generator uses the new `prisma-client` provider (not the old `prisma-client-js`).
 
@@ -42,13 +42,45 @@ generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
+
+datasource db {
+  provider = "postgresql"
+  // ⚠️ No `url` field here — Prisma 7 reads it from prisma.config.ts
+}
 ```
 
-All Prisma imports come from `@/generated/prisma`, NOT from `@prisma/client`.
+The connection URL lives in `prisma.config.ts` (root of project), not in the schema:
 
 ```ts
-import { PrismaClient } from "@/generated/prisma";
-import type { UserRole } from "@/generated/prisma";
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: { path: "prisma/migrations" },
+  datasource: { url: process.env["DATABASE_URL"] },
+});
+```
+
+**Prisma 7 requires a driver adapter** — `new PrismaClient()` with no args is a type error. Use `@prisma/adapter-pg`:
+
+```ts
+// src/server/db/client.ts
+import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+function createPrismaClient() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  return new PrismaClient({ adapter });
+}
+```
+
+All Prisma imports come from `@/generated/prisma/client` (note the `/client` suffix), NOT from `@prisma/client` or `@/generated/prisma`.
+
+```ts
+import { PrismaClient } from "@/generated/prisma/client";
+import type { UserRole } from "@/generated/prisma/client";
 ```
 
 ---
@@ -58,7 +90,8 @@ import type { UserRole } from "@/generated/prisma";
 ```
 strata-hub/
 ├── prisma/
-│   └── schema.prisma           # Full data model — source of truth
+│   ├── schema.prisma           # Full data model — source of truth
+│   └── seed.ts                 # Seed script: creates super-admin + demo org/building
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/             # Public auth pages (no sidebar)
@@ -414,11 +447,21 @@ All Australian states use the `AustralianState` enum: NSW, VIC, QLD, SA, WA, TAS
 
 Required in `.env`:
 ```
-DATABASE_URL=               # PostgreSQL connection string (Supabase)
-NEXT_PUBLIC_SUPABASE_URL=   # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY= # Supabase anon/public key
-NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider for SSR)
+# Supabase session pooler URL (use session pooler, not direct — direct requires IPv6)
+# Format: postgresql://postgres.PROJECT_REF:PASSWORD@aws-X-REGION.pooler.supabase.com:5432/postgres
+# Encode special chars in password: @ → %40, # → %23, $ → %24
+DATABASE_URL=
+
+NEXT_PUBLIC_SUPABASE_URL=      # e.g. https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY= # anon/public key from Supabase dashboard → Settings → API
+SUPABASE_SERVICE_ROLE_KEY=     # service_role key — only used server-side (seed script, admin ops)
+
+NEXT_PUBLIC_APP_URL=           # e.g. http://localhost:3000
+NEXT_PUBLIC_APP_NAME=          # e.g. StrataHub
 ```
+
+### Supabase connection note
+Supabase's direct connection (port 5432 on `db.*.supabase.co`) requires IPv6. On a standard IPv4 network (home/office), use the **Session Pooler** URL from Settings → Database → "Session pooler". The pooler host looks like `aws-1-ap-southeast-2.pooler.supabase.com` and the username is `postgres.PROJECT_REF`.
 
 ---
 
@@ -453,6 +496,7 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 - **Keys to Rotate stat** — Dashboard quick-action card shows "—" for keys to rotate. The `keys` router is not yet called from the dashboard page.
 - **Document file upload** — The documents page accepts a file URL manually pasted by the user. There is no Supabase Storage upload integration yet.
 - **Strata levies** — The levies tab on the strata page shows a placeholder. The `StrataLevy` model exists in the schema but no UI or router procedures manage levies yet.
+- **Middleware deprecation** — Next.js 16 deprecated the `middleware` file convention in favour of `proxy`. Low priority — still functional, just shows a warning in the build output.
 
 ---
 
@@ -470,7 +514,11 @@ NEXT_PUBLIC_APP_URL=        # e.g. http://localhost:3000 (used in tRPC provider 
 
 6. **tRPC v11 + React Query v5**: Uses the `httpBatchLink` with SuperJSON transformer. Query client has `staleTime: 5 minutes` and `refetchOnWindowFocus: false`. Cache invalidation after mutations uses `utils.routerName.procedureName.invalidate()`.
 
-7. **shadcn/ui**: Components are installed into `src/components/ui/` via the `shadcn` CLI. Never edit these files directly — re-run the CLI to update. Installed: button, input, label, card, table, tabs, badge, avatar, dropdown-menu, dialog, select, textarea, separator, sheet, sidebar, skeleton, sonner, tooltip.
+7. **shadcn/ui with Base UI**: The installed shadcn components use `@base-ui/react` (not the older `@radix-ui/react-*` packages). This has two key API differences from what older examples show:
+   - **No `asChild`** — use the `render` prop instead: `<DialogTrigger render={<Button />}>label</DialogTrigger>`
+   - **`Select.onValueChange` receives `null`** — always guard: `onValueChange={(v) => v !== null && setState(v)}`
+
+   Components are in `src/components/ui/`. Never edit generated shadcn files — re-run the CLI to update. Installed: button, input, label, card, table, tabs, badge, avatar, dropdown-menu, dialog, select, textarea, separator, sheet, sidebar, skeleton, sonner, tooltip.
 
 ---
 
@@ -481,7 +529,26 @@ cd strata-hub
 npm run dev        # Start dev server (http://localhost:3000)
 npm run build      # Type-check + build
 npm run lint       # ESLint
+npm run db:seed    # Seed super-admin account + demo org/building (run once)
+
 npx prisma generate  # Re-generate Prisma client after schema changes
-npx prisma db push   # Push schema changes to DB
+npx prisma db push   # Push schema changes to Supabase (uses prisma.config.ts for URL)
 npx prisma studio    # Open Prisma Studio GUI
 ```
+
+### First-time setup checklist
+1. Copy `.env` values: `DATABASE_URL` (session pooler), `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+2. `npx prisma generate` — generate the client
+3. `npx prisma db push` — create all tables in Supabase
+4. `npm run db:seed` — create the super-admin user and demo data
+5. `npm run dev` — start the app
+6. Log in at http://localhost:3000 with `admin@stratahub.com.au` / `Admin1234!`
+
+### Seed account credentials (local dev only)
+| Field | Value |
+|---|---|
+| Email | `admin@stratahub.com.au` |
+| Password | `Admin1234!` |
+| Role | `SUPER_ADMIN` |
+| Org | StrataHub Demo Org |
+| Building | Harbour View Apartments, Sydney NSW |

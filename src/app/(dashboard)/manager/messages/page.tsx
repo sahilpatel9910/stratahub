@@ -114,11 +114,9 @@ export default function MessagesPage() {
           </p>
         </div>
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Send className="mr-2 h-4 w-4" />
-              New Message
-            </Button>
+          <DialogTrigger render={<Button />}>
+            <Send className="mr-2 h-4 w-4" />
+            New Message
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

@@ -170,11 +170,9 @@ export default function VisitorsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Log Visitor
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Log Visitor
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -213,7 +211,7 @@ export default function VisitorsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Purpose</Label>
-                <Select value={formPurpose} onValueChange={setFormPurpose}>
+                <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -239,7 +237,7 @@ export default function VisitorsPage() {
                 <Label>Pre-Approved?</Label>
                 <Select
                   value={formPreApproved}
-                  onValueChange={setFormPreApproved}
+                  onValueChange={(v) => v !== null && setFormPreApproved(v)}
                 >
                   <SelectTrigger>
                     <SelectValue />

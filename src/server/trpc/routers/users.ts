@@ -118,10 +118,6 @@ export const usersRouter = createTRPCRouter({
             ? { organisationId: input.organisationId }
             : {}),
         },
-        include: {
-          // Invitation model doesn't have direct relations to org/building names
-          // so we fetch those inline
-        },
         orderBy: { createdAt: "desc" },
       });
     }),

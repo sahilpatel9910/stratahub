@@ -91,13 +91,11 @@ export function AppSidebar() {
                 {adminNavItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
-                      asChild
+                      render={<Link href={item.href} />}
                       isActive={pathname === item.href}
                     >
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -113,13 +111,11 @@ export function AppSidebar() {
               {managerNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    asChild
+                    render={<Link href={item.href} />}
                     isActive={pathname === item.href}
                   >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -131,11 +127,9 @@ export function AppSidebar() {
       <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href="/manager/settings">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
+            <SidebarMenuButton render={<Link href="/manager/settings" />}>
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

@@ -105,15 +105,11 @@ export default async function InvitePage({
                 Sign in or create an account to accept this invite.
               </p>
               <div className="flex flex-col gap-2">
-                <Button asChild>
-                  <Link href={`/register?invite=${token}`}>
-                    Create Account &amp; Accept
-                  </Link>
+                <Button render={<Link href={`/register?invite=${token}`} />}>
+                  Create Account &amp; Accept
                 </Button>
-                <Button variant="outline" asChild>
-                  <Link href={`/login?redirect=/invite/${token}`}>
-                    Sign In &amp; Accept
-                  </Link>
+                <Button variant="outline" render={<Link href={`/login?redirect=/invite/${token}`} />}>
+                  Sign In &amp; Accept
                 </Button>
               </div>
             </div>
@@ -152,8 +148,8 @@ function ErrorCard({
         <p className="text-sm text-muted-foreground">{message}</p>
       </CardContent>
       <CardFooter className="justify-center">
-        <Button variant="outline" asChild>
-          <Link href="/login">Go to Login</Link>
+        <Button variant="outline" render={<Link href="/login" />}>
+          Go to Login
         </Button>
       </CardFooter>
     </Card>

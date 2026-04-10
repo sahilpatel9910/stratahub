@@ -131,11 +131,9 @@ export default function AnnouncementsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Announcement
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Announcement
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>

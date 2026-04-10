@@ -234,11 +234,9 @@ export default function MaintenancePage() {
             if (!open) resetCreateForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Request
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Request
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -250,7 +248,7 @@ export default function MaintenancePage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Unit *</Label>
-                <Select value={formUnitId} onValueChange={setFormUnitId}>
+                <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit..." />
                   </SelectTrigger>
@@ -505,15 +503,8 @@ export default function MaintenancePage() {
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  disabled={updateStatusMutation.isPending}
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" disabled={updateStatusMutation.isPending} />}>
+                                <MoreHorizontal className="h-4 w-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel className="text-xs text-muted-foreground">

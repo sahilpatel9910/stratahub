@@ -214,11 +214,9 @@ export default function KeysPage() {
             if (!open) resetCreateForm();
           }}
         >
-          <DialogTrigger asChild>
-            <Button disabled={!selectedBuildingId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Key
-            </Button>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Key
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -230,7 +228,7 @@ export default function KeysPage() {
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-2">
                 <Label>Key Type *</Label>
-                <Select value={formKeyType} onValueChange={setFormKeyType}>
+                <Select value={formKeyType} onValueChange={(v) => v !== null && setFormKeyType(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -256,7 +254,7 @@ export default function KeysPage() {
                 <Label>Unit (optional)</Label>
                 <Select
                   value={formUnitId}
-                  onValueChange={setFormUnitId}
+                  onValueChange={(v) => v !== null && setFormUnitId(v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Not unit-specific" />
@@ -510,14 +508,8 @@ export default function KeysPage() {
                             </TableCell>
                             <TableCell>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
+                                <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   {key.isActive && !isCurrentlyIssued && (
