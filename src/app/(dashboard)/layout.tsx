@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   let buildings: { id: string; name: string; suburb: string }[] = [];
 
   if (authUser) {
-    const dbUser = await db.user.findUnique({
+    let dbUser = await db.user.findUnique({
       where: { supabaseAuthId: authUser.id },
       include: {
         orgMemberships: {
@@ -28,6 +28,22 @@ export default async function DashboardLayout({
         },
       },
     });
+
+    // Auto-create Prisma user on first visit after email verification
+    if (!dbUser && authUser.email) {
+      const meta = authUser.user_metadata as Record<string, string> | undefined;
+      dbUser = await db.user.create({
+        data: {
+          supabaseAuthId: authUser.id,
+          email: authUser.email,
+          firstName: meta?.first_name ?? meta?.firstName ?? "User",
+          lastName: meta?.last_name ?? meta?.lastName ?? "",
+        },
+        include: {
+          orgMemberships: { where: { isActive: true }, select: { role: true } },
+        },
+      });
+    }
 
     const isSuperAdmin = dbUser?.orgMemberships.some(
       (m) => m.role === "SUPER_ADMIN"

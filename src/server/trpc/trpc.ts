@@ -20,6 +20,24 @@ export async function createTRPCContext() {
         buildingAssignments: true,
       },
     });
+
+    // Auto-create the Prisma user on first login after email verification.
+    // Supabase stores first_name/last_name in user_metadata from signUp().
+    if (!user && supabaseUser.email) {
+      const meta = supabaseUser.user_metadata as Record<string, string> | undefined;
+      user = await db.user.create({
+        data: {
+          supabaseAuthId: supabaseUser.id,
+          email: supabaseUser.email,
+          firstName: meta?.first_name ?? meta?.firstName ?? "User",
+          lastName: meta?.last_name ?? meta?.lastName ?? "",
+        },
+        include: {
+          orgMemberships: true,
+          buildingAssignments: true,
+        },
+      });
+    }
   }
 
   return {

@@ -51,19 +51,21 @@ async function main() {
       email_confirm:  true,   // skip email verification
     });
 
+  let supabaseAuthId: string;
+
   if (authError) {
     if (authError.message.includes("already been registered")) {
       console.log("  ℹ️  Auth user already exists — fetching existing user.");
       const { data: list } = await supabase.auth.admin.listUsers();
       const existing = list?.users.find((u) => u.email === ADMIN_EMAIL);
       if (!existing) throw new Error("Could not find existing Supabase user.");
-      authData!.user = existing;
+      supabaseAuthId = existing.id;
     } else {
       throw new Error(`Supabase auth error: ${authError.message}`);
     }
+  } else {
+    supabaseAuthId = authData.user.id;
   }
-
-  const supabaseAuthId = authData!.user.id;
   console.log(`  ✓ Auth user id: ${supabaseAuthId}`);
 
   // ── 2. Organisation ───────────────────────────────────────────────────────
