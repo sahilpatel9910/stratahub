@@ -127,10 +127,10 @@ export default function ManagerDashboard() {
         />
         <QuickActionCard
           title="Keys to Rotate"
-          count={undefined}
+          count={stats?.keysToRotate}
           icon={Key}
           color="text-violet-600"
-          loading={false}
+          loading={statsQuery.isLoading && !!selectedBuildingId}
         />
       </div>
 

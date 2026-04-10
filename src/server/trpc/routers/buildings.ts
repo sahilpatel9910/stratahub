@@ -117,6 +117,7 @@ export const buildingsRouter = createTRPCRouter({
         pendingParcelCount,
         overdueRentCount,
         rentThisMonth,
+        keysToRotate,
       ] = await Promise.all([
         ctx.db.unit.count({ where: { buildingId: input.buildingId } }),
         ctx.db.unit.count({ where: { buildingId: input.buildingId, isOccupied: true } }),
@@ -153,6 +154,13 @@ export const buildingsRouter = createTRPCRouter({
           },
           _sum: { amountCents: true },
         }),
+        ctx.db.keyRecord.count({
+          where: {
+            unit: { buildingId: input.buildingId },
+            isActive: true,
+            rotationDue: { lte: now },
+          },
+        }),
       ]);
 
       return {
@@ -162,6 +170,7 @@ export const buildingsRouter = createTRPCRouter({
         openMaintenanceCount,
         pendingParcelCount,
         overdueRentCount,
+        keysToRotate,
         rentCollectedThisMonthCents: rentThisMonth._sum.amountCents ?? 0,
         occupancyRate:
           totalUnits > 0

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Landmark, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Landmark, Calendar, CheckCircle, AlertCircle, Clock, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,10 +18,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
 import { formatCurrency } from "@/lib/constants";
 import { toast } from "sonner";
+
+const LEVY_TYPE_LABELS: Record<string, string> = {
+  ADMIN_FUND: "Admin Fund",
+  CAPITAL_WORKS: "Capital Works",
+  SPECIAL_LEVY: "Special Levy",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  PENDING:  { label: "Pending",  variant: "secondary" },
+  PAID:     { label: "Paid",     variant: "default" },
+  OVERDUE:  { label: "Overdue",  variant: "destructive" },
+  PARTIAL:  { label: "Partial",  variant: "outline" },
+  WAIVED:   { label: "Waived",   variant: "outline" },
+};
 
 function formatDate(d: Date | string | null | undefined) {
   if (!d) return "—";
@@ -60,6 +82,19 @@ export default function StrataPage() {
   const [formMeetingLocation, setFormMeetingLocation] = useState("");
   const [formMeetingNotes, setFormMeetingNotes] = useState("");
 
+  // Levy dialog state
+  const [levyOpen, setLevyOpen] = useState(false);
+  const [bulkLevyOpen, setBulkLevyOpen] = useState(false);
+  const [levyUnitId, setLevyUnitId] = useState("");
+  const [levyType, setLevyType] = useState("ADMIN_FUND");
+  const [levyAmount, setLevyAmount] = useState("");
+  const [levyQuarterStart, setLevyQuarterStart] = useState("");
+  const [levyDueDate, setLevyDueDate] = useState("");
+  const [bulkLevyType, setBulkLevyType] = useState("ADMIN_FUND");
+  const [bulkLevyAmount, setBulkLevyAmount] = useState("");
+  const [bulkLevyQuarterStart, setBulkLevyQuarterStart] = useState("");
+  const [bulkLevyDueDate, setBulkLevyDueDate] = useState("");
+
   const utils = trpc.useUtils();
 
   const query = trpc.strata.getByBuilding.useQuery(
@@ -91,6 +126,50 @@ export default function StrataPage() {
       toast.success("Meeting deleted");
     },
     onError: (err) => toast.error(err.message ?? "Failed to delete meeting"),
+  });
+
+  const leviesQuery = trpc.strata.listLevies.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
+  );
+
+  const unitsQuery = trpc.units.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
+  );
+
+  const createLevyMutation = trpc.strata.createLevy.useMutation({
+    onSuccess: () => {
+      utils.strata.listLevies.invalidate();
+      setLevyOpen(false);
+      resetLevyForm();
+      toast.success("Levy created");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to create levy"),
+  });
+
+  const bulkCreateMutation = trpc.strata.bulkCreateLevies.useMutation({
+    onSuccess: (data) => {
+      utils.strata.listLevies.invalidate();
+      setBulkLevyOpen(false);
+      resetBulkLevyForm();
+      toast.success(`Levies raised for ${data.count} units`);
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to raise levies"),
+  });
+
+  const updateLevyStatusMutation = trpc.strata.updateLevyStatus.useMutation({
+    onSuccess: () => {
+      utils.strata.listLevies.invalidate();
+      toast.success("Levy updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update levy"),
+  });
+
+  const deleteLevyMutation = trpc.strata.deleteLevy.useMutation({
+    onSuccess: () => {
+      utils.strata.listLevies.invalidate();
+      toast.success("Levy deleted");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to delete levy"),
   });
 
   const strataInfo = query.data;
@@ -133,6 +212,44 @@ export default function StrataPage() {
     setFormMeetingDate("");
     setFormMeetingLocation("");
     setFormMeetingNotes("");
+  }
+
+  function resetLevyForm() {
+    setLevyUnitId("");
+    setLevyType("ADMIN_FUND");
+    setLevyAmount("");
+    setLevyQuarterStart("");
+    setLevyDueDate("");
+  }
+
+  function resetBulkLevyForm() {
+    setBulkLevyType("ADMIN_FUND");
+    setBulkLevyAmount("");
+    setBulkLevyQuarterStart("");
+    setBulkLevyDueDate("");
+  }
+
+  function handleCreateLevy() {
+    if (!selectedBuildingId || !levyUnitId || !levyAmount || !levyQuarterStart || !levyDueDate) return;
+    createLevyMutation.mutate({
+      buildingId: selectedBuildingId,
+      unitId: levyUnitId,
+      levyType: levyType as "ADMIN_FUND" | "CAPITAL_WORKS" | "SPECIAL_LEVY",
+      amountCents: Math.round(parseFloat(levyAmount) * 100),
+      quarterStart: levyQuarterStart,
+      dueDate: levyDueDate,
+    });
+  }
+
+  function handleBulkCreate() {
+    if (!selectedBuildingId || !bulkLevyAmount || !bulkLevyQuarterStart || !bulkLevyDueDate) return;
+    bulkCreateMutation.mutate({
+      buildingId: selectedBuildingId,
+      levyType: bulkLevyType as "ADMIN_FUND" | "CAPITAL_WORKS" | "SPECIAL_LEVY",
+      amountCents: Math.round(parseFloat(bulkLevyAmount) * 100),
+      quarterStart: bulkLevyQuarterStart,
+      dueDate: bulkLevyDueDate,
+    });
   }
 
   function handleSaveInfo() {
@@ -345,11 +462,162 @@ export default function StrataPage() {
 
           {/* Levies Tab */}
           <TabsContent value="levies" className="mt-4">
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                Levy management coming soon. Levies are stored and can be queried via the database.
-              </CardContent>
-            </Card>
+            {(() => {
+              const levies = leviesQuery.data ?? [];
+              const totalRaised = levies.reduce((s, l) => s + l.amountCents, 0);
+              const totalPaid = levies
+                .filter((l) => l.status === "PAID")
+                .reduce((s, l) => s + l.amountCents, 0);
+              const totalOutstanding = levies
+                .filter((l) => l.status === "PENDING" || l.status === "OVERDUE" || l.status === "PARTIAL")
+                .reduce((s, l) => s + l.amountCents, 0);
+
+              return (
+                <div className="space-y-4">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Total Raised</p>
+                        <p className="text-xl font-bold">{formatCurrency(totalRaised)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{levies.length} levies</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Collected</p>
+                        <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {levies.filter((l) => l.status === "PAID").length} paid
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
+                        <p className="text-xl font-bold text-red-600">{formatCurrency(totalOutstanding)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {levies.filter((l) => ["PENDING", "OVERDUE", "PARTIAL"].includes(l.status)).length} unpaid
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setLevyOpen(true)}
+                      disabled={!strataInfo}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Individual Levy
+                    </Button>
+                    <Button
+                      onClick={() => setBulkLevyOpen(true)}
+                      disabled={!strataInfo}
+                    >
+                      <Layers className="mr-2 h-4 w-4" />
+                      Raise Quarterly Levy
+                    </Button>
+                  </div>
+
+                  {/* Levy list */}
+                  {leviesQuery.isLoading ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Card key={i}><CardContent className="p-4"><Skeleton className="h-5 w-full" /></CardContent></Card>
+                      ))}
+                    </div>
+                  ) : levies.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-16 text-center">
+                        <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                        <p className="text-muted-foreground text-sm">
+                          No levies yet. Use &quot;Raise Quarterly Levy&quot; to create levies for all units at once.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="rounded-md border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Unit</th>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Type</th>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Quarter</th>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Due</th>
+                            <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                            <th className="px-4 py-3" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {levies.map((levy) => {
+                            const sc = STATUS_CONFIG[levy.status] ?? STATUS_CONFIG.PENDING;
+                            return (
+                              <tr key={levy.id} className="bg-white hover:bg-muted/20">
+                                <td className="px-4 py-3 font-medium">Unit {levy.unitNumber}</td>
+                                <td className="px-4 py-3 text-muted-foreground">
+                                  {LEVY_TYPE_LABELS[levy.levyType] ?? levy.levyType}
+                                </td>
+                                <td className="px-4 py-3 font-medium">{formatCurrency(levy.amountCents)}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{formatDate(levy.quarterStart)}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{formatDate(levy.dueDate)}</td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={sc.variant}>{sc.label}</Badge>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-1 justify-end">
+                                    {levy.status !== "PAID" && levy.status !== "WAIVED" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        disabled={updateLevyStatusMutation.isPending}
+                                        onClick={() =>
+                                          updateLevyStatusMutation.mutate({ id: levy.id, status: "PAID" })
+                                        }
+                                      >
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                        Mark Paid
+                                      </Button>
+                                    )}
+                                    {levy.status === "PENDING" && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                        disabled={updateLevyStatusMutation.isPending}
+                                        onClick={() =>
+                                          updateLevyStatusMutation.mutate({ id: levy.id, status: "OVERDUE" })
+                                        }
+                                      >
+                                        <Clock className="h-4 w-4 mr-1" />
+                                        Overdue
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                                      disabled={deleteLevyMutation.isPending}
+                                      onClick={() => deleteLevyMutation.mutate({ id: levy.id })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           {/* Bylaws Tab */}
@@ -497,6 +765,134 @@ export default function StrataPage() {
               disabled={!formPlanNo.trim() || upsertMutation.isPending}
             >
               {upsertMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Individual Levy Dialog */}
+      <Dialog open={levyOpen} onOpenChange={setLevyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Individual Levy</DialogTitle>
+            <DialogDescription>Create a levy for a specific unit</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Unit *</Label>
+              <Select onValueChange={(v) => setLevyUnitId(String(v ?? ""))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(unitsQuery.data ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>Unit {u.unitNumber}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Levy Type *</Label>
+              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setLevyType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN_FUND">Admin Fund</SelectItem>
+                  <SelectItem value="CAPITAL_WORKS">Capital Works</SelectItem>
+                  <SelectItem value="SPECIAL_LEVY">Special Levy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lvAmount">Amount ($) *</Label>
+              <Input
+                id="lvAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={levyAmount}
+                onChange={(e) => setLevyAmount(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="lvQStart">Quarter Start *</Label>
+                <Input id="lvQStart" type="date" value={levyQuarterStart} onChange={(e) => setLevyQuarterStart(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lvDue">Due Date *</Label>
+                <Input id="lvDue" type="date" value={levyDueDate} onChange={(e) => setLevyDueDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setLevyOpen(false); resetLevyForm(); }} disabled={createLevyMutation.isPending}>Cancel</Button>
+            <Button
+              onClick={handleCreateLevy}
+              disabled={!levyUnitId || !levyAmount || !levyQuarterStart || !levyDueDate || createLevyMutation.isPending}
+            >
+              {createLevyMutation.isPending ? "Creating..." : "Create Levy"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk / Raise Quarterly Levy Dialog */}
+      <Dialog open={bulkLevyOpen} onOpenChange={setBulkLevyOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Raise Quarterly Levy</DialogTitle>
+            <DialogDescription>
+              Creates levies for <strong>all units</strong> in this building at the specified amount
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Levy Type *</Label>
+              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setBulkLevyType(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN_FUND">Admin Fund</SelectItem>
+                  <SelectItem value="CAPITAL_WORKS">Capital Works</SelectItem>
+                  <SelectItem value="SPECIAL_LEVY">Special Levy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="blkAmount">Amount per Unit ($) *</Label>
+              <Input
+                id="blkAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={bulkLevyAmount}
+                onChange={(e) => setBulkLevyAmount(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="blkQStart">Quarter Start *</Label>
+                <Input id="blkQStart" type="date" value={bulkLevyQuarterStart} onChange={(e) => setBulkLevyQuarterStart(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="blkDue">Due Date *</Label>
+                <Input id="blkDue" type="date" value={bulkLevyDueDate} onChange={(e) => setBulkLevyDueDate(e.target.value)} />
+              </div>
+            </div>
+            {unitsQuery.data && (
+              <p className="text-sm text-muted-foreground">
+                This will create {unitsQuery.data.length} levies — one per unit.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBulkLevyOpen(false); resetBulkLevyForm(); }} disabled={bulkCreateMutation.isPending}>Cancel</Button>
+            <Button
+              onClick={handleBulkCreate}
+              disabled={!bulkLevyAmount || !bulkLevyQuarterStart || !bulkLevyDueDate || bulkCreateMutation.isPending}
+            >
+              {bulkCreateMutation.isPending ? "Raising..." : "Raise Levies"}
             </Button>
           </DialogFooter>
         </DialogContent>
