@@ -2,7 +2,7 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-10** — Database live on Supabase, all TypeScript errors resolved, seed script working. App fully runnable end-to-end.
+> **Last updated: 2026-04-10** — Password reset flow complete, strata levies UI live, document file upload via Supabase Storage, dashboard keys-to-rotate stat wired up.
 
 ## Project Overview
 
@@ -296,7 +296,8 @@ Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 ### Auth routes (no sidebar)
 - `/login` — `supabase.auth.signInWithPassword()`
 - `/register` — signup + optional invite acceptance
-- `/forgot-password` — `supabase.auth.resetPasswordForEmail()` with `redirectTo: '/reset-password'`
+- `/forgot-password` — `supabase.auth.resetPasswordForEmail()` with `redirectTo: '/api/auth/callback?type=recovery'`
+- `/reset-password` — `supabase.auth.updateUser({ password })`, auto-redirects to `/manager` on success
 
 ### Public routes
 - `/invite/[token]` — invite acceptance page (whitelisted in middleware)
@@ -313,7 +314,7 @@ Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 - `/manager/announcements` — `announcements.listByBuilding` + `announcements.create` + `announcements.delete`
 - `/manager/documents` — `documents.listByBuilding` + `documents.create` + `documents.delete`
 - `/manager/messages` — `messaging.listThreads` + `messaging.getThread` + `messaging.send` + `messaging.markRead`
-- `/manager/strata` — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting`
+- `/manager/strata` — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting` + `strata.listLevies` + `strata.createLevy` + `strata.bulkCreateLevies` + `strata.updateLevyStatus` + `strata.deleteLevy`
 - `/manager/financials` — `financials.listByBuilding` + `financials.getSummary` + `financials.create` + `financials.delete`
 - `/manager/analytics` — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding` + Recharts
 
@@ -343,6 +344,24 @@ Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 - **Returns:** `{ success: true }` or `{ error }` (401/404/409/410)
 - **Behaviour:** Upserts `OrganisationMembership`, creates `BuildingAssignment` (if buildingId set), marks `Invitation.acceptedAt`. Validates: exists, not already accepted, not expired.
 
+### `GET /api/auth/callback`
+- **Auth:** Public
+- **Query params:** `code`, `type` (e.g. `recovery`), `next`
+- **Behaviour:** Exchanges Supabase PKCE code for a session via `exchangeCodeForSession(code)`. If `type=recovery` redirects to `/reset-password`, otherwise redirects to `next` (default `/manager`). On failure redirects to `/login?error=invalid_link`.
+- **Used by:** Password reset emails, email verification links. Must be in Supabase "Redirect URLs" allowlist.
+
+### `POST /api/storage/upload-url`
+- **Auth:** Requires Supabase session
+- **Body:** `{ filename: string, contentType: string, buildingId: string }`
+- **Returns:** `{ signedUrl, path, publicUrl }`
+- **Behaviour:** Uses service role key to create a signed PUT URL in the `documents` Supabase Storage bucket. Path: `{buildingId}/{userId}/{timestamp}-{safeName}`. Client PUTs the file directly to `signedUrl` — bytes never go through Next.js.
+
+### `DELETE /api/storage/delete`
+- **Auth:** Requires Supabase session
+- **Body:** `{ path: string }`
+- **Returns:** `{ ok: true }`
+- **Behaviour:** Uses service role key to remove a file from the `documents` Storage bucket. Called automatically when a document is deleted from the UI.
+
 ### `GET|POST /api/trpc/[trpc]`
 - **Handler:** `fetchRequestHandler` from `@trpc/server/adapters/fetch`
 - **Router:** `appRouter` from `src/server/trpc/router.ts`
@@ -370,7 +389,7 @@ All routers in `src/server/trpc/routers/`. Combined in `src/server/trpc/router.t
 | `create` | mutation | SUPER_ADMIN | `organisationId, name, address, suburb, state, postcode, totalFloors, totalUnits, strataSchemeNo?` | Create building |
 | `update` | mutation | manager | `id, ...fields` | Update fields |
 | `delete` | mutation | SUPER_ADMIN | `id` | Hard delete |
-| `getStats` | query | protected | `buildingId` | `totalUnits, occupiedUnits, residentCount, openMaintenanceCount, pendingParcelCount, overdueRentCount, rentCollectedThisMonthCents, occupancyRate` |
+| `getStats` | query | protected | `buildingId` | `totalUnits, occupiedUnits, residentCount, openMaintenanceCount, pendingParcelCount, overdueRentCount, keysToRotate, rentCollectedThisMonthCents, occupancyRate` |
 
 ### `units`
 | Procedure | Type | Auth | Input | Description |
@@ -476,21 +495,31 @@ Types: `INCOME`, `EXPENSE`
 | `delete` | mutation | manager | `id` | Hard delete |
 
 ### `strata`
+Levy types: `ADMIN_FUND`, `CAPITAL_WORKS`, `SPECIAL_LEVY`
+Payment statuses: `PENDING`, `PAID`, `OVERDUE`, `PARTIAL`, `WAIVED`
+
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
 | `getByBuilding` | query | protected | `buildingId` | StrataInfo with levies, bylaws, meetings |
 | `upsertInfo` | mutation | manager | `buildingId, strataPlanNumber, strataManagerName?, strataManagerEmail?, strataManagerPhone?, adminFundBalance?, capitalWorksBalance?, insurancePolicyNo?, insuranceExpiry?, nextAgmDate?` | Create or update |
 | `createMeeting` | mutation | manager | `buildingId, title, meetingDate, location?, notes?` | Requires StrataInfo to exist first |
 | `deleteMeeting` | mutation | manager | `id` | Hard delete |
+| `listLevies` | query | protected | `buildingId, status?, levyType?` | Levies with `unitNumber` joined from units table |
+| `createLevy` | mutation | manager | `buildingId, unitId, levyType, amountCents, quarterStart, dueDate` | Single unit levy |
+| `bulkCreateLevies` | mutation | manager | `buildingId, levyType, amountCents, quarterStart, dueDate` | Creates one levy per unit in the building |
+| `updateLevyStatus` | mutation | manager | `id, status, paidDate?` | Updates status; auto-sets `paidDate=now` when status=PAID |
+| `deleteLevy` | mutation | manager | `id` | Hard delete |
 
 ### `documents`
 Categories: `LEASE_AGREEMENT`, `BUILDING_RULES`, `STRATA_MINUTES`, `FINANCIAL_REPORT`, `INSURANCE`, `COMPLIANCE`, `NOTICE`, `OTHER`
 
+File upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `signedUrl` → calls `documents.create` with `publicUrl` + `storagePath`.
+
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
 | `listByBuilding` | query | protected | `buildingId, category?` | Filtered by category |
-| `create` | mutation | manager | `buildingId, title, description?, category, fileUrl, fileSize, mimeType, isPublic?` | Create record |
-| `delete` | mutation | manager | `id` | Hard delete |
+| `create` | mutation | manager | `buildingId, title, description?, category, fileUrl, storagePath?, fileSize, mimeType, isPublic?` | Create record |
+| `delete` | mutation | manager | `id` | Hard delete (storage file deleted via `DELETE /api/storage/delete` on client) |
 
 ### `users` (super-admin)
 | Procedure | Type | Auth | Input | Description |
@@ -680,15 +709,20 @@ npx prisma studio    # Prisma Studio GUI
 
 ## Known Gaps / Remaining Work
 
-- **`/reset-password` page missing** — `forgot-password` page calls `resetPasswordForEmail` with `redirectTo: '/reset-password'` but that page doesn't exist yet. Password reset emails will 404 on click.
-- **Keys to Rotate stat** — Dashboard shows "—". The `keys` router is not called from the dashboard page.
-- **Document file upload** — Documents page accepts a manually pasted URL. No Supabase Storage integration yet.
-- **Strata levies** — Levies tab is a placeholder. `StrataLevy` model exists but no UI or router procedures manage it.
-- **Notification bell** — Topbar shows a hardcoded "3" badge. No real notification system yet.
-- **Root layout metadata** — `title` and `description` in `src/app/layout.tsx` are still the Next.js boilerplate defaults ("Create Next App"). Should be updated to StrataHub.
-- **Email not implemented** — Resend is installed but never called. No transactional emails (parcel notifications, maintenance updates, etc.) are sent yet.
+- **Notification bell** — Topbar shows a hardcoded "3" badge. No real notification system yet. Needs a `Notification` Prisma model + tRPC router + topbar polling.
+- **Email not implemented** — Resend is installed but never called. No transactional emails sent yet (parcel arrival, maintenance updates, levy reminders).
+- **Resident self-service portal** — OWNER and TENANT roles exist but have no dedicated pages. All UI assumes BUILDING_MANAGER/SUPER_ADMIN.
+- **Analytics page** — Placeholder exists at `/manager/analytics`. Has basic Recharts setup but no real trend data (only point-in-time stats).
 - **Middleware deprecation** — Next.js 16 prefers `proxy` over `middleware` convention. Low priority — still functional, just a build warning.
-- **Email verification fallback** — If Supabase requires email confirmation, Prisma user is auto-created on first login using Supabase `user_metadata`. Invite acceptance in this flow is deferred — user must visit `/invite/[token]` while logged in to complete it.
+- **Email verification + invite flow** — If Supabase requires email confirmation, Prisma user is auto-created on first login. Invite acceptance is deferred — user must visit `/invite/[token]` while logged in.
+- **Supabase Storage bucket** — Must be manually created in Supabase dashboard: bucket name `documents`, set to **public**. Required for document upload to work.
+
+### Completed (no longer gaps)
+- ✅ `/reset-password` page + `/api/auth/callback` route — password reset flow fully working
+- ✅ Keys to Rotate dashboard stat — wired to `buildings.getStats` (active KeyRecords where `rotationDue <= now`)
+- ✅ Document file upload — drag-and-drop to Supabase Storage via signed URL; `storagePath` stored for cleanup on delete
+- ✅ Strata levies — full UI: bulk raise, individual levy, mark paid/overdue, summary cards, delete
+- ✅ Root layout metadata — updated to "StrataHub — Property Management"
 
 ---
 
@@ -709,3 +743,7 @@ npx prisma studio    # Prisma Studio GUI
 7. **Base UI render prop** — shadcn uses Base UI (`@base-ui/react`). Use `render={<Component />}` instead of `asChild`. Select `onValueChange` guards against `null`.
 
 8. **Prisma 7 + driver adapter** — Connection URL in `prisma.config.ts` (for migrations). `PrismaPg` adapter passed to `PrismaClient` constructor (for queries). `postinstall: prisma generate` in `package.json` for Vercel.
+
+9. **Supabase Storage upload pattern** — Files never go through Next.js. Flow: `POST /api/storage/upload-url` (service role creates signed URL) → client `PUT` directly to Supabase → tRPC saves DB record with `publicUrl` + `storagePath`. Bucket: `documents` (public). Delete: `DELETE /api/storage/delete` then tRPC delete.
+
+10. **`prisma db push` not `migrate dev`** — Schema was bootstrapped with `db push`, not migrations. The `migrations/` folder has drift. Always use `npx prisma db push` to apply schema changes, then `npx prisma generate`.
