@@ -49,10 +49,10 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages — go to root which handles role-based redirect
   if (user && (pathname === "/login" || pathname === "/register")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/manager";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
