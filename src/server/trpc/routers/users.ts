@@ -218,6 +218,10 @@ export const usersRouter = createTRPCRouter({
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await Promise.all([
+        ctx.db.user.update({
+          where: { id: input.userId },
+          data: { isActive: false },
+        }),
         ctx.db.buildingAssignment.updateMany({
           where: { userId: input.userId },
           data: { isActive: false },
