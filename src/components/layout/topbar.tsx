@@ -64,9 +64,7 @@ export function Topbar({ buildings }: TopbarProps) {
       <Separator orientation="vertical" className="h-6" />
 
       {!isSuperAdminPage && (
-        <div className="w-60">
-          <BuildingSwitcher buildings={buildings} />
-        </div>
+        <BuildingSwitcher buildings={buildings} />
       )}
 
       <div className="relative ml-auto flex-1 max-w-sm">
