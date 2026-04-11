@@ -93,12 +93,31 @@ export default async function InvitePage({
           </div>
 
           {authUser ? (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground text-center">
-                Signed in as <strong>{authUser.email}</strong>
-              </p>
-              <AcceptInviteButton token={token} />
-            </div>
+            authUser.email?.toLowerCase() === invite.email.toLowerCase() ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground text-center">
+                  Signed in as <strong>{authUser.email}</strong>
+                </p>
+                <AcceptInviteButton token={token} role={invite.role} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3 text-sm">
+                <p className="font-medium text-amber-800">Wrong account</p>
+                <p className="text-amber-700">
+                  You&apos;re signed in as <strong>{authUser.email}</strong>, but this invite is for <strong>{invite.email}</strong>.
+                </p>
+                <p className="text-amber-700">
+                  Please sign out and sign in with the correct account to accept this invite.
+                </p>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  render={<Link href={`/api/auth/signout?redirect=/invite/${token}`} />}
+                >
+                  Sign Out &amp; Switch Account
+                </Button>
+              </div>
+            )
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">

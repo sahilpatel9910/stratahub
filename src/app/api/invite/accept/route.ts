@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This invite has expired." }, { status: 410 });
   }
 
+  // Ensure the logged-in user is the one the invite was sent to
+  if (authUser.email?.toLowerCase() !== invite.email.toLowerCase()) {
+    return NextResponse.json(
+      { error: `This invite is for ${invite.email}. Please sign out and sign in with that account.` },
+      { status: 403 }
+    );
+  }
+
   // Find or create the Prisma user record
   let dbUser = await db.user.findUnique({
     where: { supabaseAuthId: authUser.id },

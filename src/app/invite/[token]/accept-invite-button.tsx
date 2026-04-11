@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 
-export function AcceptInviteButton({ token }: { token: string }) {
+const ROLE_REDIRECT: Record<string, string> = {
+  OWNER: "/resident",
+  TENANT: "/resident",
+  BUILDING_MANAGER: "/manager",
+  RECEPTION: "/manager",
+  SUPER_ADMIN: "/super-admin/organisations",
+};
+
+export function AcceptInviteButton({ token, role }: { token: string; role: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +38,8 @@ export function AcceptInviteButton({ token }: { token: string }) {
     }
 
     setDone(true);
-    // Give a moment for the success state to show before redirecting
-    setTimeout(() => router.push("/"), 1200);
+    const redirectTo = ROLE_REDIRECT[role] ?? "/manager";
+    setTimeout(() => router.push(redirectTo), 1200);
   }
 
   if (done) {
