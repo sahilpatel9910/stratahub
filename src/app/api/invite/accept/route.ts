@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
+import type { UserRole } from "@/generated/prisma/client";
+
+// Higher index = higher privilege. Never downgrade a user's role.
+const ROLE_RANK: Record<UserRole, number> = {
+  TENANT: 0,
+  OWNER: 1,
+  RECEPTION: 2,
+  BUILDING_MANAGER: 3,
+  SUPER_ADMIN: 4,
+};
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -48,39 +58,46 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Upsert org membership
-  await db.organisationMembership.upsert({
-    where: {
-      userId_organisationId: {
-        userId: dbUser.id,
-        organisationId: invite.organisationId,
-      },
-    },
-    create: {
-      userId: dbUser.id,
-      organisationId: invite.organisationId,
-      role: invite.role,
-    },
-    update: { role: invite.role, isActive: true },
+  // Upsert org membership — never downgrade a higher existing role
+  const existingMembership = await db.organisationMembership.findUnique({
+    where: { userId_organisationId: { userId: dbUser.id, organisationId: invite.organisationId } },
   });
 
-  // Upsert building assignment if a building was specified
+  if (!existingMembership) {
+    await db.organisationMembership.create({
+      data: { userId: dbUser.id, organisationId: invite.organisationId, role: invite.role },
+    });
+  } else {
+    const newRank = ROLE_RANK[invite.role];
+    const existingRank = ROLE_RANK[existingMembership.role];
+    await db.organisationMembership.update({
+      where: { userId_organisationId: { userId: dbUser.id, organisationId: invite.organisationId } },
+      // Only update role if the invite grants higher privilege; always reactivate
+      data: {
+        isActive: true,
+        ...(newRank > existingRank ? { role: invite.role } : {}),
+      },
+    });
+  }
+
+  // Upsert building assignment if a building was specified — never downgrade a higher existing role
   if (invite.buildingId) {
-    const existing = await db.buildingAssignment.findFirst({
+    const existingAssignment = await db.buildingAssignment.findFirst({
       where: { userId: dbUser.id, buildingId: invite.buildingId },
     });
 
-    if (existing) {
-      await db.buildingAssignment.update({
-        where: { id: existing.id },
-        data: { role: invite.role, isActive: true },
+    if (!existingAssignment) {
+      await db.buildingAssignment.create({
+        data: { userId: dbUser.id, buildingId: invite.buildingId, role: invite.role },
       });
     } else {
-      await db.buildingAssignment.create({
+      const newRank = ROLE_RANK[invite.role];
+      const existingRank = ROLE_RANK[existingAssignment.role];
+      await db.buildingAssignment.update({
+        where: { id: existingAssignment.id },
         data: {
-          userId: dbUser.id,
-          buildingId: invite.buildingId,
-          role: invite.role,
+          isActive: true,
+          ...(newRank > existingRank ? { role: invite.role } : {}),
         },
       });
     }
