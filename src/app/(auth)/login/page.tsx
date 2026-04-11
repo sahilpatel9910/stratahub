@@ -41,7 +41,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/manager");
+    router.push("/");
     router.refresh();
   }
 
