@@ -31,7 +31,7 @@ export function AcceptInviteButton({ token }: { token: string }) {
 
     setDone(true);
     // Give a moment for the success state to show before redirecting
-    setTimeout(() => router.push("/manager"), 1200);
+    setTimeout(() => router.push("/"), 1200);
   }
 
   if (done) {

@@ -51,7 +51,7 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     // Auto-redirect after 2 seconds
-    setTimeout(() => router.push("/manager"), 2000);
+    setTimeout(() => router.push("/"), 2000);
   }
 
   if (success) {

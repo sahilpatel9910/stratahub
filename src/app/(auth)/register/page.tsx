@@ -84,7 +84,7 @@ function RegisterForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: inviteToken }),
         });
-        router.push("/manager");
+        router.push("/");
         return;
       }
     }
