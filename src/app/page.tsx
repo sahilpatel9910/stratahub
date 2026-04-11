@@ -33,6 +33,11 @@ export default async function Home() {
     redirect("/super-admin/organisations");
   }
 
+  // Manager-level roles take priority over owner/tenant roles
+  if (roles.includes("BUILDING_MANAGER") || roles.includes("RECEPTION")) {
+    redirect("/manager");
+  }
+
   if (roles.includes("OWNER") || roles.includes("TENANT")) {
     redirect("/resident");
   }
