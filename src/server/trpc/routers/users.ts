@@ -4,8 +4,18 @@ import {
   createTRPCRouter,
   superAdminProcedure,
   managerProcedure,
+  protectedProcedure,
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
+import type { UserRole } from "@/generated/prisma/client";
+
+const ROLE_RANK: Record<UserRole, number> = {
+  TENANT: 0,
+  OWNER: 1,
+  RECEPTION: 2,
+  BUILDING_MANAGER: 3,
+  SUPER_ADMIN: 4,
+};
 
 const ROLE_ENUM = z.enum([
   "SUPER_ADMIN",
@@ -42,7 +52,42 @@ export const usersRouter = createTRPCRouter({
       });
     }),
 
-  // Assign an existing user to a building + org
+  // Current user's own profile
+  getMe: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.user.findUnique({
+      where: { id: ctx.user!.id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        avatarUrl: true,
+        createdAt: true,
+        orgMemberships: {
+          where: { isActive: true },
+          select: { role: true, organisation: { select: { name: true } } },
+        },
+      },
+    });
+  }),
+
+  updateMe: protectedProcedure
+    .input(
+      z.object({
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().optional(),
+        phone: z.string().optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.user.update({
+        where: { id: ctx.user!.id },
+        data: input,
+      });
+    }),
+
+  // Assign an existing user to a building + org — never downgrades existing role
   assignToBuilding: superAdminProcedure
     .input(
       z.object({
@@ -55,27 +100,39 @@ export const usersRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { userId, organisationId, buildingId, role } = input;
 
-      // Upsert org membership
-      await ctx.db.organisationMembership.upsert({
+      // Upsert org membership — only upgrade, never downgrade
+      const existingMembership = await ctx.db.organisationMembership.findUnique({
         where: { userId_organisationId: { userId, organisationId } },
-        create: { userId, organisationId, role },
-        update: { role, isActive: true },
       });
-
-      // Upsert building assignment
-      // The unique constraint is (userId, buildingId, role) — use updateMany + create pattern
-      const existing = await ctx.db.buildingAssignment.findFirst({
-        where: { userId, buildingId },
-      });
-
-      if (existing) {
-        await ctx.db.buildingAssignment.update({
-          where: { id: existing.id },
-          data: { role, isActive: true },
+      if (!existingMembership) {
+        await ctx.db.organisationMembership.create({
+          data: { userId, organisationId, role },
         });
       } else {
+        await ctx.db.organisationMembership.update({
+          where: { userId_organisationId: { userId, organisationId } },
+          data: {
+            isActive: true,
+            ...(ROLE_RANK[role] > ROLE_RANK[existingMembership.role] ? { role } : {}),
+          },
+        });
+      }
+
+      // Upsert building assignment — only upgrade, never downgrade
+      const existingAssignment = await ctx.db.buildingAssignment.findFirst({
+        where: { userId, buildingId },
+      });
+      if (!existingAssignment) {
         await ctx.db.buildingAssignment.create({
           data: { userId, buildingId, role },
+        });
+      } else {
+        await ctx.db.buildingAssignment.update({
+          where: { id: existingAssignment.id },
+          data: {
+            isActive: true,
+            ...(ROLE_RANK[role] > ROLE_RANK[existingAssignment.role] ? { role } : {}),
+          },
         });
       }
 

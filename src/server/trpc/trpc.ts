@@ -81,13 +81,16 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
 
 export const protectedProcedure = t.procedure.use(enforceAuth);
 
-// Middleware: requires specific role
+// Middleware: requires specific role — checks both org memberships and building assignments
 function enforceRole(...allowedRoles: UserRole[]) {
   return t.middleware(({ ctx, next }) => {
     if (!ctx.user) {
       throw new TRPCError({ code: "UNAUTHORIZED" });
     }
-    const userRoles = ctx.user.orgMemberships.map((m) => m.role);
+    const userRoles = [
+      ...ctx.user.orgMemberships.map((m) => m.role),
+      ...ctx.user.buildingAssignments.map((a) => a.role),
+    ];
     const hasRole = userRoles.some((role) => allowedRoles.includes(role));
     if (!hasRole) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
