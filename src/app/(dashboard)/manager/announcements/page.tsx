@@ -171,7 +171,7 @@ export default function AnnouncementsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -184,7 +184,7 @@ export default function AnnouncementsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(SCOPE_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

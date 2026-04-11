@@ -9,12 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { BuildingSwitcher } from "./building-switcher";
 import { trpc } from "@/lib/trpc/client";
 import { formatDistanceToNow } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface Building {
   id: string;
   name: string;
   suburb: string;
+  organisationName: string;
 }
 
 interface TopbarProps {
@@ -24,6 +25,8 @@ interface TopbarProps {
 export function Topbar({ buildings }: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const isSuperAdminPage = pathname.startsWith("/super-admin");
 
   const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(
     undefined,
@@ -60,9 +63,11 @@ export function Topbar({ buildings }: TopbarProps) {
       <SidebarTrigger />
       <Separator orientation="vertical" className="h-6" />
 
-      <div className="w-60">
-        <BuildingSwitcher buildings={buildings} />
-      </div>
+      {!isSuperAdminPage && (
+        <div className="w-60">
+          <BuildingSwitcher buildings={buildings} />
+        </div>
+      )}
 
       <div className="relative ml-auto flex-1 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -30,17 +30,29 @@ export const usersRouter = createTRPCRouter({
     .input(z.object({ search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.user.findMany({
-        where: input.search
-          ? {
-              OR: [
-                { firstName: { contains: input.search, mode: "insensitive" } },
-                { lastName: { contains: input.search, mode: "insensitive" } },
-                { email: { contains: input.search, mode: "insensitive" } },
-              ],
-            }
-          : undefined,
+        where: {
+          // Only show users with at least one active membership — deactivated users are hidden
+          OR: [
+            { orgMemberships: { some: { isActive: true } } },
+            { buildingAssignments: { some: { isActive: true } } },
+          ],
+          ...(input.search
+            ? {
+                AND: [
+                  {
+                    OR: [
+                      { firstName: { contains: input.search, mode: "insensitive" } },
+                      { lastName: { contains: input.search, mode: "insensitive" } },
+                      { email: { contains: input.search, mode: "insensitive" } },
+                    ],
+                  },
+                ],
+              }
+            : {}),
+        },
         include: {
           orgMemberships: {
+            where: { isActive: true },
             include: { organisation: { select: { name: true } } },
           },
           buildingAssignments: {
@@ -205,9 +217,16 @@ export const usersRouter = createTRPCRouter({
   deactivateAssignments: superAdminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.buildingAssignment.updateMany({
-        where: { userId: input.userId },
-        data: { isActive: false },
-      });
+      await Promise.all([
+        ctx.db.buildingAssignment.updateMany({
+          where: { userId: input.userId },
+          data: { isActive: false },
+        }),
+        ctx.db.organisationMembership.updateMany({
+          where: { userId: input.userId },
+          data: { isActive: false },
+        }),
+      ]);
+      return { success: true };
     }),
 });

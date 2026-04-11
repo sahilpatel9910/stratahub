@@ -16,7 +16,7 @@ export default async function DashboardLayout({
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
-  let buildings: { id: string; name: string; suburb: string }[] = [];
+  let buildings: { id: string; name: string; suburb: string; organisationName: string }[] = [];
   let isSuperAdmin = false;
 
   if (authUser) {
@@ -49,19 +49,20 @@ export default async function DashboardLayout({
     isSuperAdmin = dbUser?.orgMemberships.some((m) => m.role === "SUPER_ADMIN") ?? false;
 
     if (isSuperAdmin) {
-      buildings = await db.building.findMany({
-        select: { id: true, name: true, suburb: true },
-        orderBy: { name: "asc" },
+      const raw = await db.building.findMany({
+        select: { id: true, name: true, suburb: true, organisation: { select: { name: true } } },
+        orderBy: [{ organisation: { name: "asc" } }, { name: "asc" }],
       });
+      buildings = raw.map((b) => ({ id: b.id, name: b.name, suburb: b.suburb, organisationName: b.organisation.name }));
     } else if (dbUser) {
       const assignments = await db.buildingAssignment.findMany({
         where: { userId: dbUser.id, isActive: true },
         include: {
-          building: { select: { id: true, name: true, suburb: true } },
+          building: { select: { id: true, name: true, suburb: true, organisation: { select: { name: true } } } },
         },
-        orderBy: { building: { name: "asc" } },
+        orderBy: [{ building: { organisation: { name: "asc" } } }, { building: { name: "asc" } }],
       });
-      buildings = assignments.map((a) => a.building);
+      buildings = assignments.map((a) => ({ id: a.building.id, name: a.building.name, suburb: a.building.suburb, organisationName: a.building.organisation.name }));
     }
   }
 

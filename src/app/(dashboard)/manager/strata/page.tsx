@@ -786,7 +786,7 @@ export default function StrataPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {(unitsQuery.data ?? []).map((u) => (
-                    <SelectItem key={u.id} value={u.id}>Unit {u.unitNumber}</SelectItem>
+                    <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}`}>Unit {u.unitNumber}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -796,9 +796,9 @@ export default function StrataPage() {
               <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setLevyType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN_FUND">Admin Fund</SelectItem>
-                  <SelectItem value="CAPITAL_WORKS">Capital Works</SelectItem>
-                  <SelectItem value="SPECIAL_LEVY">Special Levy</SelectItem>
+                  <SelectItem value="ADMIN_FUND" label="Admin Fund">Admin Fund</SelectItem>
+                  <SelectItem value="CAPITAL_WORKS" label="Capital Works">Capital Works</SelectItem>
+                  <SelectItem value="SPECIAL_LEVY" label="Special Levy">Special Levy</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -852,9 +852,9 @@ export default function StrataPage() {
               <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setBulkLevyType(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN_FUND">Admin Fund</SelectItem>
-                  <SelectItem value="CAPITAL_WORKS">Capital Works</SelectItem>
-                  <SelectItem value="SPECIAL_LEVY">Special Levy</SelectItem>
+                  <SelectItem value="ADMIN_FUND" label="Admin Fund">Admin Fund</SelectItem>
+                  <SelectItem value="CAPITAL_WORKS" label="Capital Works">Capital Works</SelectItem>
+                  <SelectItem value="SPECIAL_LEVY" label="Special Levy">Special Levy</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -217,7 +217,7 @@ export default function VisitorsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {PURPOSES.map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
+                      <SelectItem key={value} value={value} label={label}>
                         {label}
                       </SelectItem>
                     ))}
@@ -243,8 +243,8 @@ export default function VisitorsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="false">No</SelectItem>
-                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false" label="No">No</SelectItem>
+                    <SelectItem value="true" label="Yes">Yes</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

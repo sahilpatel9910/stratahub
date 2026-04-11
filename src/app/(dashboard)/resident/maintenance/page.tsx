@@ -110,7 +110,7 @@ export default function ResidentMaintenancePage() {
                     <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
                     <SelectContent>
                       {allUnits.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>Unit {u.unitNumber}</SelectItem>
+                        <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}`}>Unit {u.unitNumber}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -131,7 +131,7 @@ export default function ResidentMaintenancePage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -142,7 +142,7 @@ export default function ResidentMaintenancePage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

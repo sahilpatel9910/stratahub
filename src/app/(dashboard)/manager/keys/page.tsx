@@ -234,7 +234,7 @@ export default function KeysPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {KEY_TYPES.map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
+                      <SelectItem key={value} value={value} label={label}>
                         {label}
                       </SelectItem>
                     ))}
@@ -260,9 +260,9 @@ export default function KeysPage() {
                     <SelectValue placeholder="Not unit-specific" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Not unit-specific</SelectItem>
+                    <SelectItem value="" label="Not unit-specific">Not unit-specific</SelectItem>
                     {units.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
+                      <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}`}>
                         Unit {u.unitNumber}
                       </SelectItem>
                     ))}
@@ -364,9 +364,9 @@ export default function KeysPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Types</SelectItem>
+                  <SelectItem value="ALL" label="All Types">All Types</SelectItem>
                   {KEY_TYPES.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem key={value} value={value} label={label}>
                       {label}
                     </SelectItem>
                   ))}

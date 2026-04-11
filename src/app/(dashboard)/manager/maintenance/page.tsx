@@ -253,18 +253,16 @@ export default function MaintenancePage() {
                     <SelectValue placeholder="Select unit..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {units.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        Unit {u.unitNumber}
-                        {u.ownerships[0] || u.tenancies[0]
-                          ? ` — ${
-                              u.ownerships[0]
-                                ? `${u.ownerships[0].user.firstName} ${u.ownerships[0].user.lastName}`
-                                : `${u.tenancies[0]!.user.firstName} ${u.tenancies[0]!.user.lastName}`
-                            }`
-                          : ""}
-                      </SelectItem>
-                    ))}
+                    {units.map((u) => {
+                      const resident = u.ownerships[0] || u.tenancies[0]
+                        ? ` — ${u.ownerships[0] ? `${u.ownerships[0].user.firstName} ${u.ownerships[0].user.lastName}` : `${u.tenancies[0]!.user.firstName} ${u.tenancies[0]!.user.lastName}`}`
+                        : "";
+                      return (
+                        <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}${resident}`}>
+                          Unit {u.unitNumber}{resident}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -303,7 +301,7 @@ export default function MaintenancePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
+                        <SelectItem key={value} value={value} label={label}>
                           {label}
                         </SelectItem>
                       ))}
@@ -323,7 +321,7 @@ export default function MaintenancePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {PRIORITIES.map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
+                        <SelectItem key={value} value={value} label={label}>
                           {label}
                         </SelectItem>
                       ))}
@@ -385,9 +383,9 @@ export default function MaintenancePage() {
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Priorities</SelectItem>
+                  <SelectItem value="ALL" label="All Priorities">All Priorities</SelectItem>
                   {PRIORITIES.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem key={value} value={value} label={label}>
                       {label}
                     </SelectItem>
                   ))}

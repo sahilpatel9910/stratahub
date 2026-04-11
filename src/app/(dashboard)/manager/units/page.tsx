@@ -172,7 +172,7 @@ export default function UnitsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {UNIT_TYPES.map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
+                      <SelectItem key={value} value={value} label={label}>
                         {label}
                       </SelectItem>
                     ))}

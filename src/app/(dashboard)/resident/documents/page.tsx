@@ -45,9 +45,9 @@ export default function ResidentDocumentsPage() {
         <Select value={categoryFilter} onValueChange={(v) => v !== null && setCategoryFilter(v)}>
           <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Categories</SelectItem>
+            <SelectItem value="ALL" label="All Categories">All Categories</SelectItem>
             {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
-              <SelectItem key={v} value={v}>{l}</SelectItem>
+              <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
             ))}
           </SelectContent>
         </Select>

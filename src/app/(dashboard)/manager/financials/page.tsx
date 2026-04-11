@@ -184,8 +184,8 @@ export default function FinancialsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="INCOME">Income</SelectItem>
-                    <SelectItem value="EXPENSE">Expense</SelectItem>
+                    <SelectItem value="INCOME" label="Income">Income</SelectItem>
+                    <SelectItem value="EXPENSE" label="Expense">Expense</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -197,7 +197,7 @@ export default function FinancialsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c} value={c} label={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

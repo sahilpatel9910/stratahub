@@ -156,7 +156,7 @@ export default function OrganisationsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {AUSTRALIAN_STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value}>
+                      <SelectItem key={state.value} value={state.value} label={state.label}>
                         {state.label}
                       </SelectItem>
                     ))}

@@ -159,7 +159,7 @@ export default function SuperAdminBuildingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {orgs.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
+                      <SelectItem key={org.id} value={org.id} label={org.name}>
                         {org.name}
                       </SelectItem>
                     ))}
@@ -216,7 +216,7 @@ export default function SuperAdminBuildingsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {AUSTRALIAN_STATES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
+                      <SelectItem key={s.value} value={s.value} label={s.label}>
                         {s.label}
                       </SelectItem>
                     ))}

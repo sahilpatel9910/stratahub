@@ -347,7 +347,7 @@ export default function DocumentsPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map(([v, l]) => (
-                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -357,8 +357,8 @@ export default function DocumentsPage() {
                   <Select value={formIsPublic} onValueChange={(v) => { if (v) setFormIsPublic(v); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="false">Staff only</SelectItem>
-                      <SelectItem value="true">Public (residents)</SelectItem>
+                      <SelectItem value="false" label="Staff only">Staff only</SelectItem>
+                      <SelectItem value="true" label="Public (residents)">Public (residents)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -403,9 +403,9 @@ export default function DocumentsPage() {
             <Select value={categoryFilter} onValueChange={(v) => { if (v) setCategoryFilter(v); }}>
               <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all" label="All Categories">All Categories</SelectItem>
                 {CATEGORIES.map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
+                  <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

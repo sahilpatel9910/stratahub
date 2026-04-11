@@ -179,10 +179,10 @@ export default function SuperAdminUsersPage() {
 
   // Filter buildings by selected org in each dialog
   const assignBuildings = buildings.filter(
-    (b) => !assignOrgId || b.organisation?.name
+    (b) => !assignOrgId || b.organisationId === assignOrgId
   );
   const inviteBuildings = buildings.filter(
-    (b) => !inviteOrgId || (b as { organisationId?: string }).organisationId === inviteOrgId
+    (b) => !inviteOrgId || b.organisationId === inviteOrgId
   );
 
   return (
@@ -505,7 +505,7 @@ export default function SuperAdminUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
+                    <SelectItem key={u.id} value={u.id} label={`${u.firstName} ${u.lastName} — ${u.email}`}>
                       {u.firstName} {u.lastName} — {u.email}
                     </SelectItem>
                   ))}
@@ -528,7 +528,7 @@ export default function SuperAdminUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {orgs.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
+                    <SelectItem key={o.id} value={o.id} label={o.name}>
                       {o.name}
                     </SelectItem>
                   ))}
@@ -546,8 +546,8 @@ export default function SuperAdminUsersPage() {
                   <SelectValue placeholder={assignOrgId ? "Select building" : "Select organisation first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {buildings.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
+                  {assignBuildings.map((b) => (
+                    <SelectItem key={b.id} value={b.id} label={`${b.name} — ${b.suburb}`}>
                       {b.name} — {b.suburb}
                     </SelectItem>
                   ))}
@@ -671,7 +671,7 @@ export default function SuperAdminUsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {orgs.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
+                        <SelectItem key={o.id} value={o.id} label={o.name}>
                           {o.name}
                         </SelectItem>
                       ))}
@@ -689,8 +689,8 @@ export default function SuperAdminUsersPage() {
                       <SelectValue placeholder={inviteOrgId ? "Select building" : "Select organisation first"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {buildings.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
+                      {inviteBuildings.map((b) => (
+                        <SelectItem key={b.id} value={b.id} label={`${b.name} — ${b.suburb}`}>
                           {b.name} — {b.suburb}
                         </SelectItem>
                       ))}
