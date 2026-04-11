@@ -5,6 +5,8 @@ import {
   protectedProcedure,
   tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
+import { sendMaintenanceUpdateEmail } from "@/lib/email/send";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 const categoryEnum = z.enum([
   "PLUMBING", "ELECTRICAL", "HVAC", "STRUCTURAL", "APPLIANCE",
@@ -89,10 +91,37 @@ export const maintenanceRouter = createTRPCRouter({
       if (input.status === "COMPLETED") {
         data.completedDate = new Date();
       }
-      return ctx.db.maintenanceRequest.update({
+
+      const updated = await ctx.db.maintenanceRequest.update({
         where: { id: input.id },
         data,
+        include: {
+          requestedBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+          unit: { include: { building: { select: { name: true } } } },
+        },
       });
+
+      // Notify resident of meaningful status changes (fire-and-forget)
+      const notifyStatuses = ["ACKNOWLEDGED", "IN_PROGRESS", "SCHEDULED", "COMPLETED", "CANCELLED"];
+      if (notifyStatuses.includes(input.status)) {
+        const { requestedBy, unit } = updated;
+        void createNotification(ctx.db, {
+          userId: requestedBy.id,
+          type: "MAINTENANCE_STATUS_UPDATED",
+          title: `Maintenance update: ${updated.title}`,
+          body: `Status changed to ${input.status.replace(/_/g, " ")}`,
+          linkUrl: "/resident/maintenance",
+        });
+        void sendMaintenanceUpdateEmail(requestedBy.email, {
+          recipientName: `${requestedBy.firstName} ${requestedBy.lastName}`,
+          buildingName: unit.building.name,
+          unitNumber: unit.unitNumber,
+          requestTitle: updated.title,
+          newStatus: input.status,
+        });
+      }
+
+      return updated;
     }),
 
   assign: managerProcedure

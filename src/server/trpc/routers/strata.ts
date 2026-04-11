@@ -5,6 +5,8 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import { sendLevyNoticeEmail } from "@/lib/email/send";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
 const paymentStatusEnum = z.enum(["PENDING", "PAID", "OVERDUE", "PARTIAL", "WAIVED"]);
@@ -154,7 +156,7 @@ export const strataRouter = createTRPCRouter({
         });
       }
 
-      return ctx.db.strataLevy.create({
+      const levy = await ctx.db.strataLevy.create({
         data: {
           strataInfoId: strataInfo.id,
           unitId: input.unitId,
@@ -164,6 +166,40 @@ export const strataRouter = createTRPCRouter({
           dueDate: new Date(input.dueDate),
         },
       });
+
+      // Notify + email the unit owner (fire-and-forget)
+      const unit = await ctx.db.unit.findUnique({
+        where: { id: input.unitId },
+        include: {
+          building: { select: { name: true } },
+          ownerships: {
+            where: { isActive: true },
+            include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+          },
+        },
+      });
+      if (unit) {
+        for (const ownership of unit.ownerships) {
+          const { user } = ownership;
+          void createNotification(ctx.db, {
+            userId: user.id,
+            type: "LEVY_CREATED",
+            title: `New levy raised: ${input.levyType.replace(/_/g, " ")}`,
+            body: `Unit ${unit.unitNumber} — due ${new Date(input.dueDate).toLocaleDateString("en-AU")}`,
+            linkUrl: "/resident/levies",
+          });
+          void sendLevyNoticeEmail(user.email, {
+            recipientName: `${user.firstName} ${user.lastName}`,
+            buildingName: unit.building.name,
+            unitNumber: unit.unitNumber,
+            levyType: input.levyType,
+            amountCents: input.amountCents,
+            dueDate: new Date(input.dueDate),
+          });
+        }
+      }
+
+      return levy;
     }),
 
   bulkCreateLevies: managerProcedure
@@ -209,6 +245,44 @@ export const strataRouter = createTRPCRouter({
           dueDate: new Date(input.dueDate),
         })),
       });
+
+      // Notify + email all active unit owners (fire-and-forget)
+      const unitsWithOwners = await ctx.db.unit.findMany({
+        where: { buildingId: input.buildingId },
+        include: {
+          building: { select: { name: true } },
+          ownerships: {
+            where: { isActive: true },
+            include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+          },
+        },
+      });
+      const notifications = unitsWithOwners.flatMap((unit) =>
+        unit.ownerships.map((o) => ({
+          userId: o.user.id,
+          type: "LEVY_CREATED" as const,
+          title: `New levy raised: ${input.levyType.replace(/_/g, " ")}`,
+          body: `Unit ${unit.unitNumber} — due ${new Date(input.dueDate).toLocaleDateString("en-AU")}`,
+          linkUrl: "/resident/levies",
+        }))
+      );
+      if (notifications.length > 0) {
+        void ctx.db.notification.createMany({ data: notifications }).catch((err) =>
+          console.error("[notification] bulk createMany failed:", err)
+        );
+      }
+      for (const unit of unitsWithOwners) {
+        for (const ownership of unit.ownerships) {
+          void sendLevyNoticeEmail(ownership.user.email, {
+            recipientName: `${ownership.user.firstName} ${ownership.user.lastName}`,
+            buildingName: unit.building.name,
+            unitNumber: unit.unitNumber,
+            levyType: input.levyType,
+            amountCents: input.amountCents,
+            dueDate: new Date(input.dueDate),
+          });
+        }
+      }
 
       return { count: result.count };
     }),

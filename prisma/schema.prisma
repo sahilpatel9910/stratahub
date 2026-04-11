@@ -148,6 +148,15 @@ enum FinancialType {
   EXPENSE
 }
 
+enum NotificationType {
+  LEVY_CREATED
+  MAINTENANCE_STATUS_UPDATED
+  MAINTENANCE_CREATED
+  ANNOUNCEMENT_PUBLISHED
+  PARCEL_RECEIVED
+  INVITE_SENT
+}
+
 // ============================================================
 // IDENTITY & ACCESS
 // ============================================================
@@ -194,6 +203,7 @@ model User {
   documents           Document[]             @relation("uploadedBy")
   keyLogs             KeyLog[]               @relation("performedBy")
   maintenanceComments MaintenanceComment[]
+  notifications       Notification[]
 
   @@map("users")
 }
@@ -752,4 +762,25 @@ model FinancialRecord {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@map("financial_records")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  linkUrl   String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

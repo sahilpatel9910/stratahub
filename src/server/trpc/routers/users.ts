@@ -5,6 +5,7 @@ import {
   superAdminProcedure,
   managerProcedure,
 } from "@/server/trpc/trpc";
+import { sendWelcomeInviteEmail } from "@/lib/email/send";
 
 const ROLE_ENUM = z.enum([
   "SUPER_ADMIN",
@@ -102,6 +103,22 @@ export const usersRouter = createTRPCRouter({
           role: input.role,
           expiresAt,
         },
+      });
+
+      // Send invite email (fire-and-forget)
+      const [org, building] = await Promise.all([
+        ctx.db.organisation.findUnique({ where: { id: input.organisationId }, select: { name: true } }),
+        input.buildingId
+          ? ctx.db.building.findUnique({ where: { id: input.buildingId }, select: { name: true } })
+          : Promise.resolve(null),
+      ]);
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
+      void sendWelcomeInviteEmail(input.email, {
+        organisationName: org?.name ?? "StrataHub",
+        buildingName: building?.name,
+        role: input.role,
+        inviteUrl,
+        expiresAt,
       });
 
       return invite;

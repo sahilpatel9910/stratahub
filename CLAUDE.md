@@ -2,7 +2,7 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-10** — Password reset flow complete, strata levies UI live, document file upload via Supabase Storage, dashboard keys-to-rotate stat wired up.
+> **Last updated: 2026-04-11** — Phase 2 complete: transactional emails (Resend), real notification bell with DB-backed notifications, resident self-service portal (/resident/**).
 
 ## Project Overview
 
@@ -28,7 +28,7 @@ StrataHub is an Australian apartment/strata property management SaaS. It allows 
 | Data Transformer | SuperJSON (tRPC serialisation) |
 | Date Handling | date-fns v4 |
 | Charts | Recharts v3 |
-| Email | Resend (installed, not yet implemented) |
+| Email | Resend v6 (`src/lib/email/`) — levy notices, maintenance updates, invite emails |
 | Toast | Sonner |
 | Icons | Lucide React |
 | Package Manager | npm |
@@ -162,6 +162,13 @@ strata-hub/
 │   │   │   │   ├── strata/page.tsx
 │   │   │   │   ├── financials/page.tsx
 │   │   │   │   └── analytics/page.tsx
+│   │   │   ├── resident/            # Resident self-service portal
+│   │   │   │   ├── layout.tsx           # Uses ResidentSidebar + Topbar (buildings=[])
+│   │   │   │   ├── page.tsx             # Dashboard: stats + recent announcements
+│   │   │   │   ├── levies/page.tsx      # Read-only levy history for owned units
+│   │   │   │   ├── maintenance/page.tsx # Submit + track maintenance requests
+│   │   │   │   ├── documents/page.tsx   # Public building documents (download only)
+│   │   │   │   └── announcements/page.tsx
 │   │   │   └── super-admin/
 │   │   │       ├── organisations/page.tsx
 │   │   │       ├── buildings/page.tsx
@@ -181,14 +188,18 @@ strata-hub/
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── app-sidebar.tsx
+│   │   │   ├── resident-sidebar.tsx  # Resident portal sidebar (Home, Levies, Maintenance, Docs, Announcements)
 │   │   │   ├── building-switcher.tsx
-│   │   │   └── topbar.tsx
+│   │   │   └── topbar.tsx            # Polls notifications.unreadCount every 30s; bell opens dropdown
 │   │   └── ui/                 # shadcn/ui components (never edit directly)
 │   ├── hooks/
 │   │   ├── use-building-context.ts
 │   │   └── use-mobile.ts
 │   ├── lib/
 │   │   ├── constants.ts
+│   │   ├── email/
+│   │   │   ├── resend.ts       # Lazy Resend client (getResend() to avoid build-time throw)
+│   │   │   └── send.ts         # sendLevyNoticeEmail, sendMaintenanceUpdateEmail, sendWelcomeInviteEmail
 │   │   ├── supabase/
 │   │   │   ├── client.ts       # createBrowserClient (client-side)
 │   │   │   ├── server.ts       # createServerClient with cookie handlers (server-side)
@@ -202,7 +213,9 @@ strata-hub/
 │   │   └── trpc/
 │   │       ├── trpc.ts         # Context, procedure factories, role guards
 │   │       ├── router.ts       # AppRouter — combines all sub-routers
-│   │       └── routers/        # 15 domain routers
+│   │       ├── lib/
+│   │       │   └── create-notification.ts  # Fire-and-forget helper called from mutations
+│   │       └── routers/        # 17 domain routers
 │   └── types/
 │       └── auth.ts             # AuthUser, SessionContext types
 └── src/generated/prisma/       # Generated Prisma client (gitignored, never edit)
@@ -317,6 +330,14 @@ Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 - `/manager/strata` — `strata.getByBuilding` + `strata.upsertInfo` + `strata.createMeeting` + `strata.deleteMeeting` + `strata.listLevies` + `strata.createLevy` + `strata.bulkCreateLevies` + `strata.updateLevyStatus` + `strata.deleteLevy`
 - `/manager/financials` — `financials.listByBuilding` + `financials.getSummary` + `financials.create` + `financials.delete`
 - `/manager/analytics` — `buildings.getStats` + `maintenance.listByBuilding` + `parcels.listByBuilding` + Recharts
+
+### Resident routes (`/resident/**`)
+Uses `ResidentSidebar`. Data is scoped to the user's own units/building — no building switcher.
+- `/resident` — dashboard: welcome card, outstanding levy total, open maintenance count, recent announcements
+- `/resident/levies` — `resident.getMyLevies` (read-only, filter by status)
+- `/resident/maintenance` — `resident.getMyMaintenanceRequests` + `resident.createMaintenanceRequest` (unit ownership verified server-side)
+- `/resident/documents` — `resident.getMyDocuments` (isPublic=true only, download links)
+- `/resident/announcements` — `resident.getMyAnnouncements` (non-expired, read-only)
 
 ### Super-admin routes (`/super-admin/**`)
 - `/super-admin/organisations` — `organisations.list` + `organisations.create` + `organisations.update`
@@ -526,10 +547,38 @@ File upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `
 |---|---|---|---|---|
 | `list` | query | SUPER_ADMIN | `search?` | All users with orgMemberships + active buildingAssignments |
 | `assignToBuilding` | mutation | SUPER_ADMIN | `userId, organisationId, buildingId, role` | Upserts OrgMembership + BuildingAssignment |
-| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, role` | Creates Invitation (7-day expiry), returns with token |
+| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, role` | Creates Invitation (7-day expiry) + fires invite email via Resend |
 | `listInvites` | query | SUPER_ADMIN | `organisationId?` | Pending (non-expired, non-accepted) invites |
 | `revokeInvite` | mutation | SUPER_ADMIN | `id` | Hard delete |
 | `deactivateAssignments` | mutation | SUPER_ADMIN | `userId` | Sets all BuildingAssignments `isActive=false` |
+
+### `notifications`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listRecent` | query | protected | `limit?` (default 20) | Latest notifications for current user, newest first |
+| `unreadCount` | query | protected | — | Count of `isRead: false` for current user; polled every 30s by topbar |
+| `markRead` | mutation | protected | `id` | Sets single notification `isRead: true` (only if owned by caller) |
+| `markAllRead` | mutation | protected | — | Marks all unread notifications as read for current user |
+
+**Notification types:** `LEVY_CREATED`, `MAINTENANCE_STATUS_UPDATED`, `MAINTENANCE_CREATED`, `ANNOUNCEMENT_PUBLISHED`, `PARCEL_RECEIVED`, `INVITE_SENT`
+
+**Where notifications are created (fire-and-forget via `createNotification()` helper):**
+- `strata.createLevy` → notifies active unit owners: `LEVY_CREATED`
+- `strata.bulkCreateLevies` → notifies all active owners in building via `createMany`: `LEVY_CREATED`
+- `maintenance.updateStatus` → notifies requester on status `ACKNOWLEDGED/IN_PROGRESS/SCHEDULED/COMPLETED/CANCELLED`: `MAINTENANCE_STATUS_UPDATED`
+
+### `resident`
+All procedures use `tenantOrAboveProcedure`. Data scoped to the calling user's units — no `buildingId` input.
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `getMyProfile` | query | tenantOrAbove | — | User with active ownerships, tenancies, building assignments |
+| `getMyBuilding` | query | tenantOrAbove | — | Primary building (ownership → tenancy → assignment fallback) |
+| `getMyLevies` | query | tenantOrAbove | `status?` | Levies for owned units only; tenants get empty array |
+| `getMyMaintenanceRequests` | query | tenantOrAbove | `status?` | Requests where `requestedById = caller` |
+| `createMaintenanceRequest` | mutation | tenantOrAbove | `unitId, title, description, category, priority?` | Verifies caller owns/tenants the unit before creating |
+| `getMyDocuments` | query | tenantOrAbove | `category?` | `isPublic: true` documents for caller's building |
+| `getMyAnnouncements` | query | tenantOrAbove | — | Non-expired announcements for caller's building |
 
 ---
 
@@ -642,6 +691,11 @@ User
 
 Invitation (standalone — no Prisma relations to org/building)
   Fields: email, organisationId, buildingId?, unitId?, role, token, expiresAt, acceptedAt
+
+Notification
+  Fields: userId (→ User), type (NotificationType), title, body?, linkUrl?, isRead, createdAt
+  Indexes: [userId, isRead], [userId, createdAt]
+  Created by: createNotification() helper in src/server/trpc/lib/create-notification.ts
 ```
 
 ---
@@ -660,7 +714,13 @@ SUPABASE_SERVICE_ROLE_KEY="..."       # Settings → API → service_role key (s
 
 NEXT_PUBLIC_APP_URL="http://localhost:3000"  # Full URL — used in tRPC httpBatchLink for SSR
 NEXT_PUBLIC_APP_NAME="StrataHub"
+
+# Email (Resend) — required for transactional emails
+RESEND_API_KEY="re_..."                    # Resend dashboard → API Keys
+RESEND_FROM_EMAIL="noreply@yourdomain.com" # Verified sender; falls back to onboarding@resend.dev on free tier
 ```
+
+**Resend free tier:** 3,000 emails/month, 100/day. Until a domain is verified in Resend, all emails must come from `onboarding@resend.dev` (set as fallback). Add `RESEND_API_KEY` and `RESEND_FROM_EMAIL` to Vercel env vars for production.
 
 ---
 
@@ -679,7 +739,7 @@ npx prisma studio    # Prisma Studio GUI
 ```
 
 ### First-time setup
-1. Set all 6 env vars in `.env`
+1. Set all env vars in `.env` (6 core + 2 Resend for emails)
 2. `npx prisma generate`
 3. `npx prisma db push`
 4. `npm run db:seed`
@@ -709,13 +769,13 @@ npx prisma studio    # Prisma Studio GUI
 
 ## Known Gaps / Remaining Work
 
-- **Notification bell** — Topbar shows a hardcoded "3" badge. No real notification system yet. Needs a `Notification` Prisma model + tRPC router + topbar polling.
-- **Email not implemented** — Resend is installed but never called. No transactional emails sent yet (parcel arrival, maintenance updates, levy reminders).
-- **Resident self-service portal** — OWNER and TENANT roles exist but have no dedicated pages. All UI assumes BUILDING_MANAGER/SUPER_ADMIN.
 - **Analytics page** — Placeholder exists at `/manager/analytics`. Has basic Recharts setup but no real trend data (only point-in-time stats).
 - **Middleware deprecation** — Next.js 16 prefers `proxy` over `middleware` convention. Low priority — still functional, just a build warning.
 - **Email verification + invite flow** — If Supabase requires email confirmation, Prisma user is auto-created on first login. Invite acceptance is deferred — user must visit `/invite/[token]` while logged in.
 - **Supabase Storage bucket** — Must be manually created in Supabase dashboard: bucket name `documents`, set to **public**. Required for document upload to work.
+- **Resend domain verification** — Until a custom domain is verified in Resend, emails send from `onboarding@resend.dev`. Add RESEND_API_KEY + RESEND_FROM_EMAIL to Vercel env vars for production.
+- **Building-level authorization gaps** — `strata.*` and `maintenance.*` mutations accept bare IDs without verifying the caller manages that building. Known pre-existing gap; acceptable for Phase 2 single-tenant deployments.
+- **Resident portal role redirect** — OWNER/TENANT who land on `/manager` are not automatically redirected to `/resident`. They see the manager UI. Phase 3 should add role detection + redirect.
 
 ### Completed (no longer gaps)
 - ✅ `/reset-password` page + `/api/auth/callback` route — password reset flow fully working
@@ -723,6 +783,9 @@ npx prisma studio    # Prisma Studio GUI
 - ✅ Document file upload — drag-and-drop to Supabase Storage via signed URL; `storagePath` stored for cleanup on delete
 - ✅ Strata levies — full UI: bulk raise, individual levy, mark paid/overdue, summary cards, delete
 - ✅ Root layout metadata — updated to "StrataHub — Property Management"
+- ✅ Transactional emails — Resend integration: levy notices, maintenance status updates, invite emails (fire-and-forget, HTML-escaped)
+- ✅ Notification bell — `Notification` model, `notifications` tRPC router, topbar polls every 30s, dropdown with mark-read
+- ✅ Resident self-service portal — `/resident/**` pages: dashboard, levies, maintenance, documents, announcements
 
 ---
 
@@ -747,3 +810,11 @@ npx prisma studio    # Prisma Studio GUI
 9. **Supabase Storage upload pattern** — Files never go through Next.js. Flow: `POST /api/storage/upload-url` (service role creates signed URL) → client `PUT` directly to Supabase → tRPC saves DB record with `publicUrl` + `storagePath`. Bucket: `documents` (public). Delete: `DELETE /api/storage/delete` then tRPC delete.
 
 10. **`prisma db push` not `migrate dev`** — Schema was bootstrapped with `db push`, not migrations. The `migrations/` folder has drift. Always use `npx prisma db push` to apply schema changes, then `npx prisma generate`.
+
+11. **Fire-and-forget for emails and notifications** — Email sends and notification creates are called with `void` inside mutations. Failures are caught and logged server-side but never surfaced to the client. This means the primary mutation (create levy, update status) always succeeds even if Resend is down. All user-controlled strings are HTML-escaped before insertion into email templates.
+
+12. **Lazy Resend client** — `new Resend(key)` throws at module load if the key is missing. The client is wrapped in `getResend()` which initialises lazily on first call, using `"re_placeholder"` as fallback. This prevents build-time failures. Set `RESEND_API_KEY` in `.env` and Vercel env vars for emails to actually send.
+
+13. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
+
+14. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
