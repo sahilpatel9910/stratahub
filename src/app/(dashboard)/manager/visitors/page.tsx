@@ -211,7 +211,7 @@ export default function VisitorsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Purpose</Label>
-                <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)}>
+                <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)} itemToStringLabel={(v) => PURPOSES.find(([val]) => val === v)?.[1] ?? v}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -238,6 +238,7 @@ export default function VisitorsPage() {
                 <Select
                   value={formPreApproved}
                   onValueChange={(v) => v !== null && setFormPreApproved(v)}
+                  itemToStringLabel={(v) => v === "true" ? "Yes" : "No"}
                 >
                   <SelectTrigger>
                     <SelectValue />

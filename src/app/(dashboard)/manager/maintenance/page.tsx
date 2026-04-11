@@ -248,7 +248,7 @@ export default function MaintenancePage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Unit *</Label>
-                <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)}>
+                <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)} itemToStringLabel={(v) => { const u = units.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : v; }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select unit..." />
                   </SelectTrigger>
@@ -295,6 +295,7 @@ export default function MaintenancePage() {
                         v as keyof typeof MAINTENANCE_CATEGORY_LABELS
                       )
                     }
+                    itemToStringLabel={(v) => CATEGORIES.find(([val]) => val === v)?.[1] ?? v}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -315,6 +316,7 @@ export default function MaintenancePage() {
                     onValueChange={(v) =>
                       setFormPriority(v as keyof typeof PRIORITY_LABELS)
                     }
+                    itemToStringLabel={(v) => PRIORITIES.find(([val]) => val === v)?.[1] ?? v}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -378,6 +380,7 @@ export default function MaintenancePage() {
               <Select
                 value={priorityFilter}
                 onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}
+                itemToStringLabel={(v) => v === "ALL" ? "All Priorities" : PRIORITIES.find(([val]) => val === v)?.[1] ?? v}
               >
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Priority" />

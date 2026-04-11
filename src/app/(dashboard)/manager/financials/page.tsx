@@ -179,6 +179,7 @@ export default function FinancialsPage() {
                     setFormType(v as "INCOME" | "EXPENSE");
                     setFormCategory("");
                   }}
+                  itemToStringLabel={(v) => v === "INCOME" ? "Income" : v === "EXPENSE" ? "Expense" : v}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -191,7 +192,7 @@ export default function FinancialsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Category *</Label>
-                <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }}>
+                <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => v}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>

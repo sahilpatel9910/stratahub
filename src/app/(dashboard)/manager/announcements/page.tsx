@@ -165,7 +165,7 @@ export default function AnnouncementsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Priority</Label>
-                  <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }}>
+                  <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? v}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -178,7 +178,7 @@ export default function AnnouncementsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Scope</Label>
-                  <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }}>
+                  <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? v}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

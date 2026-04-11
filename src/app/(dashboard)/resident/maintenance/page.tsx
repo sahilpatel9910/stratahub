@@ -106,7 +106,7 @@ export default function ResidentMaintenancePage() {
               {allUnits.length > 1 && (
                 <div className="space-y-1">
                   <Label>Unit</Label>
-                  <Select value={unitId} onValueChange={(v) => v !== null && setUnitId(v)}>
+                  <Select value={unitId} onValueChange={(v) => v !== null && setUnitId(v)} itemToStringLabel={(v) => { const u = allUnits.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : v; }}>
                     <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
                     <SelectContent>
                       {allUnits.map((u) => (
@@ -127,7 +127,7 @@ export default function ResidentMaintenancePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Category</Label>
-                  <Select value={category} onValueChange={(v) => v !== null && setCategory(v)}>
+                  <Select value={category} onValueChange={(v) => v !== null && setCategory(v)} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? v}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
@@ -138,7 +138,7 @@ export default function ResidentMaintenancePage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Priority</Label>
-                  <Select value={priority} onValueChange={(v) => v !== null && setPriority(v)}>
+                  <Select value={priority} onValueChange={(v) => v !== null && setPriority(v)} itemToStringLabel={(v) => PRIORITY_LABELS[v as keyof typeof PRIORITY_LABELS] ?? v}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(PRIORITY_LABELS).map(([v, l]) => (

@@ -499,6 +499,7 @@ export default function SuperAdminUsersPage() {
               <Select
                 value={assignUserId}
                 onValueChange={(v) => { if (v) setAssignUserId(v); }}
+                itemToStringLabel={(v) => { const u = users.find(u => u.id === v); return u ? `${u.firstName} ${u.lastName} — ${u.email}` : v; }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select user" />
@@ -522,6 +523,7 @@ export default function SuperAdminUsersPage() {
                     setAssignBuildingId("");
                   }
                 }}
+                itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? v}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select organisation" />
@@ -541,6 +543,7 @@ export default function SuperAdminUsersPage() {
                 value={assignBuildingId}
                 onValueChange={(v) => { if (v) setAssignBuildingId(v); }}
                 disabled={!assignOrgId}
+                itemToStringLabel={(v) => { const b = assignBuildings.find(b => b.id === v); return b ? `${b.name} — ${b.suburb}` : v; }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={assignOrgId ? "Select building" : "Select organisation first"} />
@@ -559,6 +562,7 @@ export default function SuperAdminUsersPage() {
               <Select
                 value={assignRole}
                 onValueChange={(v) => { if (v) setAssignRole(v as AssignableRole); }}
+                itemToStringLabel={(v) => ASSIGNABLE_ROLES.find(r => r.value === v)?.label ?? v}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -665,6 +669,7 @@ export default function SuperAdminUsersPage() {
                         setInviteBuildingId("");
                       }
                     }}
+                    itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? v}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select organisation" />
@@ -684,6 +689,7 @@ export default function SuperAdminUsersPage() {
                     value={inviteBuildingId}
                     onValueChange={(v) => { if (v) setInviteBuildingId(v); }}
                     disabled={!inviteOrgId}
+                    itemToStringLabel={(v) => { const b = inviteBuildings.find(b => b.id === v); return b ? `${b.name} — ${b.suburb}` : v; }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={inviteOrgId ? "Select building" : "Select organisation first"} />
@@ -705,6 +711,7 @@ export default function SuperAdminUsersPage() {
                   <Select
                     value={inviteRole}
                     onValueChange={(v) => { if (v) setInviteRole(v as AssignableRole); }}
+                    itemToStringLabel={(v) => ASSIGNABLE_ROLES.find(r => r.value === v)?.label ?? v}
                   >
                     <SelectTrigger>
                       <SelectValue />
