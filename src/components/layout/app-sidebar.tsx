@@ -58,11 +58,11 @@ const adminNavItems = [
   { title: "Users", href: "/super-admin/users", icon: Users },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const isAdmin = pathname.startsWith("/super-admin");
+  const isAdmin = isSuperAdmin;
 
   async function handleSignOut() {
     const supabase = createClient();

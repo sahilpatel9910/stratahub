@@ -17,6 +17,7 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
 
   let buildings: { id: string; name: string; suburb: string }[] = [];
+  let isSuperAdmin = false;
 
   if (authUser) {
     let dbUser = await db.user.findUnique({
@@ -45,9 +46,7 @@ export default async function DashboardLayout({
       });
     }
 
-    const isSuperAdmin = dbUser?.orgMemberships.some(
-      (m) => m.role === "SUPER_ADMIN"
-    );
+    isSuperAdmin = dbUser?.orgMemberships.some((m) => m.role === "SUPER_ADMIN") ?? false;
 
     if (isSuperAdmin) {
       buildings = await db.building.findMany({
@@ -70,7 +69,7 @@ export default async function DashboardLayout({
     <TRPCProvider>
       <SidebarProvider>
         <div className="flex h-screen w-full">
-          <AppSidebar />
+          <AppSidebar isSuperAdmin={isSuperAdmin} />
           <div className="flex flex-1 flex-col overflow-hidden">
             <Topbar buildings={buildings} />
             <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
