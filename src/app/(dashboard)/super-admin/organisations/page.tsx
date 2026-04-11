@@ -150,7 +150,7 @@ export default function OrganisationsPage() {
                   onValueChange={(v) =>
                     setFormState(v as AustralianStateValue)
                   }
-                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? v}
+                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? String(v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select state" />

@@ -166,7 +166,7 @@ export default function UnitsPage() {
                   onValueChange={(v) =>
                     setFormUnitType(v as keyof typeof UNIT_TYPE_LABELS)
                   }
-                  itemToStringLabel={(v) => UNIT_TYPES.find(([val]) => val === v)?.[1] ?? v}
+                  itemToStringLabel={(v) => UNIT_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}
                 >
                   <SelectTrigger>
                     <SelectValue />

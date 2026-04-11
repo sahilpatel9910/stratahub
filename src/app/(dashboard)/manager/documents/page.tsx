@@ -343,7 +343,7 @@ export default function DocumentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? v}>
+                  <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map(([v, l]) => (
@@ -400,7 +400,7 @@ export default function DocumentsPage() {
         <>
           <div className="flex items-center gap-3">
             <Label className="text-sm shrink-0">Filter by category</Label>
-            <Select value={categoryFilter} onValueChange={(v) => { if (v) setCategoryFilter(v); }} itemToStringLabel={(v) => v === "all" ? "All Categories" : CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? v}>
+            <Select value={categoryFilter} onValueChange={(v) => { if (v) setCategoryFilter(v); }} itemToStringLabel={(v) => v === "all" ? "All Categories" : CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
               <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all" label="All Categories">All Categories</SelectItem>

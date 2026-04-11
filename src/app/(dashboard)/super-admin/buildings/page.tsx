@@ -153,7 +153,7 @@ export default function SuperAdminBuildingsPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Organisation *</Label>
-                <Select value={formOrgId} onValueChange={(v) => { if (v) setFormOrgId(v); }} itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? v}>
+                <Select value={formOrgId} onValueChange={(v) => { if (v) setFormOrgId(v); }} itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? String(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select organisation" />
                   </SelectTrigger>
@@ -210,7 +210,7 @@ export default function SuperAdminBuildingsPage() {
                 <Select
                   value={formState}
                   onValueChange={(v) => setFormState(v as AustralianStateValue)}
-                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? v}
+                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? String(v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select state" />

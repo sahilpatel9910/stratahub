@@ -228,7 +228,7 @@ export default function KeysPage() {
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-2">
                 <Label>Key Type *</Label>
-                <Select value={formKeyType} onValueChange={(v) => v !== null && setFormKeyType(v)} itemToStringLabel={(v) => KEY_TYPES.find(([val]) => val === v)?.[1] ?? v}>
+                <Select value={formKeyType} onValueChange={(v) => v !== null && setFormKeyType(v)} itemToStringLabel={(v) => KEY_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -360,7 +360,7 @@ export default function KeysPage() {
               <Select
                 value={typeFilter}
                 onValueChange={(v) => setTypeFilter(v as KeyTypeFilter)}
-                itemToStringLabel={(v) => v === "ALL" ? "All Types" : KEY_TYPES.find(([val]) => val === v)?.[1] ?? v}
+                itemToStringLabel={(v) => v === "ALL" ? "All Types" : KEY_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}
               >
                 <SelectTrigger className="w-40">
                   <SelectValue />

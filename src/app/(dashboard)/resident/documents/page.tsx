@@ -42,7 +42,7 @@ export default function ResidentDocumentsPage() {
       </div>
 
       <div className="w-48">
-        <Select value={categoryFilter} onValueChange={(v) => v !== null && setCategoryFilter(v)} itemToStringLabel={(v) => v === "ALL" ? "All Categories" : CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? v}>
+        <Select value={categoryFilter} onValueChange={(v) => v !== null && setCategoryFilter(v)} itemToStringLabel={(v) => v === "ALL" ? "All Categories" : CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
           <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL" label="All Categories">All Categories</SelectItem>

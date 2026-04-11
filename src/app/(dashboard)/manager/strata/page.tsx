@@ -780,7 +780,7 @@ export default function StrataPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Unit *</Label>
-              <Select onValueChange={(v) => setLevyUnitId(String(v ?? ""))} itemToStringLabel={(v) => { const u = (unitsQuery.data ?? []).find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : v; }}>
+              <Select onValueChange={(v) => setLevyUnitId(String(v ?? ""))} itemToStringLabel={(v) => { const u = (unitsQuery.data ?? []).find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
@@ -793,7 +793,7 @@ export default function StrataPage() {
             </div>
             <div className="space-y-2">
               <Label>Levy Type *</Label>
-              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? v}>
+              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? String(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN_FUND" label="Admin Fund">Admin Fund</SelectItem>
@@ -849,7 +849,7 @@ export default function StrataPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Levy Type *</Label>
-              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setBulkLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? v}>
+              <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setBulkLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? String(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN_FUND" label="Admin Fund">Admin Fund</SelectItem>
