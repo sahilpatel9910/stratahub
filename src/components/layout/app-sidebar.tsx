@@ -72,23 +72,34 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
   }
 
   return (
-    <Sidebar className="border-r-0">
-      <SidebarHeader className="border-b border-sidebar-border/70 px-5 py-5">
+    <Sidebar variant="floating" className="border-r-0">
+      <SidebarHeader className="sidebar-surface border-b border-sidebar-border/70 px-5 py-5">
         <Link href="/manager" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-black/15">
-            <Building2 className="h-4 w-4" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(6,182,212,0.92),rgba(37,99,235,0.9))] text-white shadow-[0_16px_36px_-20px_rgba(34,211,238,0.8)]">
+            <Building2 className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-base font-semibold tracking-[-0.03em] text-sidebar-foreground">StrataHub</p>
-            <p className="text-xs text-sidebar-foreground/60">Building operations</p>
+            <p className="text-lg font-semibold tracking-[-0.04em] text-sidebar-foreground">StrataHub</p>
+            <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">Building operations</p>
           </div>
         </Link>
+        <div className="mt-5 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
+          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-sidebar-foreground/40">
+            Workspace
+          </p>
+          <p className="mt-2 text-sm font-medium text-sidebar-foreground/88">
+            Operations Console
+          </p>
+          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/52">
+            Administration, residents, access, and financial activity in one place.
+          </p>
+        </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent className="sidebar-surface px-3 py-4">
         {isAdmin && (
           <SidebarGroup className="p-0">
-            <SidebarGroupLabel className="px-3 text-[0.68rem] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+            <SidebarGroupLabel className="sidebar-section-label">
               Administration
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -98,7 +109,7 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
                     <SidebarMenuButton
                       render={<Link href={item.href} />}
                       isActive={pathname === item.href}
-                      className="h-10 rounded-xl px-3 text-sidebar-foreground/72 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+                      className="sidebar-nav-button"
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
@@ -111,7 +122,7 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
         )}
 
         <SidebarGroup className="p-0 pt-4">
-          <SidebarGroupLabel className="px-3 text-[0.68rem] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+          <SidebarGroupLabel className="sidebar-section-label">
             Property Management
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -121,7 +132,7 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
-                    className="h-10 rounded-xl px-3 text-sidebar-foreground/72 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+                    className="sidebar-nav-button"
                   >
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
@@ -133,12 +144,18 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border/70 p-3">
+      <SidebarFooter className="sidebar-surface border-t border-sidebar-border/70 p-3">
+        <div className="mb-3 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
+          <p className="text-xs font-medium text-sidebar-foreground/82">Manager mode</p>
+          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/50">
+            Stay on top of overdue tasks, resident communication, and building activity.
+          </p>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               render={<Link href="/manager/settings" />}
-              className="h-10 rounded-xl px-3 text-sidebar-foreground/72 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+              className="sidebar-nav-button"
             >
               <Settings className="h-4 w-4" />
               <span>Settings</span>
@@ -147,7 +164,7 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={handleSignOut}
-              className="h-10 rounded-xl px-3 text-sidebar-foreground/72 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+              className="sidebar-nav-button"
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
