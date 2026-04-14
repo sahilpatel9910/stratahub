@@ -83,17 +83,6 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
             <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">Building operations</p>
           </div>
         </Link>
-        <div className="mt-5 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
-          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-sidebar-foreground/40">
-            Workspace
-          </p>
-          <p className="mt-2 text-sm font-medium text-sidebar-foreground/88">
-            Operations Console
-          </p>
-          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/52">
-            Administration, residents, access, and financial activity in one place.
-          </p>
-        </div>
       </SidebarHeader>
 
       <SidebarContent className="sidebar-surface px-3 py-4">
@@ -145,12 +134,6 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
       </SidebarContent>
 
       <SidebarFooter className="sidebar-surface border-t border-sidebar-border/70 p-3">
-        <div className="mb-3 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
-          <p className="text-xs font-medium text-sidebar-foreground/82">Manager mode</p>
-          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/50">
-            Stay on top of overdue tasks, resident communication, and building activity.
-          </p>
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

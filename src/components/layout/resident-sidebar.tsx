@@ -57,17 +57,6 @@ export function ResidentSidebar() {
             <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">Resident portal</p>
           </div>
         </Link>
-        <div className="mt-5 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
-          <p className="text-[0.68rem] uppercase tracking-[0.24em] text-sidebar-foreground/40">
-            Home
-          </p>
-          <p className="mt-2 text-sm font-medium text-sidebar-foreground/88">
-            Resident Dashboard
-          </p>
-          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/52">
-            Levies, maintenance, documents, and notices arranged in one calmer place.
-          </p>
-        </div>
       </SidebarHeader>
 
       <SidebarContent className="sidebar-surface px-3 py-4">
@@ -95,12 +84,6 @@ export function ResidentSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="sidebar-surface border-t border-sidebar-border/70 p-3">
-        <div className="mb-3 rounded-2xl border border-white/8 bg-white/4 px-3 py-3">
-          <p className="text-xs font-medium text-sidebar-foreground/82">Resident mode</p>
-          <p className="mt-1 text-xs leading-5 text-sidebar-foreground/50">
-            Review account activity and building updates without the admin clutter.
-          </p>
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
