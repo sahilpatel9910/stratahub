@@ -231,6 +231,6 @@
   }
 
   .sidebar-section-label {
-    @apply px-3 text-[0.68rem] uppercase tracking-[0.24em] text-sidebar-foreground/38;
+    @apply px-3 text-[0.68rem] uppercase tracking-[0.16em] text-sidebar-foreground/38 whitespace-nowrap;
   }
 }
