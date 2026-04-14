@@ -8,14 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Building2 } from "lucide-react";
+  Building2,
+  ChevronRight,
+  ShieldCheck,
+} from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -48,40 +44,53 @@ function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-          <Building2 className="h-6 w-6 text-white" />
+    <div className="app-panel overflow-hidden">
+      <div className="border-b border-border/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(30,64,175,0.08))] px-6 py-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="panel-kicker text-primary/75">Secure Access</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+              Welcome back
+            </h1>
+          </div>
         </div>
-        <CardTitle className="text-2xl">Welcome to StrataHub</CardTitle>
-        <CardDescription>
-          Sign in to manage your properties
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleLogin}>
-        <CardContent className="space-y-4">
+        <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+          Sign in to review building activity, resident requests, and day-to-day operations.
+        </p>
+      </div>
+
+      <form onSubmit={handleLogin} className="px-6 py-6">
+        <div className="space-y-4">
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+            <div className="rounded-2xl border border-red-200 bg-red-50/90 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
               required
             />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                Password
+              </Label>
               <Link
                 href="/forgot-password"
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
               >
                 Forgot password?
               </Link>
@@ -92,23 +101,39 @@ function LoginForm() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
               required
             />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <Button
+            type="submit"
+            className="h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            disabled={loading}
+          >
             {loading ? "Signing in..." : "Sign In"}
+            {!loading && <ChevronRight className="ml-1 h-4 w-4" />}
           </Button>
-          <p className="text-sm text-gray-500">
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/55 px-4 py-3 text-sm">
+            <div className="flex items-center gap-2 text-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Secure workspace access
+            </div>
+            <span className="text-muted-foreground">Supabase Auth</span>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-blue-600 hover:underline">
+            <Link href="/register" className="font-medium text-primary transition-colors hover:text-primary/80">
               Register
             </Link>
           </p>
-        </CardFooter>
+        </div>
       </form>
-    </Card>
+    </div>
   );
 }
 

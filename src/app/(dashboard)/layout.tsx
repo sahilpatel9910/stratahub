@@ -69,11 +69,11 @@ export default async function DashboardLayout({
   return (
     <TRPCProvider>
       <SidebarProvider>
-        <div className="flex h-screen w-full">
+        <div className="app-shell flex h-screen w-full">
           <AppSidebar isSuperAdmin={isSuperAdmin} />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="workspace-backdrop flex flex-1 flex-col overflow-hidden">
             <Topbar buildings={buildings} />
-            <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+            <main className="app-main">
               {children}
             </main>
           </div>

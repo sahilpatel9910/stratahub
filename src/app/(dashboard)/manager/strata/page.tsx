@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Landmark, Calendar, CheckCircle, AlertCircle, Clock, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -174,9 +174,8 @@ export default function StrataPage() {
 
   const strataInfo = query.data;
 
-  // Pre-fill form when edit dialog opens
-  useEffect(() => {
-    if (editInfoOpen && strataInfo) {
+  function seedInfoForm() {
+    if (strataInfo) {
       setFormPlanNo(strataInfo.strataPlanNumber ?? "");
       setFormManagerName(strataInfo.strataManagerName ?? "");
       setFormManagerEmail(strataInfo.strataManagerEmail ?? "");
@@ -194,18 +193,24 @@ export default function StrataPage() {
       setFormInsuranceNo(strataInfo.insurancePolicyNo ?? "");
       setFormInsuranceExpiry(toInputDate(strataInfo.insuranceExpiry));
       setFormNextAgm(toInputDate(strataInfo.nextAgmDate));
-    } else if (editInfoOpen) {
-      setFormPlanNo("");
-      setFormManagerName("");
-      setFormManagerEmail("");
-      setFormManagerPhone("");
-      setFormAdminFund("");
-      setFormCapitalWorks("");
-      setFormInsuranceNo("");
-      setFormInsuranceExpiry("");
-      setFormNextAgm("");
+      return;
     }
-  }, [editInfoOpen, strataInfo]);
+
+    setFormPlanNo("");
+    setFormManagerName("");
+    setFormManagerEmail("");
+    setFormManagerPhone("");
+    setFormAdminFund("");
+    setFormCapitalWorks("");
+    setFormInsuranceNo("");
+    setFormInsuranceExpiry("");
+    setFormNextAgm("");
+  }
+
+  function handleEditInfoOpenChange(open: boolean) {
+    if (open) seedInfoForm();
+    setEditInfoOpen(open);
+  }
 
   function resetMeetingForm() {
     setFormMeetingTitle("");
@@ -293,7 +298,7 @@ export default function StrataPage() {
           </p>
         </div>
         <Button
-          onClick={() => setEditInfoOpen(true)}
+          onClick={() => handleEditInfoOpenChange(true)}
           disabled={!selectedBuildingId}
         >
           <Pencil className="mr-2 h-4 w-4" />
@@ -335,7 +340,7 @@ export default function StrataPage() {
                   </p>
                   <Button
                     className="mt-4"
-                    onClick={() => setEditInfoOpen(true)}
+                    onClick={() => handleEditInfoOpenChange(true)}
                   >
                     Set Up Strata
                   </Button>
@@ -652,7 +657,7 @@ export default function StrataPage() {
       )}
 
       {/* Edit Info Dialog */}
-      <Dialog open={editInfoOpen} onOpenChange={setEditInfoOpen}>
+      <Dialog open={editInfoOpen} onOpenChange={handleEditInfoOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Strata Information</DialogTitle>
@@ -755,7 +760,7 @@ export default function StrataPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setEditInfoOpen(false)}
+              onClick={() => handleEditInfoOpenChange(false)}
               disabled={upsertMutation.isPending}
             >
               Cancel

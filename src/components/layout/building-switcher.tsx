@@ -35,16 +35,10 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
     ? (buildings.find((b) => b.id === selectedBuildingId)?.organisationName ?? null)
     : null;
 
-  const [selectedOrg, setSelectedOrg] = useState<string>(
+  const [selectedOrgState, setSelectedOrgState] = useState<string>(
     selectedBuildingOrg ?? (orgNames.length === 1 ? orgNames[0] : "")
   );
-
-  // Keep org in sync if building is changed externally
-  useEffect(() => {
-    if (selectedBuildingOrg && selectedBuildingOrg !== selectedOrg) {
-      setSelectedOrg(selectedBuildingOrg);
-    }
-  }, [selectedBuildingOrg, selectedOrg]);
+  const selectedOrg = selectedBuildingOrg ?? selectedOrgState;
 
   // Buildings visible in the building dropdown
   const orgBuildings = selectedOrg
@@ -60,7 +54,7 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
 
   function handleOrgChange(orgName: string | null) {
     if (!orgName) return;
-    setSelectedOrg(orgName);
+    setSelectedOrgState(orgName);
     // Clear building if it belonged to the previous org
     const currentOrg = selectedBuildingId
       ? buildings.find((b) => b.id === selectedBuildingId)?.organisationName
@@ -77,14 +71,14 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       {/* Organisation selector */}
       <Select
         value={selectedOrg}
         onValueChange={handleOrgChange}
         itemToStringLabel={(v) => String(v ?? "")}
       >
-        <SelectTrigger className="w-44">
+        <SelectTrigger className="h-11 w-full rounded-xl border-white/70 bg-white/85 px-3 shadow-none sm:w-44">
           <SelectValue placeholder="Select org" />
         </SelectTrigger>
         <SelectContent>
@@ -106,7 +100,7 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
           return b ? b.name : s;
         }}
       >
-        <SelectTrigger className="w-52">
+        <SelectTrigger className="h-11 w-full rounded-xl border-white/70 bg-white/85 px-3 shadow-none sm:w-56">
           <SelectValue placeholder="Select building" />
         </SelectTrigger>
         <SelectContent>

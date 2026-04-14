@@ -59,97 +59,109 @@ export function Topbar({ buildings }: TopbarProps) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-white px-4">
-      <SidebarTrigger />
-      <Separator orientation="vertical" className="h-6" />
+    <header className="border-b border-border/70 bg-white/70 px-4 py-3 backdrop-blur-md md:px-6">
+      <div className="flex min-h-14 items-center gap-3">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="rounded-xl border border-white/70 bg-white/85 hover:bg-white" />
+          <Separator orientation="vertical" className="hidden h-6 bg-border md:block" />
+        </div>
+
+        {!isSuperAdminPage && (
+          <div className="hidden min-w-0 flex-1 xl:block">
+            <BuildingSwitcher buildings={buildings} />
+          </div>
+        )}
+
+        <div className="relative ml-auto flex-1 max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search residents, units, parcels..."
+            className="h-11 rounded-xl border-white/70 bg-white/85 pl-9 pr-4 shadow-none"
+          />
+        </div>
+
+        <div className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative size-11 rounded-xl border border-white/70 bg-white/85 hover:bg-white"
+            onClick={() => setBellOpen((o) => !o)}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </Button>
+
+          {bellOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setBellOpen(false)}
+              />
+
+              <div className="absolute right-0 top-12 z-50 w-[22rem] overflow-hidden rounded-[1rem] border border-border bg-popover shadow-lg">
+                <div className="flex items-center justify-between border-b border-border px-4 py-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Notifications</p>
+                    <p className="text-xs text-muted-foreground">Latest building activity</p>
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => markAllRead.mutate()}
+                      className="flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    >
+                      <Check className="h-3 w-3" />
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n.id, n.isRead, n.linkUrl)}
+                        className={`w-full border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/60 ${!n.isRead ? "bg-muted/40" : ""}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${!n.isRead ? "bg-primary" : "bg-border"}`} />
+                          <div className="min-w-0">
+                            <p className={`text-sm ${!n.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
+                              {n.title}
+                            </p>
+                            {n.body && (
+                              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{n.body}</p>
+                            )}
+                            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {!isSuperAdminPage && (
-        <BuildingSwitcher buildings={buildings} />
+        <div className="mt-3 xl:hidden">
+          <div className="rounded-2xl border border-white/70 bg-white/75 p-3 backdrop-blur-sm">
+            <BuildingSwitcher buildings={buildings} />
+          </div>
+        </div>
       )}
-
-      <div className="relative ml-auto flex-1 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search residents, units..."
-          className="pl-9"
-        />
-      </div>
-
-      {/* Notification Bell */}
-      <div className="relative">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          onClick={() => setBellOpen((o) => !o)}
-        >
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </Button>
-
-        {bellOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setBellOpen(false)}
-            />
-
-            {/* Dropdown */}
-            <div className="absolute right-0 top-10 z-50 w-80 rounded-lg border bg-white shadow-lg">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <span className="font-semibold text-sm">Notifications</span>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={() => markAllRead.mutate()}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    <Check className="h-3 w-3" />
-                    Mark all read
-                  </button>
-                )}
-              </div>
-
-              <div className="max-h-96 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    No notifications yet
-                  </div>
-                ) : (
-                  notifications.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => handleNotificationClick(n.id, n.isRead, n.linkUrl)}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0 transition-colors ${!n.isRead ? "bg-blue-50/50" : ""}`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {!n.isRead && (
-                          <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
-                        )}
-                        <div className={!n.isRead ? "" : "ml-4"}>
-                          <p className={`text-sm ${!n.isRead ? "font-semibold" : "font-medium"}`}>
-                            {n.title}
-                          </p>
-                          {n.body && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
     </header>
   );
 }
