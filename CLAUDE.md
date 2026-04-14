@@ -898,3 +898,33 @@ After fixing the above bugs, continue testing these manager pages that were not 
 13. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
 
 14. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
+
+
+
+# updated this with codex agent
+
+Updated the frontend on `codex/frontendimprovement` with a shared visual refresh across auth, dashboard chrome, and core manager/resident landing pages.
+
+Main UI changes:
+- Reworked global design tokens in [globals.css](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/globals.css): new light neutral/blue palette, softer cards, shared panel utilities, toned-down workspace backdrop, and sidebar styling utilities.
+- Switched typography in [layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/layout.tsx) from Geist to `Plus Jakarta Sans` + `JetBrains Mono`, and fixed font-token wiring in `globals.css`.
+- Redesigned auth shell in [src/app/(auth)/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(auth)/layout.tsx) and [login/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(auth)/login/page.tsx) with a more polished split layout and updated sign-in card.
+- Updated shared dashboard shell in [src/app/(dashboard)/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/layout.tsx) and [src/app/(dashboard)/resident/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/layout.tsx) to use the shared app shell/backdrop classes.
+- Reworked top navigation in [topbar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/topbar.tsx): improved search, notifications dropdown, and mobile building-switcher presentation.
+- Restyled [building-switcher.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/building-switcher.tsx) and removed the lint-triggering sync effect by deriving selected org from state/building context.
+- Redesigned [app-sidebar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/app-sidebar.tsx) and [resident-sidebar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/resident-sidebar.tsx) into a floating, more modern sidebar with cleaner nav states; later removed extra “workspace / mode” info cards and fixed section-label alignment so labels do not wrap awkwardly.
+- Rebuilt [manager/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/page.tsx) into a more editorial operations dashboard with hero summary, stat panels, priority actions, announcements, and maintenance sections.
+- Rebuilt [resident/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/page.tsx) to match the new design language with cleaner status cards and announcements.
+
+Non-visual code changes made to keep checks passing:
+- Fixed React 19 `set-state-in-effect` lint issues in [manager/settings/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/settings/page.tsx) by removing effect-based form seeding and using draft state derived from loaded user data.
+- Fixed the same pattern in [manager/strata/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/strata/page.tsx) by moving dialog form seeding into the dialog open handler instead of `useEffect`.
+
+Git/branch notes:
+- Deleted old conflicting `codex` branch so requested branch name could exist.
+- All work was committed and pushed only to `codex/frontendimprovement`.
+- Latest visible polish commits included backdrop tuning, sidebar/typography refresh, sidebar simplification, and section-label alignment fixes.
+
+Verification notes:
+- `npm run lint -- .` passes with warnings only; remaining warnings are pre-existing unrelated files.
+- `npm run build` was blocked in sandbox because `next/font/google` could not fetch fonts over restricted network, not because of app code errors.
