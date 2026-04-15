@@ -2,9 +2,18 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const CATEGORY_LABELS: Record<string, string> = {
   LEASE_AGREEMENT: "Lease Agreement",
@@ -49,7 +58,7 @@ export default function ResidentDocumentsPage() {
 
       <div className="w-48">
         <Select value={categoryFilter} onValueChange={(v) => v !== null && setCategoryFilter(v)} itemToStringLabel={(v) => v === "ALL" ? "All Categories" : CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
-          <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectTrigger className="w-full rounded-xl bg-background"><SelectValue placeholder="All categories" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL" label="All Categories">All Categories</SelectItem>
             {Object.entries(CATEGORY_LABELS).map(([v, l]) => (
@@ -59,7 +68,8 @@ export default function ResidentDocumentsPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <Card>
+        <CardContent className="p-0">
         {isLoading ? (
           <div className="px-6 py-10 text-center text-sm text-muted-foreground">Loading...</div>
         ) : documents.length === 0 ? (
@@ -68,21 +78,21 @@ export default function ResidentDocumentsPage() {
             <p className="text-sm text-muted-foreground">No documents available</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left">
-                <th className="px-4 py-3 font-medium">Document</th>
-                <th className="px-4 py-3 font-medium">Category</th>
-                <th className="px-4 py-3 font-medium">Uploaded By</th>
-                <th className="px-4 py-3 font-medium">Size</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Document</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Uploaded By</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <TableRow key={doc.id}>
+                  <TableCell className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div>
@@ -92,35 +102,37 @@ export default function ResidentDocumentsPage() {
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {CATEGORY_LABELS[doc.category] ?? doc.category}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {doc.uploadedBy.firstName} {doc.uploadedBy.lastName}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {formatFileSize(doc.fileSize)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {new Date(doc.createdAt).toLocaleDateString("en-AU")}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label={`Download document ${doc.title}`}
                       onClick={() => handleDownload(doc.id)}
                     >
                       <Download className="h-4 w-4 mr-1" />
                       Download
                     </Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

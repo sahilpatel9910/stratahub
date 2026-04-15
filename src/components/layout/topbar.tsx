@@ -83,6 +83,7 @@ export function Topbar({
         <div className="relative ml-auto flex-1 max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label={searchPlaceholder}
             placeholder={searchPlaceholder}
             className="h-11 rounded-xl border-white/70 bg-white/85 pl-9 pr-4 shadow-none"
           />
@@ -92,6 +93,7 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
+            aria-label={bellOpen ? "Close notifications" : "Open notifications"}
             className="relative size-11 rounded-xl border border-white/70 bg-white/85 hover:bg-white"
             onClick={() => setBellOpen((o) => !o)}
           >
