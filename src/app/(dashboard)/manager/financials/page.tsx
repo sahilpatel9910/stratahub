@@ -237,7 +237,7 @@ export default function FinancialsPage() {
                       onChange={(e) => setFormDescription(e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="finAmount">Amount (AUD) *</Label>
                       <Input
@@ -306,7 +306,7 @@ export default function FinancialsPage() {
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
