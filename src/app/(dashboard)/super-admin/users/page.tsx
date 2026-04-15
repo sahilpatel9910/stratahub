@@ -331,7 +331,9 @@ export default function SuperAdminUsersPage() {
                                   primaryMembership.role}
                               </Badge>
                             ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
+                              <Badge variant="secondary" className="text-xs">
+                                Unassigned
+                              </Badge>
                             )}
                           </TableCell>
                           <TableCell>

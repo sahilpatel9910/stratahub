@@ -64,7 +64,11 @@ export default async function ManagerLayout({
     }));
   } else if (dbUser) {
     const assignments = await db.buildingAssignment.findMany({
-      where: { userId: dbUser.id, isActive: true },
+      where: {
+        userId: dbUser.id,
+        isActive: true,
+        role: { in: ["BUILDING_MANAGER", "RECEPTION"] },
+      },
       include: {
         building: {
           select: {
@@ -90,7 +94,10 @@ export default async function ManagerLayout({
     <div className="app-shell flex h-screen w-full">
       <AppSidebar isSuperAdmin={isSuperAdmin} />
       <div className="workspace-backdrop flex flex-1 flex-col overflow-hidden">
-        <Topbar buildings={buildings} />
+        <Topbar
+          buildings={buildings}
+          showBuildingSwitcher={isSuperAdmin || buildings.length > 1}
+        />
         <main className="app-main">{children}</main>
       </div>
     </div>

@@ -1002,3 +1002,27 @@ Verification notes:
 - `npx tsc --noEmit` passes.
 - `npm run lint` still passes with only the same three older warnings in `manager/rent/page.tsx` and `server/trpc/routers/users.ts`.
 - No paid-tier features or new external services were introduced; all fixes remain free-tier friendly.
+
+# updated this with codex agent - phase 2 verification and access fixes
+
+Added the first round of Phase 2 verification-driven fixes across redirects, CRUD affordances, user visibility, manager invite permissions, and manager building scoping.
+
+Phase 2 changes:
+- Introduced shared role helpers in [src/lib/auth/roles.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/lib/auth/roles.ts) so dashboard redirects and upgrade-only role comparisons use one source of truth.
+- Added lightweight regression coverage in:
+  - [src/lib/auth/roles.test.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/lib/auth/roles.test.ts)
+  - [src/server/auth/building-access.test.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/server/auth/building-access.test.ts)
+- Fixed manager residents and rent pages so summary cards and counts stay truthful even when the table view is filtered.
+- Fixed messaging inbox unread state so thread indicators reflect unread messages anywhere in the thread instead of only the latest row.
+- Fixed parcel return handling so returned parcels no longer retain stale collection metadata.
+- Replaced dead super-admin CRUD controls by wiring real edit dialogs into:
+  - [src/app/(dashboard)/super-admin/organisations/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/super-admin/organisations/page.tsx)
+  - [src/app/(dashboard)/super-admin/buildings/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/super-admin/buildings/page.tsx)
+- Expanded the super-admin user directory to include active registered-but-unassigned users and label them clearly as `Unassigned`.
+- Added a manager-safe resident invite flow in [src/app/(dashboard)/manager/residents/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/residents/page.tsx) backed by `users.createManagerInvite`, limited to `OWNER`/`TENANT` invites for the currently selected building.
+- Tightened manager workspace scoping so non-super-admin manager sessions only load manager-capable building assignments, clear stale persisted building selections, and auto-select the single allowed building when appropriate.
+
+Verification notes:
+- `npm run lint` passes.
+- `npx tsc --noEmit` passes.
+- `npm test` passes with 10/10 tests.
