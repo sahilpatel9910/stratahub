@@ -128,10 +128,7 @@ function LoginForm() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-medium text-primary transition-colors hover:text-primary/80">
-              Register
-            </Link>
+            Access is invite-only. Ask your strata team for an invitation link, then return here to sign in.
           </p>
         </div>
       </form>
