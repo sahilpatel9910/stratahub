@@ -45,9 +45,11 @@ function RegisterForm() {
 
     setLoading(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const supabase = createClient();
     const { data: signUpData, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -59,6 +61,18 @@ function RegisterForm() {
 
     if (error) {
       setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Supabase can return an obfuscated/fake user for an existing confirmed email.
+    // In that case, `identities` is typically an empty array and no new account was created.
+    if (
+      signUpData.user &&
+      Array.isArray(signUpData.user.identities) &&
+      signUpData.user.identities.length === 0
+    ) {
+      setError("An account with this email already exists. Please sign in instead.");
       setLoading(false);
       return;
     }
@@ -90,6 +104,7 @@ function RegisterForm() {
     }
 
     router.push(inviteToken ? `/invite/${inviteToken}` : "/login?registered=true");
+    setLoading(false);
   }
 
   return (
