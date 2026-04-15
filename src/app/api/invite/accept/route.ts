@@ -102,6 +102,50 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (invite.unitId && invite.role === "OWNER") {
+    await db.$transaction(async (tx) => {
+      await tx.ownership.updateMany({
+        where: { unitId: invite.unitId!, isActive: true },
+        data: { isActive: false },
+      });
+
+      await tx.tenancy.updateMany({
+        where: { unitId: invite.unitId!, isActive: true },
+        data: {
+          isActive: false,
+          moveOutDate: new Date(),
+        },
+      });
+
+      await tx.ownership.upsert({
+        where: {
+          userId_unitId: {
+            userId: dbUser.id,
+            unitId: invite.unitId!,
+          },
+        },
+        create: {
+          userId: dbUser.id,
+          unitId: invite.unitId!,
+          isPrimary: true,
+          ownershipPct: 100,
+          purchaseDate: new Date(),
+        },
+        update: {
+          isActive: true,
+          isPrimary: true,
+          ownershipPct: 100,
+          purchaseDate: new Date(),
+        },
+      });
+
+      await tx.unit.update({
+        where: { id: invite.unitId! },
+        data: { isOccupied: true },
+      });
+    });
+  }
+
   // Mark invite as accepted
   await db.invitation.update({
     where: { id: invite.id },

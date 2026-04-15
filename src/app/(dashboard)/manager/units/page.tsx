@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Bath, BedDouble, Building2, DoorOpen, Home, Plus, Search, SquareMenu } from "lucide-react";
+import { Bath, BedDouble, Building2, DoorOpen, Home, Plus, Search, SquareMenu, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,8 @@ import { UNIT_TYPE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 
 type OccupancyFilter = "all" | "occupied" | "vacant";
+type ResidentAssignmentRole = "OWNER" | "TENANT";
+type RentFrequency = "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
 
 const UNIT_TYPES = Object.entries(UNIT_TYPE_LABELS) as [
   keyof typeof UNIT_TYPE_LABELS,
@@ -64,6 +66,22 @@ export default function UnitsPage() {
   const [formSize, setFormSize] = useState("");
   const [formParking, setFormParking] = useState("0");
   const [formStorage, setFormStorage] = useState("0");
+  const [ownerFirstName, setOwnerFirstName] = useState("");
+  const [ownerLastName, setOwnerLastName] = useState("");
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
+
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignUnitId, setAssignUnitId] = useState("");
+  const [assignRole, setAssignRole] = useState<ResidentAssignmentRole>("OWNER");
+  const [assignResidentUserId, setAssignResidentUserId] = useState("");
+  const [assignPurchaseDate, setAssignPurchaseDate] = useState("");
+  const [assignLeaseStartDate, setAssignLeaseStartDate] = useState("");
+  const [assignLeaseEndDate, setAssignLeaseEndDate] = useState("");
+  const [assignRentAmount, setAssignRentAmount] = useState("");
+  const [assignRentFrequency, setAssignRentFrequency] = useState<RentFrequency>("MONTHLY");
+  const [assignBondAmount, setAssignBondAmount] = useState("");
+  const [assignMoveInDate, setAssignMoveInDate] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -72,15 +90,36 @@ export default function UnitsPage() {
     { placeholderData: (prev) => prev }
   );
 
+  const residentsQuery = trpc.residents.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
+  );
+
   const createMutation = trpc.units.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
       utils.units.listByBuilding.invalidate();
       utils.buildings.getStats.invalidate();
       setDialogOpen(false);
       resetForm();
-      toast.success("Unit created");
+      toast.success(
+        result.ownerStatus === "linked"
+          ? "Unit created and owner linked"
+          : "Unit created and owner invite sent"
+      );
     },
     onError: (err) => toast.error(err.message ?? "Failed to create unit"),
+  });
+
+  const assignResidentMutation = trpc.units.assignResident.useMutation({
+    onSuccess: () => {
+      utils.units.listByBuilding.invalidate();
+      utils.residents.listByBuilding.invalidate();
+      utils.buildings.getStats.invalidate();
+      setAssignDialogOpen(false);
+      resetAssignForm();
+      toast.success("Unit resident updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to assign resident"),
   });
 
   function resetForm() {
@@ -91,10 +130,35 @@ export default function UnitsPage() {
     setFormSize("");
     setFormParking("0");
     setFormStorage("0");
+    setOwnerFirstName("");
+    setOwnerLastName("");
+    setOwnerEmail("");
+    setOwnerPhone("");
+  }
+
+  function resetAssignForm() {
+    setAssignUnitId("");
+    setAssignRole("OWNER");
+    setAssignResidentUserId("");
+    setAssignPurchaseDate("");
+    setAssignLeaseStartDate("");
+    setAssignLeaseEndDate("");
+    setAssignRentAmount("");
+    setAssignRentFrequency("MONTHLY");
+    setAssignBondAmount("");
+    setAssignMoveInDate("");
   }
 
   function handleCreate() {
-    if (!selectedBuildingId || !formUnitNumber.trim()) return;
+    if (
+      !selectedBuildingId ||
+      !formUnitNumber.trim() ||
+      !ownerFirstName.trim() ||
+      !ownerLastName.trim() ||
+      !ownerEmail.trim() ||
+      !ownerPhone.trim()
+    ) return;
+
     createMutation.mutate({
       buildingId: selectedBuildingId,
       unitNumber: formUnitNumber.trim(),
@@ -104,10 +168,35 @@ export default function UnitsPage() {
       squareMetres: formSize ? parseFloat(formSize) : undefined,
       parkingSpaces: parseInt(formParking) || 0,
       storageSpaces: parseInt(formStorage) || 0,
+      ownerFirstName: ownerFirstName.trim(),
+      ownerLastName: ownerLastName.trim(),
+      ownerEmail: ownerEmail.trim().toLowerCase(),
+      ownerPhone: ownerPhone.trim(),
+    });
+  }
+
+  function handleAssignResident() {
+    if (!assignUnitId || !assignResidentUserId) return;
+
+    assignResidentMutation.mutate({
+      unitId: assignUnitId,
+      residentUserId: assignResidentUserId,
+      role: assignRole,
+      purchaseDate: assignPurchaseDate ? new Date(assignPurchaseDate) : undefined,
+      leaseStartDate: assignLeaseStartDate ? new Date(assignLeaseStartDate) : undefined,
+      leaseEndDate: assignLeaseEndDate ? new Date(assignLeaseEndDate) : undefined,
+      rentAmountCents: assignRentAmount ? Math.round(parseFloat(assignRentAmount) * 100) : undefined,
+      rentFrequency: assignRentFrequency,
+      bondAmountCents: assignBondAmount ? Math.round(parseFloat(assignBondAmount) * 100) : undefined,
+      moveInDate: assignMoveInDate ? new Date(assignMoveInDate) : undefined,
     });
   }
 
   const allUnits = query.data ?? [];
+  const allResidents = residentsQuery.data ?? [];
+  const assignableResidents = allResidents.filter((resident) =>
+    resident.buildingRole === assignRole
+  );
 
   const filtered = allUnits
     .filter((u) => {
@@ -174,103 +263,148 @@ export default function UnitsPage() {
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="grid gap-4 md:grid-cols-2">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="unitNumber">Unit Number *</Label>
-                <Input
-                  id="unitNumber"
-                  className="h-11 rounded-xl bg-background"
-                  placeholder="e.g. 101, PH1"
-                  value={formUnitNumber}
-                  onChange={(e) => setFormUnitNumber(e.target.value)}
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Unit Type</Label>
-                <Select
-                  value={formUnitType}
-                  onValueChange={(v) =>
-                    setFormUnitType(v as keyof typeof UNIT_TYPE_LABELS)
-                  }
-                  itemToStringLabel={(v) => UNIT_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}
-                >
-                  <SelectTrigger className="h-11 w-full rounded-xl bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {UNIT_TYPES.map(([value, label]) => (
-                      <SelectItem key={value} value={value} label={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bedrooms">Bedrooms</Label>
-                <Input
-                  id="bedrooms"
-                  type="number"
-                  min="0"
-                  className="h-11 rounded-xl bg-background"
-                  placeholder="0"
-                  value={formBedrooms}
-                  onChange={(e) => setFormBedrooms(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bathrooms">Bathrooms</Label>
-                <Input
-                  id="bathrooms"
-                  type="number"
-                  min="0"
-                  className="h-11 rounded-xl bg-background"
-                  placeholder="0"
-                  value={formBathrooms}
-                  onChange={(e) => setFormBathrooms(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="size">Size (m²)</Label>
-                <Input
-                  id="size"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  className="h-11 rounded-xl bg-background"
-                  placeholder="e.g. 85.5"
-                  value={formSize}
-                  onChange={(e) => setFormSize(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="parking">Parking Spaces</Label>
-                <Input
-                  id="parking"
-                  type="number"
-                  min="0"
-                  className="h-11 rounded-xl bg-background"
-                  value={formParking}
-                  onChange={(e) => setFormParking(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="storage">Storage Spaces</Label>
-                <Input
-                  id="storage"
-                  type="number"
-                  min="0"
-                  className="h-11 rounded-xl bg-background"
-                  value={formStorage}
-                  onChange={(e) => setFormStorage(e.target.value)}
-                />
-              </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="unitNumber">Unit Number *</Label>
+                    <Input
+                      id="unitNumber"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. 101, PH1"
+                      value={formUnitNumber}
+                      onChange={(e) => setFormUnitNumber(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label>Unit Type</Label>
+                    <Select
+                      value={formUnitType}
+                      onValueChange={(v) =>
+                        setFormUnitType(v as keyof typeof UNIT_TYPE_LABELS)
+                      }
+                      itemToStringLabel={(v) => UNIT_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}
+                    >
+                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNIT_TYPES.map(([value, label]) => (
+                          <SelectItem key={value} value={value} label={label}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bedrooms">Bedrooms</Label>
+                    <Input
+                      id="bedrooms"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="0"
+                      value={formBedrooms}
+                      onChange={(e) => setFormBedrooms(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bathrooms">Bathrooms</Label>
+                    <Input
+                      id="bathrooms"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="0"
+                      value={formBathrooms}
+                      onChange={(e) => setFormBathrooms(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="size">Size (m²)</Label>
+                    <Input
+                      id="size"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. 85.5"
+                      value={formSize}
+                      onChange={(e) => setFormSize(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="parking">Parking Spaces</Label>
+                    <Input
+                      id="parking"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl bg-background"
+                      value={formParking}
+                      onChange={(e) => setFormParking(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="storage">Storage Spaces</Label>
+                    <Input
+                      id="storage"
+                      type="number"
+                      min="0"
+                      className="h-11 rounded-xl bg-background"
+                      value={formStorage}
+                      onChange={(e) => setFormStorage(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 mt-3 border-t border-border/70 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Mandatory owner details
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Every new unit must start with an owner record. If the owner already has an account, they will be linked immediately. Otherwise, StrataHub sends them an owner invite for this unit.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerFirstName">Owner First Name *</Label>
+                    <Input
+                      id="ownerFirstName"
+                      className="h-11 rounded-xl bg-background"
+                      value={ownerFirstName}
+                      onChange={(e) => setOwnerFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerLastName">Owner Last Name *</Label>
+                    <Input
+                      id="ownerLastName"
+                      className="h-11 rounded-xl bg-background"
+                      value={ownerLastName}
+                      onChange={(e) => setOwnerLastName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerEmail">Owner Email *</Label>
+                    <Input
+                      id="ownerEmail"
+                      type="email"
+                      className="h-11 rounded-xl bg-background"
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ownerPhone">Owner Phone *</Label>
+                    <Input
+                      id="ownerPhone"
+                      className="h-11 rounded-xl bg-background"
+                      value={ownerPhone}
+                      onChange={(e) => setOwnerPhone(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Planning details
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Capture the layout and capacity basics now so occupancy, parking, storage, maintenance, and resident assignment screens stay accurate later.
+                    Capture the layout, ownership, and capacity basics now so occupancy, parking, storage, maintenance, and resident assignment screens stay accurate later.
                   </p>
                 </div>
               </div>
@@ -285,7 +419,14 @@ export default function UnitsPage() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!formUnitNumber.trim() || createMutation.isPending}
+                disabled={
+                  !formUnitNumber.trim() ||
+                  !ownerFirstName.trim() ||
+                  !ownerLastName.trim() ||
+                  !ownerEmail.trim() ||
+                  !ownerPhone.trim() ||
+                  createMutation.isPending
+                }
               >
                 {createMutation.isPending ? "Creating..." : "Create Unit"}
               </Button>
@@ -335,13 +476,14 @@ export default function UnitsPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Resident</TableHead>
                       <TableHead>Maintenance</TableHead>
+                      <TableHead className="text-right">Assign</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {query.isLoading ? (
                       Array.from({ length: 6 }).map((_, i) => (
                         <TableRow key={i}>
-                          {Array.from({ length: 8 }).map((_, j) => (
+                          {Array.from({ length: 9 }).map((_, j) => (
                             <TableCell key={j}>
                               <Skeleton className="h-4 w-16" />
                             </TableCell>
@@ -351,7 +493,7 @@ export default function UnitsPage() {
                     ) : filtered.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={8}
+                          colSpan={9}
                           className="py-12 text-center text-muted-foreground"
                         >
                           {search
@@ -375,10 +517,7 @@ export default function UnitsPage() {
                             : null;
 
                         return (
-                          <TableRow
-                            key={unit.id}
-                            className="cursor-pointer hover:bg-muted/50"
-                          >
+                          <TableRow key={unit.id} className="hover:bg-muted/50">
                             <TableCell className="font-semibold">
                               {unit.unitNumber}
                             </TableCell>
@@ -458,6 +597,21 @@ export default function UnitsPage() {
                                 "—"
                               )}
                             </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 rounded-lg"
+                                onClick={() => {
+                                  resetAssignForm();
+                                  setAssignUnitId(unit.id);
+                                  setAssignDialogOpen(true);
+                                }}
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Assign
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         );
                       })
@@ -469,6 +623,191 @@ export default function UnitsPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      <Dialog
+        open={assignDialogOpen}
+        onOpenChange={(open) => {
+          setAssignDialogOpen(open);
+          if (!open) resetAssignForm();
+        }}
+      >
+        <DialogContent className="max-w-2xl p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Assign resident to unit</DialogTitle>
+            <DialogDescription className="px-6">
+              Link an existing owner or tenant to this unit. Owner assignment marks the owner as the active occupier. Tenant assignment requires lease details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 px-6 pb-6 pt-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Resident Type</Label>
+              <Select
+                value={assignRole}
+                onValueChange={(value) => {
+                  setAssignRole(value as ResidentAssignmentRole);
+                  setAssignResidentUserId("");
+                }}
+                itemToStringLabel={(value) => (value === "OWNER" ? "Owner" : "Tenant")}
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OWNER" label="Owner">
+                    Owner
+                  </SelectItem>
+                  <SelectItem value="TENANT" label="Tenant">
+                    Tenant
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Resident</Label>
+              <Select
+                value={assignResidentUserId}
+                onValueChange={(value) => {
+                  if (value !== null) setAssignResidentUserId(value);
+                }}
+                itemToStringLabel={(value) => {
+                  const resident = assignableResidents.find((entry) => entry.id === value);
+                  return resident ? `${resident.firstName} ${resident.lastName}` : String(value);
+                }}
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                  <SelectValue placeholder={`Select a ${assignRole === "OWNER" ? "owner" : "tenant"}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignableResidents.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No {assignRole === "OWNER" ? "owners" : "tenants"} are available in this building yet.
+                    </div>
+                  ) : (
+                    assignableResidents.map((resident) => (
+                      <SelectItem
+                        key={resident.id}
+                        value={resident.id}
+                        label={`${resident.firstName} ${resident.lastName}`}
+                      >
+                        {resident.firstName} {resident.lastName}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {assignRole === "OWNER" ? (
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="purchaseDate">Ownership Start</Label>
+                <Input
+                  id="purchaseDate"
+                  type="date"
+                  className="h-11 rounded-xl bg-background"
+                  value={assignPurchaseDate}
+                  onChange={(e) => setAssignPurchaseDate(e.target.value)}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="leaseStartDate">Lease Start *</Label>
+                  <Input
+                    id="leaseStartDate"
+                    type="date"
+                    className="h-11 rounded-xl bg-background"
+                    value={assignLeaseStartDate}
+                    onChange={(e) => setAssignLeaseStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="leaseEndDate">Lease End</Label>
+                  <Input
+                    id="leaseEndDate"
+                    type="date"
+                    className="h-11 rounded-xl bg-background"
+                    value={assignLeaseEndDate}
+                    onChange={(e) => setAssignLeaseEndDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rentAmount">Rent Amount (AUD) *</Label>
+                  <Input
+                    id="rentAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="h-11 rounded-xl bg-background"
+                    value={assignRentAmount}
+                    onChange={(e) => setAssignRentAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rent Frequency *</Label>
+                  <Select
+                    value={assignRentFrequency}
+                    onValueChange={(value) => setAssignRentFrequency(value as RentFrequency)}
+                    itemToStringLabel={(value) => value.toLowerCase()}
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="WEEKLY" label="Weekly">Weekly</SelectItem>
+                      <SelectItem value="FORTNIGHTLY" label="Fortnightly">Fortnightly</SelectItem>
+                      <SelectItem value="MONTHLY" label="Monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bondAmount">Bond Amount (AUD) *</Label>
+                  <Input
+                    id="bondAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="h-11 rounded-xl bg-background"
+                    value={assignBondAmount}
+                    onChange={(e) => setAssignBondAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="moveInDate">Move-in Date</Label>
+                  <Input
+                    id="moveInDate"
+                    type="date"
+                    className="h-11 rounded-xl bg-background"
+                    value={assignMoveInDate}
+                    onChange={(e) => setAssignMoveInDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            <Button
+              variant="outline"
+              onClick={() => setAssignDialogOpen(false)}
+              disabled={assignResidentMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignResident}
+              disabled={
+                !assignResidentUserId ||
+                assignResidentMutation.isPending ||
+                (assignRole === "TENANT" &&
+                  (!assignLeaseStartDate.trim() ||
+                    !assignRentAmount.trim() ||
+                    !assignBondAmount.trim()))
+              }
+            >
+              {assignResidentMutation.isPending ? "Saving..." : "Assign Resident"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
