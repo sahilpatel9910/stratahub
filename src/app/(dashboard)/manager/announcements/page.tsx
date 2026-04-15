@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Trash2, Megaphone } from "lucide-react";
+import { Megaphone, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,13 +114,37 @@ export default function AnnouncementsPage() {
   }
 
   const announcements = query.data ?? [];
+  const urgentCount = announcements.filter((announcement) => announcement.priority === "URGENT").length;
+  const scheduledExpiryCount = announcements.filter((announcement) => !!announcement.expiresAt).length;
 
   return (
     <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Announcements and building notices
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Publish updates for residents and staff, highlight urgent disruptions, and keep important notices visible.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Broadcast status</p>
+            <div className="mt-4 space-y-3">
+              <AnnouncementSignal label="Live announcements" value={`${announcements.length}`} />
+              <AnnouncementSignal label="Urgent notices" value={`${urgentCount}`} />
+              <AnnouncementSignal label="Timed expiry" value={`${scheduledExpiryCount}`} />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Announcements</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Announcement feed</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Broadcast messages to residents and staff
           </p>
         </div>
@@ -131,76 +155,91 @@ export default function AnnouncementsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} className="h-11 rounded-xl px-5" />}>
             <Plus className="mr-2 h-4 w-4" />
             New Announcement
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>New Announcement</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="px-6 pt-6">New Announcement</DialogTitle>
+              <DialogDescription className="px-6">
                 Publish a notice to building residents
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="annTitle">Title *</Label>
-                <Input
-                  id="annTitle"
-                  placeholder="e.g. Water Shutdown Notice"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="annContent">Message *</Label>
-                <Textarea
-                  id="annContent"
-                  placeholder="Announcement details..."
-                  value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? String(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="annTitle">Title *</Label>
+                    <Input
+                      id="annTitle"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. Water Shutdown Notice"
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="annContent">Message *</Label>
+                    <Textarea
+                      id="annContent"
+                      className="min-h-32 rounded-xl bg-background"
+                      placeholder="Announcement details..."
+                      value={formContent}
+                      onChange={(e) => setFormContent(e.target.value)}
+                      rows={5}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Scope</Label>
-                  <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? String(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(SCOPE_LABELS).map(([v, l]) => (
-                        <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Delivery settings
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Choose how broadly the notice should be seen and when it should expire from the feed.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? String(v)}>
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
+                            <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Scope</Label>
+                      <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? String(v)}>
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(SCOPE_LABELS).map(([v, l]) => (
+                            <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="expiresAt">Expires (optional)</Label>
+                      <Input
+                        id="expiresAt"
+                        className="h-11 rounded-xl bg-background"
+                        type="date"
+                        value={formExpiresAt}
+                        onChange={(e) => setFormExpiresAt(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="expiresAt">Expires (optional)</Label>
-                <Input
-                  id="expiresAt"
-                  type="date"
-                  value={formExpiresAt}
-                  onChange={(e) => setFormExpiresAt(e.target.value)}
-                />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
@@ -291,6 +330,7 @@ export default function AnnouncementsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={`Delete announcement ${ann.title}`}
                     className="shrink-0 text-muted-foreground hover:text-red-600"
                     disabled={deleteMutation.isPending}
                     onClick={() => deleteMutation.mutate({ id: ann.id })}
@@ -303,6 +343,21 @@ export default function AnnouncementsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AnnouncementSignal({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

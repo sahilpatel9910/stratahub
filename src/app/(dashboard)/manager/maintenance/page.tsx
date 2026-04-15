@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Search, MessageSquare, MoreHorizontal } from "lucide-react";
+import { AlertTriangle, ClipboardList, MessageSquare, MoreHorizontal, Plus, Search, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -220,10 +220,32 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Maintenance queue and job tracking
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Review incoming issues, triage priority, and move requests through to completion without losing the audit trail.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Queue status</p>
+            <div className="mt-4 space-y-3">
+              <MaintenanceSignal icon={ClipboardList} label="All requests" value={`${allRequests.length}`} tone="text-slate-600" />
+              <MaintenanceSignal icon={Wrench} label="Active jobs" value={`${activeCount}`} tone="text-blue-600" />
+              <MaintenanceSignal icon={AlertTriangle} label="Cancelled" value={`${cancelledCount}`} tone="text-orange-600" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Maintenance</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Maintenance requests</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Track and manage maintenance requests
           </p>
         </div>
@@ -234,105 +256,119 @@ export default function MaintenancePage() {
             if (!open) resetCreateForm();
           }}
         >
-          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} className="h-11 rounded-xl px-5" />}>
             <Plus className="mr-2 h-4 w-4" />
             New Request
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>New Maintenance Request</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="px-6 pt-6">New Maintenance Request</DialogTitle>
+              <DialogDescription className="px-6">
                 Log a maintenance issue for a unit in this building
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Unit *</Label>
-                <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)} itemToStringLabel={(v) => { const u = units.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select unit..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((u) => {
-                      const resident = u.ownerships[0] || u.tenancies[0]
-                        ? ` — ${u.ownerships[0] ? `${u.ownerships[0].user.firstName} ${u.ownerships[0].user.lastName}` : `${u.tenancies[0]!.user.firstName} ${u.tenancies[0]!.user.lastName}`}`
-                        : "";
-                      return (
-                        <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}${resident}`}>
-                          Unit {u.unitNumber}{resident}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="e.g. Leaking tap in bathroom"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the issue in detail..."
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={formCategory}
-                    onValueChange={(v) =>
-                      setFormCategory(
-                        v as keyof typeof MAINTENANCE_CATEGORY_LABELS
-                      )
-                    }
-                    itemToStringLabel={(v) => CATEGORIES.find(([val]) => val === v)?.[1] ?? String(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(([value, label]) => (
-                        <SelectItem key={value} value={value} label={label}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Unit *</Label>
+                    <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)} itemToStringLabel={(v) => { const u = units.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}>
+                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue placeholder="Select unit..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((u) => {
+                          const resident = u.ownerships[0] || u.tenancies[0]
+                            ? ` — ${u.ownerships[0] ? `${u.ownerships[0].user.firstName} ${u.ownerships[0].user.lastName}` : `${u.tenancies[0]!.user.firstName} ${u.tenancies[0]!.user.lastName}`}`
+                            : "";
+                          return (
+                            <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}${resident}`}>
+                              Unit {u.unitNumber}{resident}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title *</Label>
+                    <Input
+                      id="title"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. Leaking tap in bathroom"
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description *</Label>
+                    <Textarea
+                      id="description"
+                      className="min-h-28 rounded-xl bg-background"
+                      placeholder="Describe the issue in detail..."
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select
-                    value={formPriority}
-                    onValueChange={(v) =>
-                      setFormPriority(v as keyof typeof PRIORITY_LABELS)
-                    }
-                    itemToStringLabel={(v) => PRIORITIES.find(([val]) => val === v)?.[1] ?? String(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITIES.map(([value, label]) => (
-                        <SelectItem key={value} value={value} label={label}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Triage details
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Categorise the issue properly so staff can prioritise urgent jobs and assign contractors faster.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select
+                        value={formCategory}
+                        onValueChange={(v) =>
+                          setFormCategory(
+                            v as keyof typeof MAINTENANCE_CATEGORY_LABELS
+                          )
+                        }
+                        itemToStringLabel={(v) => CATEGORIES.find(([val]) => val === v)?.[1] ?? String(v)}
+                      >
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map(([value, label]) => (
+                            <SelectItem key={value} value={value} label={label}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select
+                        value={formPriority}
+                        onValueChange={(v) =>
+                          setFormPriority(v as keyof typeof PRIORITY_LABELS)
+                        }
+                        itemToStringLabel={(v) => PRIORITIES.find(([val]) => val === v)?.[1] ?? String(v)}
+                      >
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRIORITIES.map(([value, label]) => (
+                            <SelectItem key={value} value={value} label={label}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setCreateDialogOpen(false)}
@@ -364,8 +400,8 @@ export default function MaintenancePage() {
         </Card>
       ) : (
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
-          <div className="flex flex-wrap items-center gap-3">
-            <TabsList>
+          <div className="app-grid-panel flex flex-wrap items-center gap-3 p-4">
+            <TabsList className="bg-background/80">
               <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
               <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
               <TabsTrigger value="completed">
@@ -382,7 +418,7 @@ export default function MaintenancePage() {
                 onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}
                 itemToStringLabel={(v) => v === "ALL" ? "All Priorities" : PRIORITIES.find(([val]) => val === v)?.[1] ?? String(v)}
               >
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="h-11 w-40 rounded-xl bg-background">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -399,7 +435,7 @@ export default function MaintenancePage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search title or unit..."
-                  className="pl-9"
+                  className="h-11 rounded-xl bg-background pl-9"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -504,7 +540,7 @@ export default function MaintenancePage() {
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
-                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" disabled={updateStatusMutation.isPending} />}>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Open maintenance actions for ${req.title}`} className="h-8 w-8" disabled={updateStatusMutation.isPending} />}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -557,6 +593,28 @@ export default function MaintenancePage() {
           </TabsContent>
         </Tabs>
       )}
+    </div>
+  );
+}
+
+function MaintenanceSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
