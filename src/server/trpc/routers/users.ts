@@ -6,6 +6,7 @@ import {
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 import { ROLE_RANK } from "@/lib/auth/roles";
+import { TRPCError } from "@trpc/server";
 
 const ROLE_ENUM = z.enum([
   "SUPER_ADMIN",
@@ -15,17 +16,17 @@ const ROLE_ENUM = z.enum([
   "TENANT",
 ]);
 
+const MANAGER_INVITE_ROLE_ENUM = z.enum(["OWNER", "TENANT"]);
+
 export const usersRouter = createTRPCRouter({
   list: superAdminProcedure
     .input(z.object({ search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.user.findMany({
         where: {
-          // Only show users with at least one active membership — deactivated users are hidden
-          OR: [
-            { orgMemberships: { some: { isActive: true } } },
-            { buildingAssignments: { some: { isActive: true } } },
-          ],
+          // Show all active registered users, including people who have
+          // created an account but have not been assigned yet.
+          isActive: true,
           ...(input.search
             ? {
                 AND: [
@@ -175,6 +176,65 @@ export const usersRouter = createTRPCRouter({
       void sendWelcomeInviteEmail(input.email, {
         organisationName: org?.name ?? "StrataHub",
         buildingName: building?.name,
+        role: input.role,
+        inviteUrl,
+        expiresAt,
+      });
+
+      return invite;
+    }),
+
+  createManagerInvite: protectedProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        buildingId: z.string(),
+        role: MANAGER_INVITE_ROLE_ENUM,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const isSuperAdmin = ctx.user!.orgMemberships.some(
+        (membership) => membership.role === "SUPER_ADMIN"
+      );
+      const isBuildingManagerForBuilding = ctx.user!.buildingAssignments.some(
+        (assignment) =>
+          assignment.buildingId === input.buildingId &&
+          assignment.role === "BUILDING_MANAGER"
+      );
+
+      if (!isSuperAdmin && !isBuildingManagerForBuilding) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a building manager can invite residents into this building.",
+        });
+      }
+
+      const building = await ctx.db.building.findUniqueOrThrow({
+        where: { id: input.buildingId },
+        select: {
+          id: true,
+          name: true,
+          organisationId: true,
+          organisation: { select: { name: true } },
+        },
+      });
+
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      const invite = await ctx.db.invitation.create({
+        data: {
+          email: input.email,
+          organisationId: building.organisationId,
+          buildingId: building.id,
+          role: input.role,
+          expiresAt,
+        },
+      });
+
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
+      void sendWelcomeInviteEmail(input.email, {
+        organisationName: building.organisation.name,
+        buildingName: building.name,
         role: input.role,
         inviteUrl,
         expiresAt,

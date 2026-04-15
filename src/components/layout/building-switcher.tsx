@@ -45,12 +45,28 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
     ? buildings.filter((b) => b.organisationName === selectedOrg)
     : buildings;
 
-  // Auto-select when there is exactly one building
+  // Correct stale persisted building selections when the current user
+  // does not have access to that building anymore.
   useEffect(() => {
+    if (selectedBuildingId && !buildings.some((b) => b.id === selectedBuildingId)) {
+      clearSelectedBuilding();
+    }
+  }, [buildings, clearSelectedBuilding, selectedBuildingId]);
+
+  // Auto-select when there is exactly one available building.
+  useEffect(() => {
+    if (buildings.length === 1) {
+      const onlyBuilding = buildings[0];
+      if (selectedBuildingId !== onlyBuilding.id) {
+        setSelectedBuilding(onlyBuilding.id, onlyBuilding.name);
+      }
+      return;
+    }
+
     if (orgBuildings.length === 1 && !selectedBuildingId) {
       setSelectedBuilding(orgBuildings[0].id, orgBuildings[0].name);
     }
-  }, [orgBuildings, selectedBuildingId, setSelectedBuilding]);
+  }, [buildings, orgBuildings, selectedBuildingId, setSelectedBuilding]);
 
   function handleOrgChange(orgName: string | null) {
     if (!orgName) return;
@@ -68,6 +84,10 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
     if (!buildingId) return;
     const building = buildings.find((b) => b.id === buildingId);
     if (building) setSelectedBuilding(building.id, building.name);
+  }
+
+  if (buildings.length === 0) {
+    return null;
   }
 
   return (
