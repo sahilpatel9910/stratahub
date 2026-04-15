@@ -260,17 +260,15 @@ export default function DocumentsPage() {
             <Plus className="mr-2 h-4 w-4" />
             Upload Document
           </DialogTrigger>
-          <DialogContent className="max-w-2xl p-0">
+          <DialogContent className="max-w-4xl p-0">
             <DialogHeader>
-              <DialogTitle className="px-6 pt-6">Upload Document</DialogTitle>
-              <DialogDescription>
-                <span className="px-6 pb-2">
-                  Upload a file and attach it to this building
-                </span>
+              <DialogTitle className="px-0 pt-0">Upload Document</DialogTitle>
+              <DialogDescription className="px-0">
+                Upload a file and attach it to this building
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="space-y-6 py-4">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="space-y-6">
               {/* Dropzone */}
               <div
                 className={`relative rounded-2xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
@@ -328,14 +326,14 @@ export default function DocumentsPage() {
                 )}
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.9fr)]">
                 <div className="space-y-4">
                   <div className="space-y-2">
                 <Label htmlFor="docTitle">Title *</Label>
                 <Input
                   id="docTitle"
                   placeholder="e.g. Building Rules 2024"
-                  className="h-11 rounded-xl bg-background"
+                  className="h-12 rounded-xl"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                 />
@@ -345,25 +343,25 @@ export default function DocumentsPage() {
                 <Textarea
                   id="docDesc"
                   rows={4}
-                  className="min-h-28 rounded-xl bg-background"
+                  className="min-h-32 rounded-xl"
                   placeholder="Brief description..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                 />
               </div>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4 xl:sticky xl:top-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Access
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Choose how this file is grouped and whether residents can open it from their portal.
                   </p>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
-                    <SelectTrigger className="h-11 w-full rounded-xl bg-background"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map(([v, l]) => (
                         <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
@@ -374,7 +372,7 @@ export default function DocumentsPage() {
                 <div className="space-y-2">
                   <Label>Visibility</Label>
                   <Select value={formIsPublic} onValueChange={(v) => { if (v) setFormIsPublic(v); }} itemToStringLabel={(v) => v === "true" ? "Public (residents)" : "Staff only"}>
-                    <SelectTrigger className="h-11 w-full rounded-xl bg-background"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="false" label="Staff only">Staff only</SelectItem>
                       <SelectItem value="true" label="Public (residents)">Public (residents)</SelectItem>
@@ -393,17 +391,19 @@ export default function DocumentsPage() {
               )}
               </div>
             </div>
-            <DialogFooter className="px-6">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
                 disabled={isSubmitting}
+                className="h-11 rounded-xl px-5"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleUploadAndSave}
                 disabled={!formTitle.trim() || !selectedFile || isSubmitting}
+                className="h-11 rounded-xl px-5"
               >
                 {isSubmitting ? "Uploading..." : "Upload"}
               </Button>

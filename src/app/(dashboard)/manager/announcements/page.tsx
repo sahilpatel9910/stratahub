@@ -159,21 +159,21 @@ export default function AnnouncementsPage() {
             <Plus className="mr-2 h-4 w-4" />
             New Announcement
           </DialogTrigger>
-          <DialogContent className="max-w-2xl p-0">
+          <DialogContent className="max-w-4xl p-0">
             <DialogHeader>
-              <DialogTitle className="px-6 pt-6">New Announcement</DialogTitle>
-              <DialogDescription className="px-6">
+              <DialogTitle className="px-0 pt-0">New Announcement</DialogTitle>
+              <DialogDescription className="px-0">
                 Publish a notice to building residents
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="annTitle">Title *</Label>
                     <Input
                       id="annTitle"
-                      className="h-11 rounded-xl bg-background"
+                      className="h-12 rounded-xl"
                       placeholder="e.g. Water Shutdown Notice"
                       value={formTitle}
                       onChange={(e) => setFormTitle(e.target.value)}
@@ -183,7 +183,7 @@ export default function AnnouncementsPage() {
                     <Label htmlFor="annContent">Message *</Label>
                     <Textarea
                       id="annContent"
-                      className="min-h-32 rounded-xl bg-background"
+                      className="min-h-40 rounded-xl"
                       placeholder="Announcement details..."
                       value={formContent}
                       onChange={(e) => setFormContent(e.target.value)}
@@ -191,7 +191,7 @@ export default function AnnouncementsPage() {
                     />
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4 xl:sticky xl:top-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Delivery settings
                   </p>
@@ -202,7 +202,7 @@ export default function AnnouncementsPage() {
                     <div className="space-y-2">
                       <Label>Priority</Label>
                       <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? String(v)}>
-                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectTrigger className="h-12 w-full rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -215,7 +215,7 @@ export default function AnnouncementsPage() {
                     <div className="space-y-2">
                       <Label>Scope</Label>
                       <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? String(v)}>
-                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectTrigger className="h-12 w-full rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -229,7 +229,7 @@ export default function AnnouncementsPage() {
                       <Label htmlFor="expiresAt">Expires (optional)</Label>
                       <Input
                         id="expiresAt"
-                        className="h-11 rounded-xl bg-background"
+                        className="h-12 rounded-xl"
                         type="date"
                         value={formExpiresAt}
                         onChange={(e) => setFormExpiresAt(e.target.value)}
@@ -239,11 +239,12 @@ export default function AnnouncementsPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-6">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
                 disabled={createMutation.isPending}
+                className="h-11 rounded-xl px-5"
               >
                 Cancel
               </Button>
@@ -254,6 +255,7 @@ export default function AnnouncementsPage() {
                   !formContent.trim() ||
                   createMutation.isPending
                 }
+                className="h-11 rounded-xl px-5"
               >
                 {createMutation.isPending ? "Publishing..." : "Publish"}
               </Button>

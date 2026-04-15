@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, Search, Check } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -30,6 +31,8 @@ export function Topbar({
   searchPlaceholder = "Search residents, units, parcels...",
 }: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; right: number } | null>(null);
+  const bellButtonRef = useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const isSuperAdminPage = pathname.startsWith("/super-admin");
@@ -59,6 +62,28 @@ export function Topbar({
       utils.notifications.listRecent.invalidate();
     },
   });
+
+  useEffect(() => {
+    function updatePanelPosition() {
+      if (!bellButtonRef.current) return;
+      const rect = bellButtonRef.current.getBoundingClientRect();
+      setPanelStyle({
+        top: rect.bottom + 12,
+        right: Math.max(window.innerWidth - rect.right, 16),
+      });
+    }
+
+    if (!bellOpen) return;
+
+    updatePanelPosition();
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [bellOpen]);
 
   function handleNotificationClick(id: string, isRead: boolean, linkUrl?: string | null) {
     if (!isRead) markRead.mutate({ id });
@@ -91,6 +116,7 @@ export function Topbar({
 
         <div className="relative">
           <Button
+            ref={bellButtonRef}
             variant="ghost"
             size="icon"
             aria-label={bellOpen ? "Close notifications" : "Open notifications"}
@@ -107,59 +133,71 @@ export function Topbar({
 
           {bellOpen && (
             <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setBellOpen(false)}
-              />
+              {typeof document !== "undefined" &&
+                createPortal(
+                  <>
+                    <div
+                      className="fixed inset-0 z-[60]"
+                      onClick={() => setBellOpen(false)}
+                    />
 
-              <div className="absolute right-0 top-12 z-50 w-[22rem] overflow-hidden rounded-[1rem] border border-border bg-popover shadow-lg">
-                <div className="flex items-center justify-between border-b border-border px-4 py-4">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Notifications</p>
-                    <p className="text-xs text-muted-foreground">Latest building activity</p>
-                  </div>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={() => markAllRead.mutate()}
-                      className="flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    <div
+                      className="fixed z-[70] w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+                      style={{
+                        top: panelStyle?.top ?? 80,
+                        right: panelStyle?.right ?? 16,
+                      }}
                     >
-                      <Check className="h-3 w-3" />
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => handleNotificationClick(n.id, n.isRead, n.linkUrl)}
-                        className={`w-full border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/60 ${!n.isRead ? "bg-muted/40" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${!n.isRead ? "bg-primary" : "bg-border"}`} />
-                          <div className="min-w-0">
-                            <p className={`text-sm ${!n.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
-                              {n.title}
-                            </p>
-                            {n.body && (
-                              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{n.body}</p>
-                            )}
-                            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                            </p>
-                          </div>
+                      <div className="flex items-center justify-between border-b border-border px-4 py-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Notifications</p>
+                          <p className="text-xs text-muted-foreground">Latest building activity</p>
                         </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={() => markAllRead.mutate()}
+                            className="flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Check className="h-3 w-3" />
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-[min(70vh,28rem)] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                            No notifications yet
+                          </div>
+                        ) : (
+                          notifications.map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => handleNotificationClick(n.id, n.isRead, n.linkUrl)}
+                              className={`w-full border-b border-border px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/60 ${!n.isRead ? "bg-muted/40" : ""}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${!n.isRead ? "bg-primary" : "bg-border"}`} />
+                                <div className="min-w-0">
+                                  <p className={`text-sm ${!n.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
+                                    {n.title}
+                                  </p>
+                                  {n.body && (
+                                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{n.body}</p>
+                                  )}
+                                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>,
+                  document.body
+                )}
             </>
           )}
         </div>

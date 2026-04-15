@@ -204,7 +204,7 @@ export default function VisitorsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="overflow-y-auto px-6 pb-6">
-              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+              <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="col-span-2 space-y-2">
                     <Label htmlFor="visitorName">Visitor Name *</Label>
