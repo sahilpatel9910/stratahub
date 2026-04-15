@@ -176,7 +176,7 @@ strata-hub/
 │   │   ├── api/
 │   │   │   ├── auth/create-user/route.ts   # POST: creates Prisma User after Supabase signUp
 │   │   │   ├── invite/[token]/route.ts     # GET: public fetch of invite details by token
-│   │   │   ├── invite/accept/route.ts      # POST: accept invite → OrgMembership + BuildingAssignment
+│   │   │   ├── invite/accept/route.ts      # POST: accept invite → OrgMembership + BuildingAssignment (+ Ownership for unit-linked owner invites)
 │   │   │   └── trpc/[trpc]/route.ts        # tRPC HTTP handler (GET + POST)
 │   │   ├── invite/
 │   │   │   └── [token]/
@@ -363,7 +363,7 @@ Uses `ResidentSidebar`. Data is scoped to the user's own units/building — no b
 - **Auth:** Requires Supabase session
 - **Body:** `{ token: string }`
 - **Returns:** `{ success: true }` or `{ error }` (401/404/409/410)
-- **Behaviour:** Upserts `OrganisationMembership`, creates `BuildingAssignment` (if buildingId set), marks `Invitation.acceptedAt`. Validates: exists, not already accepted, not expired.
+- **Behaviour:** Upserts `OrganisationMembership`, creates `BuildingAssignment` (if buildingId set), activates `Ownership` when the invite is a unit-linked owner invite, then marks `Invitation.acceptedAt`. Validates: exists, not already accepted, not expired.
 
 ### `GET /api/auth/callback`
 - **Auth:** Public
@@ -417,7 +417,8 @@ All routers in `src/server/trpc/routers/`. Combined in `src/server/trpc/router.t
 |---|---|---|---|---|
 | `listByBuilding` | query | protected | `buildingId` | Units with ownerships, tenancies, parking, storage |
 | `getById` | query | protected | `id` | Full unit with 12-month rent history |
-| `create` | mutation | manager | `buildingId, unitNumber, unitType, bedrooms?, bathrooms?, parkingSpaces, storageSpaces, squareMetres?, lotNumber?, unitEntitlement?` | Create unit |
+| `create` | mutation | manager | `buildingId, unitNumber, unitType, bedrooms?, bathrooms?, parkingSpaces, storageSpaces, squareMetres?, lotNumber?, unitEntitlement?, ownerFirstName, ownerLastName, ownerEmail, ownerPhone` | Create unit with mandatory owner details; links an existing owner immediately or creates a unit-scoped owner invite |
+| `assignResident` | mutation | manager | `unitId, residentUserId, role, purchaseDate?, leaseStartDate?, leaseEndDate?, rentAmountCents?, rentFrequency?, bondAmountCents?, moveInDate?` | Assign a specific unit to an owner or tenant; tenant assignment requires lease details |
 | `update` | mutation | manager | `id, ...fields` | Update unit |
 | `delete` | mutation | manager | `id` | Hard delete |
 
@@ -811,6 +812,14 @@ Recent work on this branch and its immediate predecessors has already covered:
 
 This is the next phase to execute before another large feature push.
 
+Progress already landed on `phase1/ui-stabilization`:
+- manager-safe resident invite flow limited to `OWNER` and `TENANT` in the selected building
+- manager workspace scoping tightened to manager-capable buildings only, with stale selection clearing and single-building preload
+- super-admin user list now includes active registered-but-unassigned users
+- register/login flow hardened around existing-email signup confusion
+- unit creation now requires owner details and creates a unit-linked owner relationship or owner invite
+- unit assignment flow now supports assigning a specific unit to an owner or tenant, with lease/rent data for tenant occupancy
+
 Priority order:
 1. Run a structured QA sweep across manager, resident, and super-admin flows using seeded data.
 2. Add lightweight regression coverage for the highest-risk paths:
@@ -901,6 +910,8 @@ Super-admin:
 14. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
 
 15. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
+
+16. **Unit-first occupancy workflow** — Units are no longer treated as metadata-only records. Creation now requires owner details, owner invites can be unit-scoped, and occupancy changes should happen through unit assignment so ownership and tenancy stay attached to the actual space.
 
 
 
