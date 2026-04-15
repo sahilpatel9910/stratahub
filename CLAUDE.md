@@ -964,3 +964,39 @@ Verification fixes:
 Verification notes:
 - Changes were implemented without adding any paid services or paid-tier dependencies.
 - This session focused on code-level fixes only; no new infra, storage products, or external integrations were introduced.
+
+# updated this with codex agent - notification and form usability fixes
+
+Fixed the shared notification overlay and the most fragile modal form patterns that were causing clipped panels, hidden actions, and cramped fields across the manager and resident workspace.
+
+UI/system fixes:
+- Moved the notification dropdown in [src/components/layout/topbar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/topbar.tsx) into a portal-backed fixed overlay so it is no longer clipped under page content or layout containers.
+- Upgraded the shared dialog shell in [src/components/ui/dialog.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/dialog.tsx) with:
+  - a safer viewport-aware max height
+  - a flex column layout for long forms
+  - a stronger bordered header
+  - a persistent footer area that stays visible instead of visually falling out of the modal
+- Strengthened shared form controls in:
+  - [src/components/ui/input.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/input.tsx)
+  - [src/components/ui/textarea.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/textarea.tsx)
+  - [src/components/ui/select.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/select.tsx)
+  so fields now read as active controls on white/light surfaces instead of fading into the background.
+
+Form/layout fixes:
+- Reworked the manager document upload, manager message compose, and manager announcement publish dialogs so they use a wider modal, stronger spacing, larger controls, and action buttons that stay visible.
+- Updated the manager messages reply area so the send action is a full labeled button (`Send reply`) instead of a tiny icon-only button that can disappear visually.
+- Shifted the split-form breakpoint from `lg` to `xl` on the modal-heavy pages so guidance sidebars no longer squeeze primary fields on common laptop widths. This was applied to:
+  - manager documents
+  - manager messages
+  - manager announcements
+  - manager maintenance
+  - manager visitors
+  - manager parcels
+  - manager financials
+  - manager units
+  - resident maintenance
+
+Verification notes:
+- `npx tsc --noEmit` passes.
+- `npm run lint` still passes with only the same three older warnings in `manager/rent/page.tsx` and `server/trpc/routers/users.ts`.
+- No paid-tier features or new external services were introduced; all fixes remain free-tier friendly.

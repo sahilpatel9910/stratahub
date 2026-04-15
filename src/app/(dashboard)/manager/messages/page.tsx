@@ -157,13 +157,13 @@ export default function MessagesPage() {
             <Send className="mr-2 h-4 w-4" />
             New Message
           </DialogTrigger>
-          <DialogContent className="max-w-2xl p-0">
+          <DialogContent className="max-w-4xl p-0">
             <DialogHeader>
-              <DialogTitle className="px-6 pt-6">New Message</DialogTitle>
-              <DialogDescription className="px-6">Send a direct message to a user</DialogDescription>
+              <DialogTitle className="px-0 pt-0">New Message</DialogTitle>
+              <DialogDescription className="px-0">Send a direct message to a user</DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Recipient *</Label>
@@ -176,7 +176,7 @@ export default function MessagesPage() {
                         return `${resident.firstName} ${resident.lastName}`;
                       }}
                     >
-                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                      <SelectTrigger className="h-12 w-full rounded-xl">
                         <SelectValue
                           placeholder={
                             selectedBuildingId
@@ -210,7 +210,7 @@ export default function MessagesPage() {
                     <Label htmlFor="subject">Subject (optional)</Label>
                     <Input
                       id="subject"
-                      className="h-11 rounded-xl bg-background"
+                      className="h-12 rounded-xl"
                       placeholder="Message subject"
                       value={formSubject}
                       onChange={(e) => setFormSubject(e.target.value)}
@@ -220,7 +220,7 @@ export default function MessagesPage() {
                     <Label htmlFor="composeContent">Message *</Label>
                     <Textarea
                       id="composeContent"
-                      className="min-h-32 rounded-xl bg-background"
+                      className="min-h-40 rounded-xl"
                       placeholder="Type your message..."
                       value={formContent}
                       onChange={(e) => setFormContent(e.target.value)}
@@ -228,7 +228,7 @@ export default function MessagesPage() {
                     />
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4 xl:sticky xl:top-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Delivery note
                   </p>
@@ -247,11 +247,12 @@ export default function MessagesPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-6">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setComposeOpen(false)}
                 disabled={sendMutation.isPending}
+                className="h-11 rounded-xl px-5"
               >
                 Cancel
               </Button>
@@ -263,6 +264,7 @@ export default function MessagesPage() {
                   !formContent.trim() ||
                   sendMutation.isPending
                 }
+                className="h-11 rounded-xl px-5"
               >
                 {sendMutation.isPending ? "Sending..." : "Send"}
               </Button>
@@ -391,13 +393,13 @@ export default function MessagesPage() {
                   ))
                 )}
               </CardContent>
-              <div className="p-4 border-t flex gap-3">
+              <div className="flex flex-col gap-3 border-t p-4 sm:flex-row sm:items-end">
                 <Textarea
                   placeholder="Type a reply..."
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   rows={2}
-                  className="resize-none"
+                  className="min-h-24 resize-none"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -409,9 +411,10 @@ export default function MessagesPage() {
                   onClick={handleReply}
                   aria-label="Send reply"
                   disabled={!replyContent.trim() || sendMutation.isPending}
-                  className="self-end"
+                  className="h-11 rounded-xl px-5 sm:self-end"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="mr-2 h-4 w-4" />
+                  Send reply
                 </Button>
               </div>
             </>
