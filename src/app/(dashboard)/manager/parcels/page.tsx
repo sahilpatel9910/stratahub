@@ -241,7 +241,7 @@ export default function ParcelsPage() {
             </DialogHeader>
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="parcelUnit">Unit Number *</Label>
                     <Input

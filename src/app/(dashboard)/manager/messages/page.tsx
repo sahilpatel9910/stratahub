@@ -226,9 +226,9 @@ export default function MessagesPage() {
         </Dialog>
       </div>
 
-      <div className="grid h-[calc(100vh-260px)] min-h-[34rem] gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:h-[calc(100vh-260px)] xl:min-h-[34rem] xl:grid-cols-3">
         {/* Thread list */}
-        <Card className="overflow-hidden xl:col-span-1">
+        <Card className="min-h-[18rem] overflow-hidden xl:col-span-1">
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-sm font-medium">Conversations</CardTitle>
           </CardHeader>
@@ -295,7 +295,7 @@ export default function MessagesPage() {
         </Card>
 
         {/* Message thread */}
-        <Card className="overflow-hidden xl:col-span-2">
+        <Card className="min-h-[24rem] overflow-hidden xl:col-span-2">
           {!selectedThreadId ? (
             <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
