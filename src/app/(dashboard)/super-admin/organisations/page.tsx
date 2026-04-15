@@ -51,6 +51,8 @@ type AustralianStateValue = (typeof AUSTRALIAN_STATES)[number]["value"];
 export default function OrganisationsPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [formName, setFormName] = useState("");
   const [formAbn, setFormAbn] = useState("");
   const [formState, setFormState] = useState<AustralianStateValue | "">("");
@@ -101,6 +103,46 @@ export default function OrganisationsPage() {
 
   function handleDeactivate(id: string, isActive: boolean) {
     updateMutation.mutate({ id, isActive: !isActive });
+  }
+
+  function openEditDialog(org: {
+    id: string;
+    name: string;
+    abn: string | null;
+    state: AustralianStateValue;
+  }) {
+    setEditingOrgId(org.id);
+    setFormName(org.name);
+    setFormAbn(org.abn ?? "");
+    setFormState(org.state);
+    setEditOpen(true);
+  }
+
+  function closeEditDialog() {
+    setEditOpen(false);
+    setEditingOrgId(null);
+    setFormName("");
+    setFormAbn("");
+    setFormState("");
+  }
+
+  function handleEdit() {
+    if (!editingOrgId || !formName.trim() || !formState) return;
+    updateMutation.mutate(
+      {
+        id: editingOrgId,
+        name: formName.trim(),
+        abn: formAbn.trim() || undefined,
+        state: formState,
+      },
+      {
+        onSuccess: () => {
+          utils.organisations.list.invalidate();
+          closeEditDialog();
+          toast.success("Organisation updated");
+        },
+      }
+    );
   }
 
   return (
@@ -183,6 +225,72 @@ export default function OrganisationsPage() {
                 }
               >
                 {createMutation.isPending ? "Creating..." : "Create Organisation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={editOpen} onOpenChange={(open) => (!open ? closeEditDialog() : setEditOpen(true))}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Organisation</DialogTitle>
+              <DialogDescription>
+                Update organisation details
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="editOrgName">Organisation Name</Label>
+                <Input
+                  id="editOrgName"
+                  placeholder="e.g. Sydney Strata Group"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAbn">ABN (optional)</Label>
+                <Input
+                  id="editAbn"
+                  placeholder="XX XXX XXX XXX"
+                  value={formAbn}
+                  onChange={(e) => setFormAbn(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editState">State</Label>
+                <Select
+                  value={formState}
+                  onValueChange={(v) =>
+                    setFormState(v as AustralianStateValue)
+                  }
+                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? String(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUSTRALIAN_STATES.map((state) => (
+                      <SelectItem key={state.value} value={state.value} label={state.label}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closeEditDialog}
+                disabled={updateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEdit}
+                disabled={!editingOrgId || !formName.trim() || !formState || updateMutation.isPending}
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -273,9 +381,9 @@ export default function OrganisationsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Manage Buildings</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(org)}>
+                            Edit
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className={
                               org.isActive ? "text-red-600" : "text-green-600"

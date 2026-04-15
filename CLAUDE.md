@@ -2,7 +2,7 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-11** — Phase 2 complete. Phase 3 in progress: bug fixes from live testing session. See "Next Session Work" section at bottom for priority list.
+> **Last updated: 2026-04-15** — Phase 1 UI stabilization is effectively complete on `phase1/ui-stabilization`. The app is now in verification-and-readiness mode: core manager/resident/super-admin flows exist, first-pass security hardening is in place, and recent work has focused on workflow fixes, shared UI quality, and documentation alignment.
 
 ## Project Overview
 
@@ -774,7 +774,8 @@ npx prisma studio    # Prisma Studio GUI
 - **Email verification + invite flow** — If Supabase requires email confirmation, Prisma user is auto-created on first login. Invite acceptance is deferred — user must visit `/invite/[token]` while logged in.
 - **Supabase Storage bucket** — Must exist in Supabase dashboard with bucket name `documents`, set to **private**. Reads should happen through signed URLs created server-side after authorization checks.
 - **Resend domain verification** — Until a custom domain is verified in Resend, emails send from `onboarding@resend.dev`. Add RESEND_API_KEY + RESEND_FROM_EMAIL to Vercel env vars for production.
-- **Resident portal role redirect** — OWNER/TENANT who land on `/manager` are not automatically redirected to `/resident`. They see the manager UI. Phase 3 should add role detection + redirect.
+- **Automated regression coverage** — Core flows have been manually iterated on, but the repo still lacks meaningful first-party test coverage around auth redirects, building access scoping, document delivery, and messaging permissions.
+- **End-to-end verification pass** — Manager, resident, and super-admin surfaces are present and visually refreshed, but several flows still need a structured QA sweep in a realistic seeded environment.
 
 ### Completed (no longer gaps)
 - ✅ `/reset-password` page + `/api/auth/callback` route — password reset flow fully working
@@ -785,77 +786,78 @@ npx prisma studio    # Prisma Studio GUI
 - ✅ Transactional emails — Resend integration: levy notices, maintenance status updates, invite emails (fire-and-forget, HTML-escaped)
 - ✅ Notification bell — `Notification` model, `notifications` tRPC router, topbar polls every 30s, dropdown with mark-read
 - ✅ Resident self-service portal — `/resident/**` pages: dashboard, levies, maintenance, documents, announcements
+- ✅ Root-level role redirect — `OWNER`/`TENANT` users are redirected to `/resident`, manager roles to `/manager`, and super-admins to `/super-admin/organisations`
+- ✅ Building access hardening — building-scoped tRPC routes now verify access from resolved records instead of trusting caller-supplied IDs
+- ✅ Private document delivery — documents now download through short-lived signed URLs after authorization checks
+- ✅ Phase 1 workspace polish — dashboard shell, topbar, sidebars, dialog ergonomics, form controls, and manager/resident landing experiences have been refreshed on `phase1/ui-stabilization`
 
 ---
 
-## ⚡ Next Session — Priority Bug List (Phase 3)
+## Current Phase
 
-> Start here in the next session. Work through these in order. Do not move to new features until all bugs are fixed.
+### Phase 1 — UI Stabilization
 
-### 🔴 CRITICAL — Fix First
+This phase is effectively complete on `phase1/ui-stabilization`.
 
-**1. Resident portal: double topbar + wrong topbar content**
-- **Root cause:** `(dashboard)/resident/layout.tsx` is nested inside `(dashboard)/layout.tsx`. Both render a `<Topbar>`. This causes TWO topbars to stack.
-- **Fix:** Remove `<Topbar>` from `src/app/(dashboard)/resident/layout.tsx` entirely. The dashboard layout's topbar is shared.
-- **Also:** In `src/components/layout/topbar.tsx`, hide the building switcher on `/resident/**` routes (same pattern as `/super-admin/**`). Add `|| pathname.startsWith("/resident")` to the `isSuperAdminPage` check (or rename the variable to `hideSwitcher`).
-- **File:** `src/app/(dashboard)/resident/layout.tsx` and `src/components/layout/topbar.tsx`
+Recent work on this branch and its immediate predecessors has already covered:
+- shared dashboard shell polish across auth, manager, and resident routes
+- resident portal visual refresh
+- notification overlay and modal/form usability fixes
+- messaging and resident-maintenance workflow fixes
+- building-scoped authorization hardening and private document access
+- README and security documentation cleanup
 
-**2. Building selector shows raw CUID instead of building name**
-- **Root cause:** When `buildings=[]` is passed to `BuildingSwitcher` (resident topbar passes empty array) but a `selectedBuildingId` is stored in Zustand/localStorage, `itemToStringLabel` can't find the building in the empty array and falls back to returning the raw CUID.
-- **Fix:** This goes away once fix #1 is done (resident portal won't show building switcher at all). But also add a guard in `BuildingSwitcher`: if `buildings.length === 0`, render nothing.
-- **File:** `src/components/layout/building-switcher.tsx`
+### Phase 2 — Verification and Production Readiness
 
-### 🔴 CRITICAL — Access Control (Manager Role)
+This is the next phase to execute before another large feature push.
 
-**3. Manager can see all buildings, should only see assigned buildings**
-- **Current behaviour:** The topbar building switcher shows ALL buildings a user is assigned to. A manager assigned to "Harbour View Apartments" should ONLY see that building in the switcher — not other buildings in the org.
-- **Current code in `(dashboard)/layout.tsx`:** For non-super-admin, it fetches `buildingAssignment.findMany({ where: { userId, isActive: true } })` — this is already correct (only assigned buildings).
-- **Actual issue:** The `buildings.list` tRPC query (used in super-admin pages) returns all buildings for super-admin, but for managers it should return only their assigned ones. Check `src/server/trpc/routers/buildings.ts` `list` procedure — it already scopes to user's assignments for non-SUPER_ADMIN. Verify this is working end-to-end.
-- **Also verify:** When a manager logs in, the building switcher should auto-select their single assigned building and NOT show buildings from other orgs.
+Priority order:
+1. Run a structured QA sweep across manager, resident, and super-admin flows using seeded data.
+2. Add lightweight regression coverage for the highest-risk paths:
+   - root role redirects
+   - building assignment scoping
+   - document signed-download access
+   - messaging thread/read-write authorization
+3. Clear the remaining lint warnings so CI output is quieter and easier to trust.
+4. Validate environment-sensitive production assumptions:
+   - private `documents` bucket exists
+   - Resend sender/domain setup is correct
+   - Supabase/Vercel URLs match deployed environments
+5. Reassess analytics and other deferred product gaps only after the verification pass is done.
 
-**4. Role-based redirect on login**
-- **Current behaviour:** OWNER and TENANT users who log in land on `/manager` (the building manager dashboard). They should be redirected to `/resident` automatically.
-- **Fix:** In `src/app/page.tsx` (root redirect) or middleware, detect if the user's highest role is OWNER or TENANT and redirect to `/resident` instead of `/manager`.
-- **How to detect role:** In the root page or middleware, fetch the Prisma user's `orgMemberships` and check the highest role. If max role is TENANT or OWNER → `/resident`. Otherwise → `/manager`.
+### Suggested QA Coverage
 
-### 🟡 IMPORTANT — UI/UX Issues
+Manager:
+- residents
+- rent
+- keys
+- maintenance
+- visitors
+- parcels
+- announcements
+- documents
+- strata
+- financials
+- messages
+- settings
 
-**5. Resident portal frontend design**
-- The resident portal UI is described by the user as very poor. Needs a full redesign of:
-  - `/resident/page.tsx` — dashboard
-  - `/resident/levies/page.tsx`
-  - `/resident/maintenance/page.tsx`
-  - `/resident/documents/page.tsx`
-  - `/resident/announcements/page.tsx`
-- Design goals: clean card-based layout, better spacing, proper empty states, consistent with manager portal style but simpler/friendlier for residents.
+Resident:
+- dashboard
+- levies
+- maintenance
+- documents
+- announcements
 
-**6. "Remove from All Buildings" button label is misleading**
-- Label says "Remove from All Buildings" but it now also deactivates `User.isActive`. Consider renaming to "Deactivate User" to be accurate.
-- **File:** `src/app/(dashboard)/super-admin/users/page.tsx`
+Super-admin:
+- organisations
+- buildings
+- users
 
-### 🟡 IMPORTANT — Testing Remaining Pages
+### Nice-to-Have Follow-Ups
 
-After fixing the above bugs, continue testing these manager pages that were not yet verified:
-- `/manager/residents` — residents list, role filter
-- `/manager/rent` — rent roll, record payment
-- `/manager/keys` — key list, issue/return/deactivate
-- `/manager/maintenance` — maintenance requests, status update
-- `/manager/visitors` — visitor log, arrival/departure
-- `/manager/parcels` — parcel tracking
-- `/manager/announcements` — create/delete announcements
-- `/manager/documents` — upload/delete documents
-- `/manager/strata` — strata info, levies, meetings
-- `/manager/financials` — income/expense records
-- `/manager/messages` — messaging threads
-- Resident portal pages — levies, maintenance, documents, announcements
-
-### 🟢 NICE TO HAVE
-
-**7. Resident portal role redirect on login**
-- Middleware should redirect OWNER/TENANT to `/resident` and BUILDING_MANAGER/RECEPTION to `/manager` automatically after login.
-
-**8. Manager dashboard showing "0 residents"**
-- The resident user (Sahil Patel, Owner) assigned to StrataHub Demo Org has no unit assignment, so resident count shows 0. Need to assign the user to a unit for accurate stats.
+- rename misleading destructive-action labels in super-admin user management if they no longer reflect actual behavior
+- seed more realistic demo data so summary cards and analytics-style surfaces are easier to validate visually
+- decide whether to migrate from `middleware.ts` to the newer Next.js 16 `proxy` convention once functional work is settled
 
 ---
 

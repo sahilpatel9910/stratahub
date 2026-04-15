@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { hasManagerPortalAccess } from "@/lib/auth/roles";
 
 /**
  * Guards all /manager/** routes.
@@ -34,9 +35,7 @@ export default async function ManagerLayout({
     ...(dbUser?.buildingAssignments.map((a) => a.role) ?? []),
   ];
 
-  const hasManagerAccess = roles.some((r) =>
-    ["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"].includes(r)
-  );
+  const hasManagerAccess = hasManagerPortalAccess(roles);
 
   if (!hasManagerAccess) {
     redirect("/resident");

@@ -118,7 +118,7 @@ export default function MessagesPage() {
   const threads = threadsQuery.data ?? [];
   const messages = threadQuery.data ?? [];
   const selectedThread = threads.find((t) => t.threadId === selectedThreadId);
-  const unreadCount = threads.filter((thread) => !thread.isRead).length;
+  const unreadCount = threads.filter((thread) => thread.hasUnread).length;
   const residents = residentsQuery.data ?? [];
 
   return (
@@ -329,7 +329,7 @@ export default function MessagesPage() {
                         {thread.content}
                       </p>
                     </div>
-                    {!thread.isRead && (
+                    {thread.hasUnread && (
                       <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                     )}
                   </button>

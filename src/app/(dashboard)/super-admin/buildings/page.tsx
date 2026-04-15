@@ -47,6 +47,8 @@ type AustralianStateValue = (typeof AUSTRALIAN_STATES)[number]["value"];
 export default function SuperAdminBuildingsPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingBuildingId, setEditingBuildingId] = useState<string | null>(null);
 
   const [formOrgId, setFormOrgId] = useState("");
   const [formName, setFormName] = useState("");
@@ -108,6 +110,73 @@ export default function SuperAdminBuildingsPage() {
 
     createMutation.mutate({
       organisationId: formOrgId,
+      name: formName.trim(),
+      address: formAddress.trim(),
+      suburb: formSuburb.trim(),
+      state: formState,
+      postcode: formPostcode.trim(),
+      totalFloors: parseInt(formFloors),
+      totalUnits: parseInt(formUnits),
+      strataSchemeNo: formStrataNo.trim() || undefined,
+    });
+  }
+
+  function openEditDialog(building: {
+    id: string;
+    organisationId: string;
+    name: string;
+    address: string;
+    suburb: string;
+    state: AustralianStateValue;
+    postcode: string;
+    totalFloors: number;
+    totalUnits: number;
+    strataSchemeNo: string | null;
+  }) {
+    setEditingBuildingId(building.id);
+    setFormOrgId(building.organisationId);
+    setFormName(building.name);
+    setFormAddress(building.address);
+    setFormSuburb(building.suburb);
+    setFormState(building.state);
+    setFormPostcode(building.postcode);
+    setFormFloors(String(building.totalFloors));
+    setFormUnits(String(building.totalUnits));
+    setFormStrataNo(building.strataSchemeNo ?? "");
+    setEditOpen(true);
+  }
+
+  function closeEditDialog() {
+    setEditOpen(false);
+    setEditingBuildingId(null);
+    resetForm();
+  }
+
+  const updateMutation = trpc.buildings.update.useMutation({
+    onSuccess: () => {
+      utils.buildings.list.invalidate();
+      closeEditDialog();
+      toast.success("Building updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update building"),
+  });
+
+  function handleEdit() {
+    if (
+      !editingBuildingId ||
+      !formName.trim() ||
+      !formAddress.trim() ||
+      !formSuburb.trim() ||
+      !formState ||
+      !formPostcode.trim() ||
+      !formFloors ||
+      !formUnits
+    ) {
+      return;
+    }
+
+    updateMutation.mutate({
+      id: editingBuildingId,
       name: formName.trim(),
       address: formAddress.trim(),
       suburb: formSuburb.trim(),
@@ -288,6 +357,134 @@ export default function SuperAdminBuildingsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog open={editOpen} onOpenChange={(open) => (!open ? closeEditDialog() : setEditOpen(true))}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Building</DialogTitle>
+              <DialogDescription>
+                Update building details
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Organisation</Label>
+                <Input
+                  value={orgs.find((org) => org.id === formOrgId)?.name ?? "—"}
+                  disabled
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editBName">Building Name *</Label>
+                <Input
+                  id="editBName"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editBAddress">Street Address *</Label>
+                <Input
+                  id="editBAddress"
+                  value={formAddress}
+                  onChange={(e) => setFormAddress(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editBSuburb">Suburb *</Label>
+                  <Input
+                    id="editBSuburb"
+                    value={formSuburb}
+                    onChange={(e) => setFormSuburb(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editBPostcode">Postcode *</Label>
+                  <Input
+                    id="editBPostcode"
+                    maxLength={4}
+                    value={formPostcode}
+                    onChange={(e) => setFormPostcode(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>State *</Label>
+                <Select
+                  value={formState}
+                  onValueChange={(v) => setFormState(v as AustralianStateValue)}
+                  itemToStringLabel={(v) => AUSTRALIAN_STATES.find(s => s.value === v)?.label ?? String(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUSTRALIAN_STATES.map((s) => (
+                      <SelectItem key={s.value} value={s.value} label={s.label}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editBFloors">Total Floors *</Label>
+                  <Input
+                    id="editBFloors"
+                    type="number"
+                    min="1"
+                    value={formFloors}
+                    onChange={(e) => setFormFloors(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editBUnits">Total Units *</Label>
+                  <Input
+                    id="editBUnits"
+                    type="number"
+                    min="1"
+                    value={formUnits}
+                    onChange={(e) => setFormUnits(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editBStrata">Strata Scheme No. (optional)</Label>
+                <Input
+                  id="editBStrata"
+                  value={formStrataNo}
+                  onChange={(e) => setFormStrataNo(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={closeEditDialog}
+                disabled={updateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEdit}
+                disabled={
+                  !editingBuildingId ||
+                  !formName.trim() ||
+                  !formAddress.trim() ||
+                  !formSuburb.trim() ||
+                  !formState ||
+                  !formPostcode.trim() ||
+                  !formFloors ||
+                  !formUnits ||
+                  updateMutation.isPending
+                }
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -370,8 +567,9 @@ export default function SuperAdminBuildingsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Building</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(b)}>
+                            Edit Building
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-red-600"
                             onClick={() =>

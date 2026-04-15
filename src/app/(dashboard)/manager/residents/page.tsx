@@ -31,20 +31,28 @@ export default function ResidentsPage() {
 
   const { selectedBuildingId } = useBuildingContext();
 
-  const roleInput =
-    tab === "owner" ? "OWNER" : tab === "tenant" ? "TENANT" : undefined;
-
   const query = trpc.residents.listByBuilding.useQuery(
-    selectedBuildingId
-      ? { buildingId: selectedBuildingId, role: roleInput, search: search || undefined }
-      : skipToken,
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
 
-  const residents = query.data ?? [];
+  const allResidents = query.data ?? [];
+  const residents = allResidents.filter((resident) => {
+    if (tab === "owner" && resident.buildingRole !== "OWNER") return false;
+    if (tab === "tenant" && resident.buildingRole !== "TENANT") return false;
 
-  const ownerCount = residents.filter((r) => r.buildingRole === "OWNER").length;
-  const tenantCount = residents.filter((r) => r.buildingRole === "TENANT").length;
+    if (!search.trim()) return true;
+
+    const term = search.trim().toLowerCase();
+    return (
+      resident.firstName.toLowerCase().includes(term) ||
+      resident.lastName.toLowerCase().includes(term) ||
+      resident.email.toLowerCase().includes(term)
+    );
+  });
+
+  const ownerCount = allResidents.filter((r) => r.buildingRole === "OWNER").length;
+  const tenantCount = allResidents.filter((r) => r.buildingRole === "TENANT").length;
 
   return (
     <div className="space-y-6">
@@ -62,7 +70,7 @@ export default function ResidentsPage() {
           <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
             <p className="panel-kicker">Resident mix</p>
             <div className="mt-4 space-y-3">
-              <ResidentSignal icon={Users} label="All residents" value={`${residents.length}`} tone="text-slate-600" />
+              <ResidentSignal icon={Users} label="All residents" value={`${allResidents.length}`} tone="text-slate-600" />
               <ResidentSignal icon={Home} label="Owners" value={`${ownerCount}`} tone="text-blue-600" />
               <ResidentSignal icon={UserRound} label="Tenants" value={`${tenantCount}`} tone="text-emerald-600" />
             </div>
@@ -81,7 +89,7 @@ export default function ResidentsPage() {
           <div className="app-grid-panel flex items-center gap-4 p-4">
             <TabsList className="bg-background/80">
               <TabsTrigger value="all">
-                All ({residents.length})
+                All ({allResidents.length})
               </TabsTrigger>
               <TabsTrigger value="owner">
                 Owners ({ownerCount})
@@ -141,7 +149,9 @@ export default function ResidentsPage() {
                           colSpan={6}
                           className="py-12 text-center text-muted-foreground"
                         >
-                          No residents found.
+                          {allResidents.length === 0
+                            ? "No residents found."
+                            : "No residents match your current search or filter."}
                         </TableCell>
                       </TableRow>
                     ) : (

@@ -21,7 +21,33 @@ export const messagingRouter = createTRPCRouter({
       distinct: ["threadId"],
     });
 
-    return messages;
+    const threadIds = messages
+      .map((message) => message.threadId)
+      .filter((threadId): threadId is string => Boolean(threadId));
+
+    const unreadByThread = new Set(
+      (
+        await ctx.db.message.findMany({
+          where: {
+            threadId: { in: threadIds },
+            recipientId: userId,
+            isRead: false,
+          },
+          select: { threadId: true },
+          distinct: ["threadId"],
+        })
+      )
+        .map((message) => message.threadId)
+        .filter((threadId): threadId is string => Boolean(threadId))
+    );
+
+    return messages.map((message) => ({
+      ...message,
+      hasUnread:
+        message.threadId != null
+          ? unreadByThread.has(message.threadId)
+          : message.recipientId === userId && !message.isRead,
+    }));
   }),
 
   getThread: protectedProcedure
@@ -107,8 +133,13 @@ export const messagingRouter = createTRPCRouter({
     }),
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.message.count({
+    const unreadThreads = await ctx.db.message.findMany({
       where: { recipientId: ctx.user!.id, isRead: false },
+      select: { threadId: true, id: true },
     });
+
+    return new Set(
+      unreadThreads.map((message) => message.threadId ?? message.id)
+    ).size;
   }),
 });

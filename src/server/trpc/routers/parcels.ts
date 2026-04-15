@@ -96,7 +96,12 @@ export const parcelsRouter = createTRPCRouter({
 
       return ctx.db.parcel.update({
         where: { id: input.id },
-        data: { status: "RETURNED", notes: input.notes },
+        data: {
+          status: "RETURNED",
+          notes: input.notes,
+          collectedAt: null,
+          collectedBy: null,
+        },
       });
     }),
 });
