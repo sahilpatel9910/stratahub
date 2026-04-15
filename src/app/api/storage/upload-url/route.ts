@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { db } from "@/server/db/client";
+import { hasBuildingManagementAccess } from "@/server/auth/building-access";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "documents";
 
@@ -23,6 +25,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const dbUser = await db.user.findUnique({
+    where: { supabaseAuthId: user.id },
+    include: {
+      orgMemberships: { where: { isActive: true } },
+      buildingAssignments: { where: { isActive: true } },
+    },
+  });
+
+  if (!dbUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => ({}));
   const filename = (body.filename as string)?.trim();
   const contentType = (body.contentType as string)?.trim();
@@ -35,12 +49,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (!hasBuildingManagementAccess(dbUser, buildingId)) {
+    return NextResponse.json(
+      { error: "You do not have permission to upload documents for this building." },
+      { status: 403 }
+    );
+  }
+
   // Use service role client to bypass Storage RLS
-  const adminClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const adminClient = createAdminClient();
 
   // Store files under buildingId/userId/timestamp-filename
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -58,14 +75,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Public URL for reading after upload
-  const { data: { publicUrl } } = adminClient.storage
-    .from(BUCKET)
-    .getPublicUrl(storagePath);
-
   return NextResponse.json({
     signedUrl: data.signedUrl,
     path: storagePath,
-    publicUrl,
   });
 }

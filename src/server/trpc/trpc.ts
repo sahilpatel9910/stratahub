@@ -16,8 +16,8 @@ export async function createTRPCContext() {
     user = await db.user.findUnique({
       where: { supabaseAuthId: supabaseUser.id },
       include: {
-        orgMemberships: true,
-        buildingAssignments: true,
+        orgMemberships: { where: { isActive: true } },
+        buildingAssignments: { where: { isActive: true } },
       },
     });
 
@@ -33,8 +33,8 @@ export async function createTRPCContext() {
           lastName: meta?.last_name ?? meta?.lastName ?? "",
         },
         include: {
-          orgMemberships: true,
-          buildingAssignments: true,
+          orgMemberships: { where: { isActive: true } },
+          buildingAssignments: { where: { isActive: true } },
         },
       });
     }

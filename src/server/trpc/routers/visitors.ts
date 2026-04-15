@@ -2,16 +2,16 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
   tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 const purposeEnum = z.enum([
   "PERSONAL", "DELIVERY", "TRADESPERSON", "REAL_ESTATE", "INSPECTION", "OTHER",
 ]);
 
 export const visitorsRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -19,6 +19,8 @@ export const visitorsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const where: Record<string, unknown> = { buildingId: input.buildingId };
 
       if (input.date) {
@@ -53,6 +55,8 @@ export const visitorsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.visitorEntry.create({
         data: { ...input, registeredById: ctx.user!.id },
       });
@@ -61,6 +65,13 @@ export const visitorsRouter = createTRPCRouter({
   logArrival: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const visitor = await ctx.db.visitorEntry.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, visitor.buildingId);
+
       return ctx.db.visitorEntry.update({
         where: { id: input.id },
         data: { arrivalTime: new Date() },
@@ -70,6 +81,13 @@ export const visitorsRouter = createTRPCRouter({
   logDeparture: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const visitor = await ctx.db.visitorEntry.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, visitor.buildingId);
+
       return ctx.db.visitorEntry.update({
         where: { id: input.id },
         data: { departureTime: new Date() },

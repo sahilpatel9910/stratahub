@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Building2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,7 +70,6 @@ export default async function InvitePage({
 
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
-            <DetailRow label="Email" value={invite.email} />
             <DetailRow label="Role">
               <Badge variant="outline">{ROLE_LABELS[invite.role] ?? invite.role}</Badge>
             </DetailRow>
@@ -104,7 +102,7 @@ export default async function InvitePage({
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3 text-sm">
                 <p className="font-medium text-amber-800">Wrong account</p>
                 <p className="text-amber-700">
-                  You&apos;re signed in as <strong>{authUser.email}</strong>, but this invite is for <strong>{invite.email}</strong>.
+                  You&apos;re signed in as <strong>{authUser.email}</strong>, but this invite is for a different account.
                 </p>
                 <p className="text-amber-700">
                   Please sign out and sign in with the correct account to accept this invite.

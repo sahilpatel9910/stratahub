@@ -772,9 +772,8 @@ npx prisma studio    # Prisma Studio GUI
 - **Analytics page** — Placeholder exists at `/manager/analytics`. Has basic Recharts setup but no real trend data (only point-in-time stats).
 - **Middleware deprecation** — Next.js 16 prefers `proxy` over `middleware` convention. Low priority — still functional, just a build warning.
 - **Email verification + invite flow** — If Supabase requires email confirmation, Prisma user is auto-created on first login. Invite acceptance is deferred — user must visit `/invite/[token]` while logged in.
-- **Supabase Storage bucket** — Must be manually created in Supabase dashboard: bucket name `documents`, set to **public**. Required for document upload to work.
+- **Supabase Storage bucket** — Must exist in Supabase dashboard with bucket name `documents`, set to **private**. Reads should happen through signed URLs created server-side after authorization checks.
 - **Resend domain verification** — Until a custom domain is verified in Resend, emails send from `onboarding@resend.dev`. Add RESEND_API_KEY + RESEND_FROM_EMAIL to Vercel env vars for production.
-- **Building-level authorization gaps** — `strata.*` and `maintenance.*` mutations accept bare IDs without verifying the caller manages that building. Known pre-existing gap; acceptable for Phase 2 single-tenant deployments.
 - **Resident portal role redirect** — OWNER/TENANT who land on `/manager` are not automatically redirected to `/resident`. They see the manager UI. Phase 3 should add role detection + redirect.
 
 ### Completed (no longer gaps)
@@ -887,17 +886,19 @@ After fixing the above bugs, continue testing these manager pages that were not 
 
 8. **Prisma 7 + driver adapter** — Connection URL in `prisma.config.ts` (for migrations). `PrismaPg` adapter passed to `PrismaClient` constructor (for queries). `postinstall: prisma generate` in `package.json` for Vercel.
 
-9. **Supabase Storage upload pattern** — Files never go through Next.js. Flow: `POST /api/storage/upload-url` (service role creates signed URL) → client `PUT` directly to Supabase → tRPC saves DB record with `publicUrl` + `storagePath`. Bucket: `documents` (public). Delete: `DELETE /api/storage/delete` then tRPC delete.
+9. **Supabase Storage upload pattern** — Files never go through Next.js. Flow: `POST /api/storage/upload-url` (service role creates signed URL after building-management authorization) → client `PUT` directly to Supabase → tRPC saves DB record with `storagePath`. Reads use a short-lived signed URL from `documents.getDownloadUrl`. Bucket: `documents` (private).
 
-10. **`prisma db push` not `migrate dev`** — Schema was bootstrapped with `db push`, not migrations. The `migrations/` folder has drift. Always use `npx prisma db push` to apply schema changes, then `npx prisma generate`.
+10. **Building-scoped authorization pattern** — Do not trust caller-supplied `buildingId` or record IDs by role alone. Resolve the building from the target record and enforce either building access (read) or building management access (write/admin) before querying or mutating.
 
-11. **Fire-and-forget for emails and notifications** — Email sends and notification creates are called with `void` inside mutations. Failures are caught and logged server-side but never surfaced to the client. This means the primary mutation (create levy, update status) always succeeds even if Resend is down. All user-controlled strings are HTML-escaped before insertion into email templates.
+11. **`prisma db push` not `migrate dev`** — Schema was bootstrapped with `db push`, not migrations. The `migrations/` folder has drift. Always use `npx prisma db push` to apply schema changes, then `npx prisma generate`.
 
-12. **Lazy Resend client** — `new Resend(key)` throws at module load if the key is missing. The client is wrapped in `getResend()` which initialises lazily on first call, using `"re_placeholder"` as fallback. This prevents build-time failures. Set `RESEND_API_KEY` in `.env` and Vercel env vars for emails to actually send.
+12. **Fire-and-forget for emails and notifications** — Email sends and notification creates are called with `void` inside mutations. Failures are caught and logged server-side but never surfaced to the client. This means the primary mutation (create levy, update status) always succeeds even if Resend is down. All user-controlled strings are HTML-escaped before insertion into email templates.
 
-13. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
+13. **Lazy Resend client** — `new Resend(key)` throws at module load if the key is missing. The client is wrapped in `getResend()` which initialises lazily on first call, using `"re_placeholder"` as fallback. This prevents build-time failures. Set `RESEND_API_KEY` in `.env` and Vercel env vars for emails to actually send.
 
-14. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
+14. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
+
+15. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
 
 
 
@@ -928,3 +929,20 @@ Git/branch notes:
 Verification notes:
 - `npm run lint -- .` passes with warnings only; remaining warnings are pre-existing unrelated files.
 - `npm run build` was blocked in sandbox because `next/font/google` could not fetch fonts over restricted network, not because of app code errors.
+
+# updated this with codex agent - security hardening
+
+Implemented a first-pass security hardening sweep across authz, storage, and document access.
+
+Security changes:
+- Added shared building access and building management authorization helpers so building-scoped tRPC routes no longer trust caller-supplied IDs by role alone.
+- Hardened building-scoped routers including maintenance, strata, documents, buildings, units, visitors, parcels, keys, financials, announcements, rent, and residents against cross-building access.
+- Updated the tRPC auth context to load only active memberships and assignments.
+- Locked down storage service-role routes so upload URLs require building-management access and document deletion no longer accepts arbitrary storage paths.
+- Moved document delivery away from public URLs to short-lived signed URLs returned by `documents.getDownloadUrl`.
+- Reduced public invite token exposure by removing unnecessary fields from the invite API response.
+- Added [docs/supabase-security.md](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/docs/supabase-security.md) to document the current security model, RLS posture, private storage bucket requirement, and the safe pattern for new building-scoped features.
+
+Verification notes:
+- `npx tsc --noEmit` passes.
+- `npm run lint` passes with warnings only; remaining warnings are pre-existing unrelated files.

@@ -2,11 +2,11 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const parcelsRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -14,6 +14,8 @@ export const parcelsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.parcel.findMany({
         where: {
           buildingId: input.buildingId,
@@ -39,6 +41,8 @@ export const parcelsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.parcel.create({
         data: { ...input, loggedById: ctx.user!.id, status: "RECEIVED" },
       });
@@ -47,6 +51,13 @@ export const parcelsRouter = createTRPCRouter({
   markNotified: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const parcel = await ctx.db.parcel.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+
       return ctx.db.parcel.update({
         where: { id: input.id },
         data: { status: "NOTIFIED" },
@@ -56,6 +67,13 @@ export const parcelsRouter = createTRPCRouter({
   markCollected: managerProcedure
     .input(z.object({ id: z.string(), collectedBy: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      const parcel = await ctx.db.parcel.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+
       return ctx.db.parcel.update({
         where: { id: input.id },
         data: {
@@ -69,6 +87,13 @@ export const parcelsRouter = createTRPCRouter({
   markReturned: managerProcedure
     .input(z.object({ id: z.string(), notes: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      const parcel = await ctx.db.parcel.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+
       return ctx.db.parcel.update({
         where: { id: input.id },
         data: { status: "RETURNED", notes: input.notes },

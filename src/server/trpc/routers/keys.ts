@@ -2,15 +2,17 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 const keyTypeEnum = z.enum(["PHYSICAL_KEY", "FOB", "ACCESS_CODE", "REMOTE", "SWIPE_CARD"]);
 
 export const keysRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.keyRecord.findMany({
         where: { buildingId: input.buildingId },
         include: {
@@ -21,9 +23,16 @@ export const keysRouter = createTRPCRouter({
       });
     }),
 
-  getById: protectedProcedure
+  getById: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      const keyRecord = await ctx.db.keyRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, keyRecord.buildingId);
+
       return ctx.db.keyRecord.findUniqueOrThrow({
         where: { id: input.id },
         include: {
@@ -51,6 +60,18 @@ export const keysRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      if (input.unitId) {
+        const unit = await ctx.db.unit.findUniqueOrThrow({
+          where: { id: input.unitId },
+          select: { buildingId: true },
+        });
+        if (unit.buildingId !== input.buildingId) {
+          throw new Error("Selected unit does not belong to this building.");
+        }
+      }
+
       const keyRecord = await ctx.db.keyRecord.create({ data: input });
 
       await ctx.db.keyLog.create({
@@ -73,6 +94,13 @@ export const keysRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.keyRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.buildingId);
+
       const keyRecord = await ctx.db.keyRecord.update({
         where: { id: input.id },
         data: {
@@ -98,6 +126,13 @@ export const keysRouter = createTRPCRouter({
   returnKey: managerProcedure
     .input(z.object({ id: z.string(), notes: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.keyRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.buildingId);
+
       const keyRecord = await ctx.db.keyRecord.update({
         where: { id: input.id },
         data: { returnedDate: new Date() },
@@ -118,6 +153,13 @@ export const keysRouter = createTRPCRouter({
   deactivate: managerProcedure
     .input(z.object({ id: z.string(), notes: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.keyRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.buildingId);
+
       const keyRecord = await ctx.db.keyRecord.update({
         where: { id: input.id },
         data: { isActive: false },

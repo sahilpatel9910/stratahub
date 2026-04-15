@@ -20,13 +20,21 @@ interface Building {
 
 interface TopbarProps {
   buildings: Building[];
+  showBuildingSwitcher?: boolean;
+  searchPlaceholder?: string;
 }
 
-export function Topbar({ buildings }: TopbarProps) {
+export function Topbar({
+  buildings,
+  showBuildingSwitcher = true,
+  searchPlaceholder = "Search residents, units, parcels...",
+}: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const isSuperAdminPage = pathname.startsWith("/super-admin");
+  const canShowBuildingSwitcher =
+    showBuildingSwitcher && !isSuperAdminPage && buildings.length > 0;
 
   const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(
     undefined,
@@ -66,7 +74,7 @@ export function Topbar({ buildings }: TopbarProps) {
           <Separator orientation="vertical" className="hidden h-6 bg-border md:block" />
         </div>
 
-        {!isSuperAdminPage && (
+        {canShowBuildingSwitcher && (
           <div className="hidden min-w-0 flex-1 xl:block">
             <BuildingSwitcher buildings={buildings} />
           </div>
@@ -75,7 +83,7 @@ export function Topbar({ buildings }: TopbarProps) {
         <div className="relative ml-auto flex-1 max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search residents, units, parcels..."
+            placeholder={searchPlaceholder}
             className="h-11 rounded-xl border-white/70 bg-white/85 pl-9 pr-4 shadow-none"
           />
         </div>
@@ -155,7 +163,7 @@ export function Topbar({ buildings }: TopbarProps) {
         </div>
       </div>
 
-      {!isSuperAdminPage && (
+      {canShowBuildingSwitcher && (
         <div className="mt-3 xl:hidden">
           <div className="rounded-2xl border border-white/70 bg-white/75 p-3 backdrop-blur-sm">
             <BuildingSwitcher buildings={buildings} />

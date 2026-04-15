@@ -4,6 +4,8 @@ import {
   managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
+import { TRPCError } from "@trpc/server";
+import { assertBuildingManagementAccess, hasBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const rentRouter = createTRPCRouter({
   listByBuilding: managerProcedure
@@ -14,6 +16,8 @@ export const rentRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.rentPayment.findMany({
         where: {
           tenancy: {
@@ -37,6 +41,24 @@ export const rentRouter = createTRPCRouter({
   listByTenancy: protectedProcedure
     .input(z.object({ tenancyId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const tenancy = await ctx.db.tenancy.findUniqueOrThrow({
+        where: { id: input.tenancyId },
+        select: {
+          userId: true,
+          unit: { select: { buildingId: true } },
+        },
+      });
+
+      if (
+        tenancy.userId !== ctx.user!.id &&
+        !hasBuildingManagementAccess(ctx.user!, tenancy.unit.buildingId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have access to this tenancy.",
+        });
+      }
+
       return ctx.db.rentPayment.findMany({
         where: { tenancyId: input.tenancyId },
         orderBy: { dueDate: "desc" },
@@ -55,7 +77,13 @@ export const rentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
-      const payment = await ctx.db.rentPayment.findUniqueOrThrow({ where: { id } });
+      const payment = await ctx.db.rentPayment.findUniqueOrThrow({
+        where: { id },
+        include: {
+          tenancy: { select: { unit: { select: { buildingId: true } } } },
+        },
+      });
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, payment.tenancy.unit.buildingId);
       const status = data.amountCents >= payment.amountCents ? "PAID" : "PARTIAL";
       return ctx.db.rentPayment.update({
         where: { id },
@@ -73,7 +101,15 @@ export const rentRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const tenancy = await ctx.db.tenancy.findUniqueOrThrow({
         where: { id: input.tenancyId },
+        select: {
+          leaseStartDate: true,
+          rentFrequency: true,
+          rentAmountCents: true,
+          unit: { select: { buildingId: true } },
+        },
       });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
 
       const payments = [];
       const startDate = new Date(tenancy.leaseStartDate);
@@ -105,6 +141,8 @@ export const rentRouter = createTRPCRouter({
   getRentRoll: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const tenancies = await ctx.db.tenancy.findMany({
         where: {
           unit: { buildingId: input.buildingId },

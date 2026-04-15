@@ -5,8 +5,13 @@ import {
   protectedProcedure,
   tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
+import { TRPCError } from "@trpc/server";
 import { sendMaintenanceUpdateEmail } from "@/lib/email/send";
 import { createNotification } from "@/server/trpc/lib/create-notification";
+import {
+  assertBuildingManagementAccess,
+  hasBuildingManagementAccess,
+} from "@/server/auth/building-access";
 
 const categoryEnum = z.enum([
   "PLUMBING", "ELECTRICAL", "HVAC", "STRUCTURAL", "APPLIANCE",
@@ -19,7 +24,7 @@ const statusEnum = z.enum([
 ]);
 
 export const maintenanceRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -28,6 +33,8 @@ export const maintenanceRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.maintenanceRequest.findMany({
         where: {
           unit: { buildingId: input.buildingId },
@@ -46,6 +53,15 @@ export const maintenanceRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      const request = await ctx.db.maintenanceRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { requestedById: true, unit: { select: { buildingId: true } } },
+      });
+
+      if (request.requestedById !== ctx.user!.id) {
+        await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
+      }
+
       return ctx.db.maintenanceRequest.findUniqueOrThrow({
         where: { id: input.id },
         include: {
@@ -71,6 +87,29 @@ export const maintenanceRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const unit = await ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.unitId },
+        select: { buildingId: true },
+      });
+
+      if (!hasBuildingManagementAccess(ctx.user!, unit.buildingId)) {
+        const [ownership, tenancy] = await Promise.all([
+          ctx.db.ownership.findFirst({
+            where: { userId: ctx.user!.id, unitId: input.unitId, isActive: true },
+          }),
+          ctx.db.tenancy.findFirst({
+            where: { userId: ctx.user!.id, unitId: input.unitId, isActive: true },
+          }),
+        ]);
+
+        if (!ownership && !tenancy) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You do not have access to create a request for this unit.",
+          });
+        }
+      }
+
       return ctx.db.maintenanceRequest.create({
         data: {
           ...input,
@@ -87,6 +126,13 @@ export const maintenanceRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.maintenanceRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { unit: { select: { buildingId: true } } },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.unit.buildingId);
+
       const data: Record<string, unknown> = { status: input.status };
       if (input.status === "COMPLETED") {
         data.completedDate = new Date();
@@ -127,6 +173,13 @@ export const maintenanceRouter = createTRPCRouter({
   assign: managerProcedure
     .input(z.object({ id: z.string(), assignedTo: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.db.maintenanceRequest.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { unit: { select: { buildingId: true } } },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.unit.buildingId);
+
       return ctx.db.maintenanceRequest.update({
         where: { id: input.id },
         data: { assignedTo: input.assignedTo, status: "ACKNOWLEDGED" },
@@ -141,6 +194,15 @@ export const maintenanceRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.maintenanceRequest.findUniqueOrThrow({
+        where: { id: input.maintenanceRequestId },
+        select: { requestedById: true, unit: { select: { buildingId: true } } },
+      });
+
+      if (request.requestedById !== ctx.user!.id) {
+        await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
+      }
+
       return ctx.db.maintenanceComment.create({
         data: {
           ...input,
