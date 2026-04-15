@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Trash2, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { DollarSign, Plus, Trash2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,10 +145,32 @@ export default function FinancialsPage() {
 
   return (
     <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Building income and expense ledger
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Keep the financial picture clear with a live record of transactions, categories, and the current net position.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Financial snapshot</p>
+            <div className="mt-4 space-y-3">
+              <FinancialSignal icon={TrendingUp} label="Income" value={formatCurrency(summary?.totalIncome ?? 0)} tone="text-emerald-600" />
+              <FinancialSignal icon={TrendingDown} label="Expenses" value={formatCurrency(summary?.totalExpense ?? 0)} tone="text-red-600" />
+              <FinancialSignal icon={WalletCards} label="Net position" value={formatCurrency(summary?.net ?? 0)} tone={(summary?.net ?? 0) >= 0 ? "text-blue-600" : "text-orange-600"} />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Financials</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Financial records</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Track income and expenses for the building
           </p>
         </div>
@@ -159,84 +181,99 @@ export default function FinancialsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} className="h-11 rounded-xl px-5" />}>
             <Plus className="mr-2 h-4 w-4" />
             Add Record
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>Add Financial Record</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="px-6 pt-6">Add Financial Record</DialogTitle>
+              <DialogDescription className="px-6">
                 Record an income or expense transaction
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select
-                  value={formType}
-                  onValueChange={(v) => {
-                    setFormType(v as "INCOME" | "EXPENSE");
-                    setFormCategory("");
-                  }}
-                  itemToStringLabel={(v) => v === "INCOME" ? "Income" : v === "EXPENSE" ? "Expense" : v}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="INCOME" label="Income">Income</SelectItem>
-                    <SelectItem value="EXPENSE" label="Expense">Expense</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Category *</Label>
-                <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => v}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c} label={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="finDesc">Description *</Label>
-                <Input
-                  id="finDesc"
-                  placeholder="e.g. Q1 strata levy collection"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="finAmount">Amount (AUD) *</Label>
-                  <Input
-                    id="finAmount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formAmount}
-                    onChange={(e) => setFormAmount(e.target.value)}
-                  />
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select
+                      value={formType}
+                      onValueChange={(v) => {
+                        setFormType(v as "INCOME" | "EXPENSE");
+                        setFormCategory("");
+                      }}
+                      itemToStringLabel={(v) => v === "INCOME" ? "Income" : v === "EXPENSE" ? "Expense" : v}
+                    >
+                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INCOME" label="Income">Income</SelectItem>
+                        <SelectItem value="EXPENSE" label="Expense">Expense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category *</Label>
+                    <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => v}>
+                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c} value={c} label={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="finDesc">Description *</Label>
+                    <Input
+                      id="finDesc"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. Q1 strata levy collection"
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="finAmount">Amount (AUD) *</Label>
+                      <Input
+                        id="finAmount"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        className="h-11 rounded-xl bg-background"
+                        placeholder="0.00"
+                        value={formAmount}
+                        onChange={(e) => setFormAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="finDate">Date *</Label>
+                      <Input
+                        id="finDate"
+                        type="date"
+                        className="h-11 rounded-xl bg-background"
+                        value={formDate}
+                        onChange={(e) => setFormDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="finDate">Date *</Label>
-                  <Input
-                    id="finDate"
-                    type="date"
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                  />
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Record quality
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Use clear descriptions and consistent categories so exports, reconciliations, and reporting stay easy to read later.
+                  </p>
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
@@ -332,7 +369,7 @@ export default function FinancialsPage() {
             <CardContent className="p-0">
               <Tabs value={tab} onValueChange={setTab}>
                 <div className="px-4 pt-4">
-                  <TabsList>
+                  <TabsList className="bg-background/80">
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="income">Income</TabsTrigger>
                     <TabsTrigger value="expense">Expenses</TabsTrigger>
@@ -407,6 +444,7 @@ export default function FinancialsPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label={`Delete financial record ${rec.description}`}
                                 className="h-8 w-8 text-muted-foreground hover:text-red-600"
                                 disabled={deleteMutation.isPending}
                                 onClick={() =>
@@ -427,6 +465,28 @@ export default function FinancialsPage() {
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+function FinancialSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
