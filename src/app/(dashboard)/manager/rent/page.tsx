@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { DollarSign, AlertTriangle, CalendarDays } from "lucide-react";
+import { AlertTriangle, CalendarDays, DollarSign, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -184,12 +184,27 @@ export default function RentPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Rent</h1>
-        <p className="text-muted-foreground">
-          Rent roll and payment tracking
-        </p>
-      </div>
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Rent roll and collection tracking
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Monitor active tenancies, spot overdue balances quickly, and record payments without leaving the workflow.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Collection status</p>
+            <div className="mt-4 space-y-3">
+              <RentSignal icon={DollarSign} label="Monthly rent roll" value={formatCurrency(totalRentRoll)} tone="text-emerald-600" />
+              <RentSignal icon={AlertTriangle} label="Overdue tenancies" value={`${overdueCount}`} tone="text-red-600" />
+              <RentSignal icon={Wallet} label="Pending invoices" value={`${payments.filter((p) => p.status === "PENDING" || p.status === "OVERDUE").length}`} tone="text-amber-600" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {!selectedBuildingId ? (
         <Card>
@@ -273,7 +288,7 @@ export default function RentPage() {
           </div>
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
+            <TabsList className="bg-background/80">
               <TabsTrigger value="roll">Rent Roll</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
             </TabsList>
@@ -356,14 +371,14 @@ export default function RentPage() {
 
             {/* PAYMENTS TAB */}
             <TabsContent value="payments" className="mt-4 space-y-4">
-              <div className="flex items-center gap-3">
+              <div className="app-grid-panel flex items-center gap-3 p-4">
                 <Select
                   value={paymentStatusFilter}
                   onValueChange={(v) =>
                     setPaymentStatusFilter(v as PaymentStatus)
                   }
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="h-11 w-40 rounded-xl bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -471,10 +486,10 @@ export default function RentPage() {
 
       {/* Record Payment Dialog */}
       <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg p-0">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="px-6 pt-6">Record Payment</DialogTitle>
+            <DialogDescription className="px-6">
               {selectedPayment && (
                 <>
                   Unit {selectedPayment.unitNumber} &mdash;{" "}
@@ -483,7 +498,7 @@ export default function RentPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Amount Received (AUD) *</Label>
               <Input
@@ -491,6 +506,7 @@ export default function RentPage() {
                 type="number"
                 min="0.01"
                 step="0.01"
+                className="h-11 rounded-xl bg-background"
                 placeholder="0.00"
                 value={formAmount}
                 onChange={(e) => setFormAmount(e.target.value)}
@@ -507,6 +523,7 @@ export default function RentPage() {
               <Input
                 id="paidDate"
                 type="date"
+                className="h-11 rounded-xl bg-background"
                 value={formPaidDate}
                 onChange={(e) => setFormPaidDate(e.target.value)}
               />
@@ -515,6 +532,7 @@ export default function RentPage() {
               <Label htmlFor="method">Payment Method</Label>
               <Input
                 id="method"
+                className="h-11 rounded-xl bg-background"
                 placeholder="e.g. Bank Transfer, Direct Debit"
                 value={formMethod}
                 onChange={(e) => setFormMethod(e.target.value)}
@@ -524,6 +542,7 @@ export default function RentPage() {
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
+                className="min-h-24 rounded-xl bg-background"
                 placeholder="Any additional notes..."
                 value={formNotes}
                 onChange={(e) => setFormNotes(e.target.value)}
@@ -531,7 +550,7 @@ export default function RentPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="px-6">
             <Button
               variant="outline"
               onClick={closeRecordDialog}
@@ -554,6 +573,28 @@ export default function RentPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function RentSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

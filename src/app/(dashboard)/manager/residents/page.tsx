@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Search, Phone } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Home, Phone, Search, Users, UserRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -49,18 +48,27 @@ export default function ResidentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Residents</h1>
-          <p className="text-muted-foreground">
-            Manage owners and tenants in your building
-          </p>
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Resident directory and occupancy
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Review owners and tenants in the building, keep contact details close at hand, and understand who is attached to each unit.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Resident mix</p>
+            <div className="mt-4 space-y-3">
+              <ResidentSignal icon={Users} label="All residents" value={`${residents.length}`} tone="text-slate-600" />
+              <ResidentSignal icon={Home} label="Owners" value={`${ownerCount}`} tone="text-blue-600" />
+              <ResidentSignal icon={UserRound} label="Tenants" value={`${tenantCount}`} tone="text-emerald-600" />
+            </div>
+          </div>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Resident
-        </Button>
-      </div>
+      </section>
 
       {!selectedBuildingId ? (
         <Card>
@@ -70,8 +78,8 @@ export default function ResidentsPage() {
         </Card>
       ) : (
         <Tabs value={tab} onValueChange={(v) => setTab(v as RoleFilter)}>
-          <div className="flex items-center gap-4">
-            <TabsList>
+          <div className="app-grid-panel flex items-center gap-4 p-4">
+            <TabsList className="bg-background/80">
               <TabsTrigger value="all">
                 All ({residents.length})
               </TabsTrigger>
@@ -86,7 +94,7 @@ export default function ResidentsPage() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by name or email..."
-                className="pl-9"
+                className="h-11 rounded-xl bg-background pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -231,6 +239,28 @@ export default function ResidentsPage() {
           </TabsContent>
         </Tabs>
       )}
+    </div>
+  );
+}
+
+function ResidentSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
