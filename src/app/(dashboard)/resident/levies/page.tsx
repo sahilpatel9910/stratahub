@@ -4,7 +4,18 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCurrency } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CreditCard, Receipt, Wallet } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending",
@@ -38,31 +49,67 @@ export default function ResidentLeviesPage() {
   const unpaidTotal = levies
     .filter((l) => l.status === "PENDING" || l.status === "OVERDUE")
     .reduce((sum, l) => sum + l.amountCents, 0);
+  const paidCount = levies.filter((l) => l.status === "PAID").length;
+  const overdueCount = levies.filter((l) => l.status === "OVERDUE").length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="eyebrow-label text-primary/80">Resident Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Levy history and balances
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Track your strata charges, see what is overdue, and keep a clear record of paid quarters.
+            </p>
+          </div>
+          <div className="rounded-3xl border border-orange-200/70 bg-orange-50/90 px-5 py-4 text-left shadow-sm lg:min-w-60 lg:text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700/80">Outstanding</p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-orange-800">
+              {formatCurrency(unpaidTotal)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <ResidentMetricCard
+          icon={Wallet}
+          label="Outstanding balance"
+          value={unpaidTotal > 0 ? formatCurrency(unpaidTotal) : "All paid"}
+          tone={unpaidTotal > 0 ? "warning" : "positive"}
+        />
+        <ResidentMetricCard
+          icon={CreditCard}
+          label="Paid levies"
+          value={`${paidCount}`}
+          tone="default"
+        />
+        <ResidentMetricCard
+          icon={Receipt}
+          label="Overdue items"
+          value={`${overdueCount}`}
+          tone={overdueCount > 0 ? "warning" : "muted"}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">My Levies</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Levy entries</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Strata levy history for your unit
           </p>
         </div>
-        {unpaidTotal > 0 && (
-          <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-right">
-            <p className="text-xs text-orange-600 font-medium">Outstanding</p>
-            <p className="text-lg font-bold text-orange-700">{formatCurrency(unpaidTotal)}</p>
-          </div>
-        )}
       </div>
 
-      {/* Filter */}
       <div className="w-44">
         <Select
           value={statusFilter}
           onValueChange={(v) => v !== null && setStatusFilter(v)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full rounded-xl bg-background">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -76,52 +123,95 @@ export default function ResidentLeviesPage() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-white">
+      <Card>
+        <CardContent className="p-0">
         {isLoading ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">Loading...</div>
+          <div className="space-y-3 px-6 py-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-12 rounded-xl" />
+            ))}
+          </div>
         ) : levies.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-            No levies found
+          <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+            No levies found for the selected filter.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left">
-                <th className="px-4 py-3 font-medium">Unit</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Quarter</th>
-                <th className="px-4 py-3 font-medium">Due Date</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="px-4 py-3">Unit</TableHead>
+                <TableHead className="px-4 py-3">Type</TableHead>
+                <TableHead className="px-4 py-3">Quarter</TableHead>
+                <TableHead className="px-4 py-3">Due Date</TableHead>
+                <TableHead className="px-4 py-3 text-right">Amount</TableHead>
+                <TableHead className="px-4 py-3">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {levies.map((levy) => (
-                <tr key={levy.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{levy.unitNumber}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                <TableRow key={levy.id}>
+                  <TableCell className="px-4 py-3 font-medium">{levy.unitNumber}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {LEVY_TYPE_LABELS[levy.levyType] ?? levy.levyType}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {new Date(levy.quarterStart).toLocaleDateString("en-AU", { month: "short", year: "numeric" })}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">
                     {new Date(levy.dueDate).toLocaleDateString("en-AU")}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right font-medium">
                     {formatCurrency(levy.amountCents)}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
                     <Badge className={STATUS_COLORS[levy.status] ?? ""}>
                       {STATUS_LABELS[levy.status] ?? levy.status}
                     </Badge>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function ResidentMetricCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: "default" | "warning" | "positive" | "muted";
+}) {
+  const toneClasses: Record<string, string> = {
+    default: "bg-accent/55 text-accent-foreground",
+    warning: "bg-orange-100 text-orange-700",
+    positive: "bg-emerald-100 text-emerald-700",
+    muted: "bg-secondary text-secondary-foreground",
+  };
+
+  return (
+    <section className="app-grid-panel p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-foreground">
+            {value}
+          </p>
+        </div>
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${toneClasses[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </section>
   );
 }

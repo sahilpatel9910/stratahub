@@ -260,22 +260,25 @@ export default function DocumentsPage() {
             <Plus className="mr-2 h-4 w-4" />
             Upload Document
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>Upload Document</DialogTitle>
+              <DialogTitle className="px-6 pt-6">Upload Document</DialogTitle>
               <DialogDescription>
-                Upload a file and attach it to this building
+                <span className="px-6 pb-2">
+                  Upload a file and attach it to this building
+                </span>
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="space-y-6 py-4">
               {/* Dropzone */}
               <div
-                className={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
+                className={`relative rounded-2xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
                   isDragging
-                    ? "border-blue-500 bg-blue-50"
+                    ? "border-blue-500 bg-blue-50/80"
                     : selectedFile
-                    ? "border-green-400 bg-green-50"
-                    : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                    ? "border-emerald-400 bg-emerald-50/80"
+                    : "border-border bg-muted/20 hover:border-foreground/20 hover:bg-muted/35"
                 }`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
@@ -293,14 +296,18 @@ export default function DocumentsPage() {
                   }}
                 />
                 {selectedFile ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <File className="h-8 w-8 text-green-600 shrink-0" />
+                  <div className="flex items-center gap-3 rounded-xl bg-background/80 p-4 text-left">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                      <File className="h-6 w-6" />
+                    </div>
                     <div className="text-left min-w-0">
-                      <p className="font-medium text-sm truncate">{selectedFile.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+                      <p className="font-medium text-base truncate">{selectedFile.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
                     </div>
                     <button
-                      className="ml-auto p-1 rounded hover:bg-green-100"
+                      type="button"
+                      aria-label="Remove selected file"
+                      className="ml-auto rounded-full p-2 text-muted-foreground transition-colors hover:bg-emerald-100 hover:text-foreground"
                       onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
                     >
                       <X className="h-4 w-4 text-muted-foreground" />
@@ -308,22 +315,27 @@ export default function DocumentsPage() {
                   </div>
                 ) : (
                   <>
-                    <Upload className="mx-auto h-8 w-8 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-sm">
+                      <Upload className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">
                       Drop a file here or click to browse
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       PDF, Word, Excel, images — max 50 MB
                     </p>
                   </>
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
                 <Label htmlFor="docTitle">Title *</Label>
                 <Input
                   id="docTitle"
                   placeholder="e.g. Building Rules 2024"
+                  className="h-11 rounded-xl bg-background"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                 />
@@ -332,17 +344,26 @@ export default function DocumentsPage() {
                 <Label htmlFor="docDesc">Description</Label>
                 <Textarea
                   id="docDesc"
-                  rows={2}
+                  rows={4}
+                  className="min-h-28 rounded-xl bg-background"
                   placeholder="Brief description..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Access
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Choose how this file is grouped and whether residents can open it from their portal.
+                  </p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl bg-background"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {CATEGORIES.map(([v, l]) => (
                         <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
@@ -353,12 +374,14 @@ export default function DocumentsPage() {
                 <div className="space-y-2">
                   <Label>Visibility</Label>
                   <Select value={formIsPublic} onValueChange={(v) => { if (v) setFormIsPublic(v); }} itemToStringLabel={(v) => v === "true" ? "Public (residents)" : "Staff only"}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-11 w-full rounded-xl bg-background"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="false" label="Staff only">Staff only</SelectItem>
                       <SelectItem value="true" label="Public (residents)">Public (residents)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                  </div>
                 </div>
               </div>
 
@@ -368,8 +391,9 @@ export default function DocumentsPage() {
                   Uploading file...
                 </div>
               )}
+              </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
@@ -474,6 +498,7 @@ export default function DocumentsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label={`Open document ${doc.title}`}
                               className="h-8 w-8"
                               onClick={() => handleOpenDocument(doc.id)}
                             >
@@ -482,6 +507,7 @@ export default function DocumentsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label={`Delete document ${doc.title}`}
                               className="h-8 w-8 text-muted-foreground hover:text-red-600"
                               disabled={deleteMutation.isPending}
                               onClick={() => handleDelete(doc)}
