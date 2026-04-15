@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Lock, Shield } from "lucide-react";
+import { Lock, Shield, User, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -57,11 +57,28 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and profile</p>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Account settings and access details
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Manage your personal details, reset your password safely, and review the roles currently attached to your account.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Account snapshot</p>
+            <div className="mt-4 space-y-3">
+              <SettingsSignal icon={UserCog} label="Profile" value={me ? "Loaded" : isLoading ? "Loading" : "Unavailable"} tone="text-blue-600" />
+              <SettingsSignal icon={Shield} label="Active roles" value={me ? String(me.orgMemberships.length) : "—"} tone="text-emerald-600" />
+              <SettingsSignal icon={Lock} label="Password reset" value="Available" tone="text-amber-600" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Profile */}
       <Card>
@@ -89,6 +106,7 @@ export default function SettingsPage() {
                       <Label htmlFor="firstName">First name</Label>
                       <Input
                         id="firstName"
+                        className="h-11 rounded-xl bg-background"
                         value={profileValues.firstName}
                         onChange={(e) =>
                           setDraft((current) => ({
@@ -104,6 +122,7 @@ export default function SettingsPage() {
                       <Label htmlFor="lastName">Last name</Label>
                       <Input
                         id="lastName"
+                        className="h-11 rounded-xl bg-background"
                         value={profileValues.lastName}
                         onChange={(e) =>
                           setDraft((current) => ({
@@ -122,7 +141,7 @@ export default function SettingsPage() {
                       type="email"
                       value={me.email ?? ""}
                       disabled
-                      className="bg-gray-50"
+                      className="h-11 rounded-xl bg-gray-50"
                     />
                     <p className="text-xs text-muted-foreground">
                       Email cannot be changed here. Contact your administrator.
@@ -133,6 +152,7 @@ export default function SettingsPage() {
                     <Input
                       id="phone"
                       type="tel"
+                      className="h-11 rounded-xl bg-background"
                       placeholder="+61 4xx xxx xxx"
                       value={profileValues.phone}
                       onChange={(e) =>
@@ -199,7 +219,7 @@ export default function SettingsPage() {
           ) : (
             <div className="flex flex-wrap gap-2">
               {me?.orgMemberships.map((m, i) => (
-                <div key={i} className="flex items-center gap-2">
+                <div key={i} className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/35 px-3 py-1.5">
                   <Badge variant="outline">
                     {ROLE_LABELS[m.role] ?? m.role}
                   </Badge>
@@ -212,6 +232,28 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function SettingsSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { skipToken } from "@tanstack/react-query";
+import { AlertTriangle, Building2, ClipboardList, PackageCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -14,7 +15,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
@@ -80,12 +80,28 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-        <p className="text-muted-foreground">
-          Building performance overview and key metrics
-        </p>
-      </div>
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Building overview and operations metrics
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Use these charts as a quick operational snapshot for occupancy, maintenance workload, parcel handling, and rent collection.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">At a glance</p>
+            <div className="mt-4 space-y-3">
+              <AnalyticsSignal icon={Building2} label="Occupancy" value={stats ? `${stats.occupancyRate}%` : "—"} tone="text-blue-600" />
+              <AnalyticsSignal icon={ClipboardList} label="Open maintenance" value={stats ? String(stats.openMaintenanceCount) : "—"} tone="text-amber-600" />
+              <AnalyticsSignal icon={PackageCheck} label="Pending parcels" value={stats ? String(stats.pendingParcelCount) : "—"} tone="text-emerald-600" />
+              <AnalyticsSignal icon={AlertTriangle} label="Overdue rent" value={stats ? String(stats.overdueRentCount) : "—"} tone="text-red-600" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {!selectedBuildingId ? (
         <Card>
@@ -96,7 +112,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <StatCard
               title="Occupancy Rate"
               value={statsQuery.isLoading ? null : `${stats?.occupancyRate ?? 0}%`}
@@ -124,7 +140,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts row 1 */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">
@@ -205,7 +221,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Charts row 2 */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">
@@ -309,5 +325,27 @@ function StatCard({
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function AnalyticsSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
+    </div>
   );
 }
