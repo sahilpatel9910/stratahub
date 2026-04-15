@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
 import { ROLE_RANK } from "@/lib/auth/roles";
+import { emailsMatch, getInvitationStatus, normalizeEmail } from "@/lib/auth/invitations";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -20,21 +21,24 @@ export async function POST(req: NextRequest) {
 
   // Look up the invitation
   const invite = await db.invitation.findUnique({ where: { token } });
+  const inviteStatus = getInvitationStatus(invite);
 
-  if (!invite) {
+  if (inviteStatus === "missing") {
     return NextResponse.json({ error: "Invite not found." }, { status: 404 });
   }
-  if (invite.acceptedAt) {
+  if (inviteStatus === "accepted") {
     return NextResponse.json({ error: "This invite has already been accepted." }, { status: 409 });
   }
-  if (invite.expiresAt < new Date()) {
+  if (inviteStatus === "expired") {
     return NextResponse.json({ error: "This invite has expired." }, { status: 410 });
   }
 
+  const activeInvite = invite!;
+
   // Ensure the logged-in user is the one the invite was sent to
-  if (authUser.email?.toLowerCase() !== invite.email.toLowerCase()) {
+  if (!emailsMatch(authUser.email, activeInvite.email)) {
     return NextResponse.json(
-      { error: `This invite is for ${invite.email}. Please sign out and sign in with that account.` },
+      { error: `This invite is for ${activeInvite.email}. Please sign out and sign in with that account.` },
       { status: 403 }
     );
   }
@@ -50,7 +54,7 @@ export async function POST(req: NextRequest) {
     dbUser = await db.user.create({
       data: {
         supabaseAuthId: authUser.id,
-        email: authUser.email!,
+        email: normalizeEmail(authUser.email!),
         firstName: meta?.first_name ?? authUser.email!.split("@")[0],
         lastName: meta?.last_name ?? "",
       },
@@ -59,58 +63,78 @@ export async function POST(req: NextRequest) {
 
   // Upsert org membership — never downgrade a higher existing role
   const existingMembership = await db.organisationMembership.findUnique({
-    where: { userId_organisationId: { userId: dbUser.id, organisationId: invite.organisationId } },
+    where: {
+      userId_organisationId: {
+        userId: dbUser.id,
+        organisationId: activeInvite.organisationId,
+      },
+    },
   });
 
   if (!existingMembership) {
     await db.organisationMembership.create({
-      data: { userId: dbUser.id, organisationId: invite.organisationId, role: invite.role },
+      data: {
+        userId: dbUser.id,
+        organisationId: activeInvite.organisationId,
+        role: activeInvite.role,
+      },
     });
   } else {
-    const newRank = ROLE_RANK[invite.role];
+    const newRank = ROLE_RANK[activeInvite.role];
     const existingRank = ROLE_RANK[existingMembership.role];
     await db.organisationMembership.update({
-      where: { userId_organisationId: { userId: dbUser.id, organisationId: invite.organisationId } },
+      where: {
+        userId_organisationId: {
+          userId: dbUser.id,
+          organisationId: activeInvite.organisationId,
+        },
+      },
       // Only update role if the invite grants higher privilege; always reactivate
       data: {
         isActive: true,
-        ...(newRank > existingRank ? { role: invite.role } : {}),
+        ...(newRank > existingRank ? { role: activeInvite.role } : {}),
       },
     });
   }
 
   // Upsert building assignment if a building was specified — never downgrade a higher existing role
-  if (invite.buildingId) {
+  if (activeInvite.buildingId) {
     const existingAssignment = await db.buildingAssignment.findFirst({
-      where: { userId: dbUser.id, buildingId: invite.buildingId },
+      where: { userId: dbUser.id, buildingId: activeInvite.buildingId },
     });
 
     if (!existingAssignment) {
       await db.buildingAssignment.create({
-        data: { userId: dbUser.id, buildingId: invite.buildingId, role: invite.role },
+        data: {
+          userId: dbUser.id,
+          buildingId: activeInvite.buildingId,
+          role: activeInvite.role,
+        },
       });
     } else {
-      const newRank = ROLE_RANK[invite.role];
+      const newRank = ROLE_RANK[activeInvite.role];
       const existingRank = ROLE_RANK[existingAssignment.role];
       await db.buildingAssignment.update({
         where: { id: existingAssignment.id },
         data: {
           isActive: true,
-          ...(newRank > existingRank ? { role: invite.role } : {}),
+          ...(newRank > existingRank ? { role: activeInvite.role } : {}),
         },
       });
     }
   }
 
-  if (invite.unitId && invite.role === "OWNER") {
+  const ownerUnitId = activeInvite.unitId;
+
+  if (ownerUnitId && activeInvite.role === "OWNER") {
     await db.$transaction(async (tx) => {
       await tx.ownership.updateMany({
-        where: { unitId: invite.unitId!, isActive: true },
+        where: { unitId: ownerUnitId, isActive: true },
         data: { isActive: false },
       });
 
       await tx.tenancy.updateMany({
-        where: { unitId: invite.unitId!, isActive: true },
+        where: { unitId: ownerUnitId, isActive: true },
         data: {
           isActive: false,
           moveOutDate: new Date(),
@@ -121,12 +145,12 @@ export async function POST(req: NextRequest) {
         where: {
           userId_unitId: {
             userId: dbUser.id,
-            unitId: invite.unitId!,
+            unitId: ownerUnitId,
           },
         },
         create: {
           userId: dbUser.id,
-          unitId: invite.unitId!,
+          unitId: ownerUnitId,
           isPrimary: true,
           ownershipPct: 100,
           purchaseDate: new Date(),
@@ -140,7 +164,7 @@ export async function POST(req: NextRequest) {
       });
 
       await tx.unit.update({
-        where: { id: invite.unitId! },
+        where: { id: ownerUnitId },
         data: { isOccupied: true },
       });
     });
@@ -148,7 +172,7 @@ export async function POST(req: NextRequest) {
 
   // Mark invite as accepted
   await db.invitation.update({
-    where: { id: invite.id },
+    where: { id: activeInvite.id },
     data: { acceptedAt: new Date() },
   });
 

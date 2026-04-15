@@ -6,6 +6,7 @@ import {
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 import { ROLE_RANK } from "@/lib/auth/roles";
+import { normalizeEmail } from "@/lib/auth/invitations";
 import { TRPCError } from "@trpc/server";
 
 const ROLE_ENUM = z.enum([
@@ -153,11 +154,12 @@ export const usersRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
       const invite = await ctx.db.invitation.create({
         data: {
-          email: input.email,
+          email,
           organisationId: input.organisationId,
           buildingId: input.buildingId,
           role: input.role,
@@ -173,7 +175,7 @@ export const usersRouter = createTRPCRouter({
           : Promise.resolve(null),
       ]);
       const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
-      void sendWelcomeInviteEmail(input.email, {
+      void sendWelcomeInviteEmail(email, {
         organisationName: org?.name ?? "StrataHub",
         buildingName: building?.name,
         role: input.role,
@@ -193,6 +195,7 @@ export const usersRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
       const isSuperAdmin = ctx.user!.orgMemberships.some(
         (membership) => membership.role === "SUPER_ADMIN"
       );
@@ -223,7 +226,7 @@ export const usersRouter = createTRPCRouter({
 
       const invite = await ctx.db.invitation.create({
         data: {
-          email: input.email,
+          email,
           organisationId: building.organisationId,
           buildingId: building.id,
           role: input.role,
@@ -232,7 +235,7 @@ export const usersRouter = createTRPCRouter({
       });
 
       const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
-      void sendWelcomeInviteEmail(input.email, {
+      void sendWelcomeInviteEmail(email, {
         organisationName: building.organisation.name,
         buildingName: building.name,
         role: input.role,

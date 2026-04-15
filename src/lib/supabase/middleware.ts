@@ -52,7 +52,8 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages — go to root which handles role-based redirect
   if (user && (pathname === "/login" || pathname === "/register")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const inviteToken = request.nextUrl.searchParams.get("invite");
+    url.pathname = pathname === "/register" && inviteToken ? `/invite/${inviteToken}` : "/";
     return NextResponse.redirect(url);
   }
 

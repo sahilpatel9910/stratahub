@@ -25,8 +25,8 @@ test("getDefaultDashboardPath routes resident-only users to resident portal", ()
   assert.equal(getDefaultDashboardPath(["TENANT"]), "/resident");
 });
 
-test("getDefaultDashboardPath falls back to manager when no roles are present", () => {
-  assert.equal(getDefaultDashboardPath([]), "/manager");
+test("getDefaultDashboardPath routes users without roles to the access required page", () => {
+  assert.equal(getDefaultDashboardPath([]), "/access-required");
 });
 
 test("hasManagerPortalAccess only allows manager-capable roles", () => {

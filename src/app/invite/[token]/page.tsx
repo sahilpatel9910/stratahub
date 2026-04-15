@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AcceptInviteButton } from "./accept-invite-button";
+import { emailsMatch, getInvitationStatus } from "@/lib/auth/invitations";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -17,35 +18,41 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default async function InvitePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { token } = await params;
+  const { created } = await searchParams;
 
   // Fetch the invite from DB (server-side, no API call needed)
   const invite = await db.invitation.findUnique({ where: { token } });
+  const inviteStatus = getInvitationStatus(invite);
 
-  if (!invite) {
+  if (inviteStatus === "missing") {
     return <InviteLayout><ErrorCard title="Invite Not Found" message="This invite link is invalid or has been revoked." /></InviteLayout>;
   }
 
-  if (invite.acceptedAt) {
+  if (inviteStatus === "accepted") {
     return <InviteLayout><ErrorCard title="Already Accepted" message="This invite has already been accepted." icon="check" /></InviteLayout>;
   }
 
-  if (invite.expiresAt < new Date()) {
+  if (inviteStatus === "expired") {
     return <InviteLayout><ErrorCard title="Invite Expired" message="This invite link has expired. Please ask your administrator for a new invite." icon="clock" /></InviteLayout>;
   }
+
+  const activeInvite = invite!;
 
   // Fetch org + building details
   const [org, building] = await Promise.all([
     db.organisation.findUnique({
-      where: { id: invite.organisationId },
+      where: { id: activeInvite.organisationId },
       select: { name: true },
     }),
-    invite.buildingId
+    activeInvite.buildingId
       ? db.building.findUnique({
-          where: { id: invite.buildingId },
+          where: { id: activeInvite.buildingId },
           select: { name: true, suburb: true, state: true },
         })
       : null,
@@ -71,8 +78,9 @@ export default async function InvitePage({
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-gray-50 p-4 space-y-3">
             <DetailRow label="Role">
-              <Badge variant="outline">{ROLE_LABELS[invite.role] ?? invite.role}</Badge>
+              <Badge variant="outline">{ROLE_LABELS[activeInvite.role] ?? activeInvite.role}</Badge>
             </DetailRow>
+            <DetailRow label="Invitation email" value={activeInvite.email} />
             <DetailRow label="Organisation" value={org?.name ?? "—"} />
             {building && (
               <DetailRow
@@ -82,7 +90,7 @@ export default async function InvitePage({
             )}
             <DetailRow
               label="Expires"
-              value={new Date(invite.expiresAt).toLocaleDateString("en-AU", {
+              value={new Date(activeInvite.expiresAt).toLocaleDateString("en-AU", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -91,12 +99,12 @@ export default async function InvitePage({
           </div>
 
           {authUser ? (
-            authUser.email?.toLowerCase() === invite.email.toLowerCase() ? (
+            emailsMatch(authUser.email, activeInvite.email) ? (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground text-center">
                   Signed in as <strong>{authUser.email}</strong>
                 </p>
-                <AcceptInviteButton token={token} role={invite.role} />
+                <AcceptInviteButton token={token} role={activeInvite.role} />
               </div>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3 text-sm">
@@ -118,12 +126,17 @@ export default async function InvitePage({
             )
           ) : (
             <div className="space-y-3">
+              {created === "1" && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                  Check your email to verify your account, then return here to accept the invitation.
+                </div>
+              )}
               <p className="text-sm text-muted-foreground text-center">
-                Sign in or create an account to accept this invite.
+                Sign in with the invited email, or create your account from this invite.
               </p>
               <div className="flex flex-col gap-2">
                 <Button render={<Link href={`/register?invite=${token}`} />}>
-                  Create Account &amp; Accept
+                  Create Invited Account
                 </Button>
                 <Button variant="outline" render={<Link href={`/login?redirect=/invite/${token}`} />}>
                   Sign In &amp; Accept

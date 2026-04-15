@@ -31,5 +31,5 @@ export function getDefaultDashboardPath(roles: readonly UserRole[]) {
     return "/resident" as const;
   }
 
-  return "/manager" as const;
+  return "/access-required" as const;
 }
