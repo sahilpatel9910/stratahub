@@ -11,6 +11,7 @@ import { BuildingSwitcher } from "./building-switcher";
 import { trpc } from "@/lib/trpc/client";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter, usePathname } from "next/navigation";
+import { useBuildingContext } from "@/hooks/use-building-context";
 
 interface Building {
   id: string;
@@ -35,6 +36,8 @@ export function Topbar({
   const bellButtonRef = useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const { selectedBuildingId, setSelectedBuilding, clearSelectedBuilding } =
+    useBuildingContext();
   const isSuperAdminPage = pathname.startsWith("/super-admin");
   const canShowBuildingSwitcher =
     showBuildingSwitcher && !isSuperAdminPage && buildings.length > 0;
@@ -62,6 +65,20 @@ export function Topbar({
       utils.notifications.listRecent.invalidate();
     },
   });
+
+  useEffect(() => {
+    if (selectedBuildingId && !buildings.some((building) => building.id === selectedBuildingId)) {
+      clearSelectedBuilding();
+      return;
+    }
+
+    if (buildings.length === 1) {
+      const onlyBuilding = buildings[0];
+      if (selectedBuildingId !== onlyBuilding.id) {
+        setSelectedBuilding(onlyBuilding.id, onlyBuilding.name);
+      }
+    }
+  }, [buildings, clearSelectedBuilding, selectedBuildingId, setSelectedBuilding]);
 
   useEffect(() => {
     function updatePanelPosition() {
