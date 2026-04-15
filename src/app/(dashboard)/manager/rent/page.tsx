@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -118,15 +117,7 @@ export default function RentPage() {
   );
 
   const paymentsQuery = trpc.rent.listByBuilding.useQuery(
-    selectedBuildingId
-      ? {
-          buildingId: selectedBuildingId,
-          status:
-            paymentStatusFilter === "ALL"
-              ? undefined
-              : (paymentStatusFilter as Exclude<PaymentStatus, "ALL">),
-        }
-      : skipToken,
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
 
@@ -174,13 +165,20 @@ export default function RentPage() {
   }
 
   const rentRoll = rentRollQuery.data ?? [];
-  const payments = paymentsQuery.data ?? [];
+  const allPayments = paymentsQuery.data ?? [];
+  const payments =
+    paymentStatusFilter === "ALL"
+      ? allPayments
+      : allPayments.filter((payment) => payment.status === paymentStatusFilter);
 
   const totalRentRoll = rentRoll.reduce(
     (sum, t) => sum + t.rentAmountCents,
     0
   );
   const overdueCount = rentRoll.filter((t) => t.overduePayments > 0).length;
+  const pendingInvoiceCount = allPayments.filter(
+    (payment) => payment.status === "PENDING" || payment.status === "OVERDUE"
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -200,7 +198,7 @@ export default function RentPage() {
             <div className="mt-4 space-y-3">
               <RentSignal icon={DollarSign} label="Monthly rent roll" value={formatCurrency(totalRentRoll)} tone="text-emerald-600" />
               <RentSignal icon={AlertTriangle} label="Overdue tenancies" value={`${overdueCount}`} tone="text-red-600" />
-              <RentSignal icon={Wallet} label="Pending invoices" value={`${payments.filter((p) => p.status === "PENDING" || p.status === "OVERDUE").length}`} tone="text-amber-600" />
+              <RentSignal icon={Wallet} label="Pending invoices" value={`${pendingInvoiceCount}`} tone="text-amber-600" />
             </div>
           </div>
         </div>
@@ -272,12 +270,7 @@ export default function RentPage() {
                   <Skeleton className="h-8 w-12" />
                 ) : (
                   <p className="text-2xl font-bold">
-                    {
-                      payments.filter(
-                        (p) =>
-                          p.status === "PENDING" || p.status === "OVERDUE"
-                      ).length
-                    }
+                    {pendingInvoiceCount}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">

@@ -1,21 +1,11 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   superAdminProcedure,
-  managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
-import type { UserRole } from "@/generated/prisma/client";
-
-const ROLE_RANK: Record<UserRole, number> = {
-  TENANT: 0,
-  OWNER: 1,
-  RECEPTION: 2,
-  BUILDING_MANAGER: 3,
-  SUPER_ADMIN: 4,
-};
+import { ROLE_RANK } from "@/lib/auth/roles";
 
 const ROLE_ENUM = z.enum([
   "SUPER_ADMIN",

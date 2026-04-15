@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
-import type { UserRole } from "@/generated/prisma/client";
-
-// Higher index = higher privilege. Never downgrade a user's role.
-const ROLE_RANK: Record<UserRole, number> = {
-  TENANT: 0,
-  OWNER: 1,
-  RECEPTION: 2,
-  BUILDING_MANAGER: 3,
-  SUPER_ADMIN: 4,
-};
+import { ROLE_RANK } from "@/lib/auth/roles";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();

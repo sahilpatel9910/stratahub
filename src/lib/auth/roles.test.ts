@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { getDefaultDashboardPath, hasManagerPortalAccess, ROLE_RANK } from "@/lib/auth/roles";
+
+test("getDefaultDashboardPath prioritises super admin users", () => {
+  assert.equal(
+    getDefaultDashboardPath(["OWNER", "SUPER_ADMIN"]),
+    "/super-admin/organisations"
+  );
+});
+
+test("getDefaultDashboardPath routes manager roles to manager portal", () => {
+  assert.equal(
+    getDefaultDashboardPath(["TENANT", "RECEPTION"]),
+    "/manager"
+  );
+  assert.equal(
+    getDefaultDashboardPath(["BUILDING_MANAGER"]),
+    "/manager"
+  );
+});
+
+test("getDefaultDashboardPath routes resident-only users to resident portal", () => {
+  assert.equal(getDefaultDashboardPath(["OWNER"]), "/resident");
+  assert.equal(getDefaultDashboardPath(["TENANT"]), "/resident");
+});
+
+test("getDefaultDashboardPath falls back to manager when no roles are present", () => {
+  assert.equal(getDefaultDashboardPath([]), "/manager");
+});
+
+test("hasManagerPortalAccess only allows manager-capable roles", () => {
+  assert.equal(hasManagerPortalAccess(["SUPER_ADMIN"]), true);
+  assert.equal(hasManagerPortalAccess(["RECEPTION"]), true);
+  assert.equal(hasManagerPortalAccess(["OWNER", "TENANT"]), false);
+});
+
+test("ROLE_RANK preserves privilege ordering for upgrade-only flows", () => {
+  assert.equal(ROLE_RANK.TENANT < ROLE_RANK.OWNER, true);
+  assert.equal(ROLE_RANK.OWNER < ROLE_RANK.RECEPTION, true);
+  assert.equal(ROLE_RANK.RECEPTION < ROLE_RANK.BUILDING_MANAGER, true);
+  assert.equal(ROLE_RANK.BUILDING_MANAGER < ROLE_RANK.SUPER_ADMIN, true);
+});

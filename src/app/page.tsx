@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
+import { getDefaultDashboardPath } from "@/lib/auth/roles";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -29,18 +30,5 @@ export default async function Home() {
     ...dbUser.buildingAssignments.map((a) => a.role),
   ];
 
-  if (roles.includes("SUPER_ADMIN")) {
-    redirect("/super-admin/organisations");
-  }
-
-  // Manager-level roles take priority over owner/tenant roles
-  if (roles.includes("BUILDING_MANAGER") || roles.includes("RECEPTION")) {
-    redirect("/manager");
-  }
-
-  if (roles.includes("OWNER") || roles.includes("TENANT")) {
-    redirect("/resident");
-  }
-
-  redirect("/manager");
+  redirect(getDefaultDashboardPath(roles));
 }
