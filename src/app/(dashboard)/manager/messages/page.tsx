@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, MessageSquare } from "lucide-react";
+import { Inbox, MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,60 +103,107 @@ export default function MessagesPage() {
   const threads = threadsQuery.data ?? [];
   const messages = threadQuery.data ?? [];
   const selectedThread = threads.find((t) => t.threadId === selectedThreadId);
+  const unreadCount = threads.filter((thread) => !thread.isRead).length;
 
   return (
     <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Staff and resident messaging
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Keep communication centralised, respond to resident questions quickly, and maintain a readable conversation history for the team.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Mailbox status</p>
+            <div className="mt-4 space-y-3">
+              <MessageSignal icon={Inbox} label="Conversations" value={`${threads.length}`} tone="text-slate-600" />
+              <MessageSignal icon={MessageSquare} label="Unread threads" value={`${unreadCount}`} tone="text-blue-600" />
+              <MessageSignal icon={Send} label="Open thread" value={selectedThreadId ? "Active" : "None"} tone="text-emerald-600" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Message inbox</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Direct messages between staff and residents
           </p>
         </div>
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
-          <DialogTrigger render={<Button />}>
+          <DialogTrigger render={<Button className="h-11 rounded-xl px-5" />}>
             <Send className="mr-2 h-4 w-4" />
             New Message
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>New Message</DialogTitle>
-              <DialogDescription>Send a direct message to a user</DialogDescription>
+              <DialogTitle className="px-6 pt-6">New Message</DialogTitle>
+              <DialogDescription className="px-6">Send a direct message to a user</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="recipientId">Recipient User ID *</Label>
-                <Input
-                  id="recipientId"
-                  placeholder="User ID"
-                  value={formRecipientId}
-                  onChange={(e) => setFormRecipientId(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter the recipient&apos;s user ID from the residents list
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject (optional)</Label>
-                <Input
-                  id="subject"
-                  placeholder="Message subject"
-                  value={formSubject}
-                  onChange={(e) => setFormSubject(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="composeContent">Message *</Label>
-                <Textarea
-                  id="composeContent"
-                  placeholder="Type your message..."
-                  value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
-                  rows={4}
-                />
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipientId">Recipient User ID *</Label>
+                    <Input
+                      id="recipientId"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="User ID"
+                      value={formRecipientId}
+                      onChange={(e) => setFormRecipientId(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the recipient&apos;s user ID from the residents list
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Subject (optional)</Label>
+                    <Input
+                      id="subject"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="Message subject"
+                      value={formSubject}
+                      onChange={(e) => setFormSubject(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="composeContent">Message *</Label>
+                    <Textarea
+                      id="composeContent"
+                      className="min-h-32 rounded-xl bg-background"
+                      placeholder="Type your message..."
+                      value={formContent}
+                      onChange={(e) => setFormContent(e.target.value)}
+                      rows={5}
+                    />
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Delivery note
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Messages still go through the existing server-side permission checks. This panel only improves the compose experience.
+                  </p>
+                  <div className="mt-4 rounded-2xl border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <ShieldCheck className="h-4 w-4 text-primary" />
+                      Team tip
+                    </div>
+                    <p className="mt-2 leading-6">
+                      Use a clear subject and keep one topic per thread so later follow-up stays easy to audit.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setComposeOpen(false)}
@@ -179,9 +226,9 @@ export default function MessagesPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      <div className="grid h-[calc(100vh-260px)] min-h-[34rem] gap-4 xl:grid-cols-3">
         {/* Thread list */}
-        <Card className="col-span-1 overflow-hidden flex flex-col">
+        <Card className="overflow-hidden xl:col-span-1">
           <CardHeader className="pb-3 border-b">
             <CardTitle className="text-sm font-medium">Conversations</CardTitle>
           </CardHeader>
@@ -248,7 +295,7 @@ export default function MessagesPage() {
         </Card>
 
         {/* Message thread */}
-        <Card className="col-span-2 overflow-hidden flex flex-col">
+        <Card className="overflow-hidden xl:col-span-2">
           {!selectedThreadId ? (
             <CardContent className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -317,6 +364,7 @@ export default function MessagesPage() {
                 />
                 <Button
                   onClick={handleReply}
+                  aria-label="Send reply"
                   disabled={!replyContent.trim() || sendMutation.isPending}
                   className="self-end"
                 >
@@ -327,6 +375,28 @@ export default function MessagesPage() {
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+function MessageSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
