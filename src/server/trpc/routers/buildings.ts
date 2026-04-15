@@ -135,9 +135,9 @@ export const buildingsRouter = createTRPCRouter({
           ctx.db.parcel.findMany({
             where: {
               buildingId: input.buildingId,
-              createdAt: { gte: sixMonthsAgo },
+              loggedAt: { gte: sixMonthsAgo },
             },
-            select: { createdAt: true },
+            select: { loggedAt: true },
           }),
           ctx.db.rentPayment.findMany({
             where: {
@@ -179,7 +179,7 @@ export const buildingsRouter = createTRPCRouter({
           maintenanceByMonth.set(k, (maintenanceByMonth.get(k) ?? 0) + 1);
       }
       for (const p of parcels) {
-        const k = monthKey(p.createdAt);
+        const k = monthKey(p.loggedAt);
         if (parcelsByMonth.has(k))
           parcelsByMonth.set(k, (parcelsByMonth.get(k) ?? 0) + 1);
       }

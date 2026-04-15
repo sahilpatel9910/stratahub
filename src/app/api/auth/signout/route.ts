@@ -6,7 +6,13 @@ export async function GET(req: NextRequest) {
   await supabase.auth.signOut();
 
   const { searchParams } = new URL(req.url);
-  const redirect = searchParams.get("redirect") ?? "/login";
+  const redirectParam = searchParams.get("redirect") ?? "/login";
 
-  return NextResponse.redirect(new URL(redirect, req.url));
+  // Only allow relative paths — reject anything that could redirect off-site
+  const safeRedirect =
+    redirectParam.startsWith("/") && !redirectParam.startsWith("//")
+      ? redirectParam
+      : "/login";
+
+  return NextResponse.redirect(new URL(safeRedirect, req.url));
 }

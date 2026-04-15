@@ -197,7 +197,7 @@ export default function AnalyticsPage() {
                       axisLine={false}
                       tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
                     />
-                    <Tooltip formatter={(v: number) => [`$${v.toLocaleString()}`, "Rent"]} />
+                    <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, "Rent"]} />
                     <Bar dataKey="rentCollected" name="Rent" fill="#10b981" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
