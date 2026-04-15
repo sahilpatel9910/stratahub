@@ -2,17 +2,19 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 const unitTypeEnum = z.enum([
   "APARTMENT", "STUDIO", "PENTHOUSE", "TOWNHOUSE", "COMMERCIAL", "STORAGE", "PARKING",
 ]);
 
 export const unitsRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.unit.findMany({
         where: { buildingId: input.buildingId },
         include: {
@@ -33,9 +35,16 @@ export const unitsRouter = createTRPCRouter({
       });
     }),
 
-  getById: protectedProcedure
+  getById: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      const unit = await ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, unit.buildingId);
+
       return ctx.db.unit.findUniqueOrThrow({
         where: { id: input.id },
         include: {
@@ -74,6 +83,8 @@ export const unitsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.unit.create({ data: input });
     }),
 
@@ -95,12 +106,24 @@ export const unitsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const unit = await ctx.db.unit.findUniqueOrThrow({
+        where: { id },
+        select: { buildingId: true },
+      });
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, unit.buildingId);
       return ctx.db.unit.update({ where: { id }, data });
     }),
 
   delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const unit = await ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, unit.buildingId);
+
       return ctx.db.unit.delete({ where: { id: input.id } });
     }),
 });

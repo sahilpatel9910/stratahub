@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   superAdminProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
 
 export const organisationsRouter = createTRPCRouter({
@@ -15,7 +14,7 @@ export const organisationsRouter = createTRPCRouter({
     });
   }),
 
-  getById: protectedProcedure
+  getById: superAdminProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       return ctx.db.organisation.findUniqueOrThrow({

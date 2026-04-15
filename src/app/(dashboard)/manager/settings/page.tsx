@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -34,22 +34,26 @@ export default function SettingsPage() {
     onSuccess: () => toast.success("Profile updated"),
     onError: (e) => toast.error(e.message),
   });
+  const [draft, setDraft] = useState<{
+    firstName: string;
+    lastName: string;
+    phone: string;
+  } | null>(null);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-
-  useEffect(() => {
-    if (me) {
-      setFirstName(me.firstName);
-      setLastName(me.lastName);
-      setPhone(me.phone ?? "");
-    }
-  }, [me]);
+  const profileValues = {
+    firstName: draft?.firstName ?? me?.firstName ?? "",
+    lastName: draft?.lastName ?? me?.lastName ?? "",
+    phone: draft?.phone ?? me?.phone ?? "",
+  };
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    updateMe.mutate({ firstName, lastName, phone: phone || null });
+    if (!me) return;
+    updateMe.mutate({
+      firstName: profileValues.firstName,
+      lastName: profileValues.lastName,
+      phone: profileValues.phone || null,
+    });
   }
 
   return (
@@ -78,54 +82,76 @@ export default function SettingsPage() {
                 <Skeleton className="h-9 w-full" />
               </>
             ) : (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name</Label>
-                    <Input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
+              me ? (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First name</Label>
+                      <Input
+                        id="firstName"
+                        value={profileValues.firstName}
+                        onChange={(e) =>
+                          setDraft((current) => ({
+                            firstName: e.target.value,
+                            lastName: current?.lastName ?? me.lastName,
+                            phone: current?.phone ?? me.phone ?? "",
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileValues.lastName}
+                        onChange={(e) =>
+                          setDraft((current) => ({
+                            firstName: current?.firstName ?? me.firstName,
+                            lastName: e.target.value,
+                            phone: current?.phone ?? me.phone ?? "",
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      id="email"
+                      type="email"
+                      value={me.email ?? ""}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Email cannot be changed here. Contact your administrator.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+61 4xx xxx xxx"
+                      value={profileValues.phone}
+                      onChange={(e) =>
+                        setDraft((current) => ({
+                          firstName: current?.firstName ?? me.firstName,
+                          lastName: current?.lastName ?? me.lastName,
+                          phone: e.target.value,
+                        }))
+                      }
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={me?.email ?? ""}
-                    disabled
-                    className="bg-gray-50"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Email cannot be changed here. Contact your administrator.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+61 4xx xxx xxx"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              </>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Unable to load your profile.</p>
+              )
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" disabled={isLoading || updateMe.isPending}>
+            <Button type="submit" disabled={isLoading || updateMe.isPending || !me}>
               {updateMe.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </CardFooter>

@@ -4,11 +4,14 @@ import {
   managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const announcementsRouter = createTRPCRouter({
   listByBuilding: protectedProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.announcement.findMany({
         where: {
           buildingId: input.buildingId,
@@ -37,6 +40,8 @@ export const announcementsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.announcement.create({
         data: {
           ...input,
@@ -49,6 +54,13 @@ export const announcementsRouter = createTRPCRouter({
   delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const announcement = await ctx.db.announcement.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, announcement.buildingId);
+
       return ctx.db.announcement.delete({ where: { id: input.id } });
     }),
 });

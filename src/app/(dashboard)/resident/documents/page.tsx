@@ -25,12 +25,18 @@ function formatFileSize(bytes: number): string {
 
 export default function ResidentDocumentsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const downloadMutation = trpc.documents.getDownloadUrl.useMutation();
 
   const { data: documents = [], isLoading } = trpc.resident.getMyDocuments.useQuery(
     categoryFilter !== "ALL"
       ? { category: categoryFilter as "OTHER" }
       : {}
   );
+
+  async function handleDownload(documentId: string) {
+    const result = await downloadMutation.mutateAsync({ id: documentId });
+    window.open(result.url, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <div className="space-y-6">
@@ -100,7 +106,11 @@ export default function ResidentDocumentsPage() {
                     {new Date(doc.createdAt).toLocaleDateString("en-AU")}
                   </td>
                   <td className="px-4 py-3">
-                    <Button variant="ghost" size="sm" render={<a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" download />}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownload(doc.id)}
+                    >
                       <Download className="h-4 w-4 mr-1" />
                       Download
                     </Button>

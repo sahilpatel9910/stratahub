@@ -2,8 +2,8 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const financialsRouter = createTRPCRouter({
   listByBuilding: managerProcedure
@@ -16,6 +16,8 @@ export const financialsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.financialRecord.findMany({
         where: {
           buildingId: input.buildingId,
@@ -36,6 +38,8 @@ export const financialsRouter = createTRPCRouter({
   getSummary: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const [income, expense] = await Promise.all([
         ctx.db.financialRecord.aggregate({
           where: { buildingId: input.buildingId, type: "INCOME" },
@@ -70,6 +74,8 @@ export const financialsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.financialRecord.create({
         data: {
           ...input,
@@ -81,6 +87,13 @@ export const financialsRouter = createTRPCRouter({
   delete: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const record = await ctx.db.financialRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, record.buildingId);
+
       return ctx.db.financialRecord.delete({ where: { id: input.id } });
     }),
 });

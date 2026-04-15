@@ -5,6 +5,7 @@ import {
   managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
+import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 const stateEnum = z.enum(["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"]);
 
@@ -40,6 +41,8 @@ export const buildingsRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingAccess(ctx.db, ctx.user!, input.id);
+
       return ctx.db.building.findUniqueOrThrow({
         where: { id: input.id },
         include: {
@@ -94,6 +97,7 @@ export const buildingsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, id);
       return ctx.db.building.update({ where: { id }, data });
     }),
 
@@ -103,9 +107,11 @@ export const buildingsRouter = createTRPCRouter({
       return ctx.db.building.delete({ where: { id: input.id } });
     }),
 
-  getStats: protectedProcedure
+  getStats: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 

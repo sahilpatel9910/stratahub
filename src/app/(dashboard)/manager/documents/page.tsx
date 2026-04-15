@@ -132,6 +132,9 @@ export default function DocumentsPage() {
     },
     onError: (err) => toast.error(err.message ?? "Failed to delete document"),
   });
+  const downloadMutation = trpc.documents.getDownloadUrl.useMutation({
+    onError: (err) => toast.error(err.message ?? "Failed to open document"),
+  });
 
   function resetForm() {
     setFormTitle("");
@@ -142,7 +145,7 @@ export default function DocumentsPage() {
     setUploadProgress("idle");
   }
 
-  function handleFileSelect(file: File) {
+  const handleFileSelect = useCallback((file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
       toast.error("Unsupported file type. Please upload PDF, Word, Excel, image, or text files.");
       return;
@@ -156,7 +159,7 @@ export default function DocumentsPage() {
     if (!formTitle) {
       setFormTitle(file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
     }
-  }
+  }, [formTitle]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -165,7 +168,7 @@ export default function DocumentsPage() {
       const file = e.dataTransfer.files[0];
       if (file) handleFileSelect(file);
     },
-    [formTitle]
+    [handleFileSelect]
   );
 
   async function handleUploadAndSave() {
@@ -190,10 +193,9 @@ export default function DocumentsPage() {
         throw new Error(err.error ?? "Failed to get upload URL");
       }
 
-      const { signedUrl, path, publicUrl } = await urlRes.json() as {
+      const { signedUrl, path } = await urlRes.json() as {
         signedUrl: string;
         path: string;
-        publicUrl: string;
       };
 
       // 2. Upload file directly to Supabase Storage
@@ -215,7 +217,6 @@ export default function DocumentsPage() {
         title: formTitle.trim(),
         description: formDescription.trim() || undefined,
         category: formCategory as DocCategory,
-        fileUrl: publicUrl,
         storagePath: path,
         fileSize: selectedFile.size,
         mimeType: selectedFile.type,
@@ -227,16 +228,13 @@ export default function DocumentsPage() {
     }
   }
 
-  async function handleDelete(doc: { id: string; storagePath?: string | null }) {
-    // Delete from storage if we have the path
-    if (doc.storagePath) {
-      await fetch("/api/storage/delete", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: doc.storagePath }),
-      }).catch(() => null); // non-fatal — DB record is the source of truth
-    }
+  async function handleDelete(doc: { id: string }) {
     deleteMutation.mutate({ id: doc.id });
+  }
+
+  async function handleOpenDocument(documentId: string) {
+    const result = await downloadMutation.mutateAsync({ id: documentId });
+    window.open(result.url, "_blank", "noopener,noreferrer");
   }
 
   const documents = query.data ?? [];
@@ -477,7 +475,7 @@ export default function DocumentsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              render={<a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" />}
+                              onClick={() => handleOpenDocument(doc.id)}
                             >
                               <ExternalLink className="h-4 w-4" />
                             </Button>

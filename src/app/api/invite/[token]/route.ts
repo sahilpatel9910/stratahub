@@ -30,8 +30,6 @@ export async function GET(
   ]);
 
   return NextResponse.json({
-    id: invite.id,
-    email: invite.email,
     role: invite.role,
     expiresAt: invite.expiresAt,
     acceptedAt: invite.acceptedAt,

@@ -2,19 +2,21 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { sendLevyNoticeEmail } from "@/lib/email/send";
 import { createNotification } from "@/server/trpc/lib/create-notification";
+import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
 const paymentStatusEnum = z.enum(["PENDING", "PAID", "OVERDUE", "PARTIAL", "WAIVED"]);
 
 export const strataRouter = createTRPCRouter({
-  getByBuilding: protectedProcedure
+  getByBuilding: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       return ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
         include: {
@@ -41,6 +43,8 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const { buildingId, insuranceExpiry, nextAgmDate, strataManagerEmail, ...rest } = input;
 
       const data = {
@@ -68,6 +72,8 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const strataInfo = await ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
       });
@@ -92,12 +98,21 @@ export const strataRouter = createTRPCRouter({
   deleteMeeting: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const meeting = await ctx.db.strataMeeting.findUniqueOrThrow({
+        where: { id: input.id },
+        select: {
+          strataInfo: { select: { buildingId: true } },
+        },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, meeting.strataInfo.buildingId);
+
       return ctx.db.strataMeeting.delete({ where: { id: input.id } });
     }),
 
   // ── Levies ────────────────────────────────────────────────────────────────
 
-  listLevies: protectedProcedure
+  listLevies: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -106,6 +121,8 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const strataInfo = await ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
       });
@@ -146,6 +163,20 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      const unitForBuilding = await ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.unitId },
+        select: { buildingId: true },
+      });
+
+      if (unitForBuilding.buildingId !== input.buildingId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Selected unit does not belong to this building.",
+        });
+      }
+
       const strataInfo = await ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
       });
@@ -168,7 +199,7 @@ export const strataRouter = createTRPCRouter({
       });
 
       // Notify + email the unit owner (fire-and-forget)
-      const unit = await ctx.db.unit.findUnique({
+      const unitWithOwners = await ctx.db.unit.findUnique({
         where: { id: input.unitId },
         include: {
           building: { select: { name: true } },
@@ -178,20 +209,20 @@ export const strataRouter = createTRPCRouter({
           },
         },
       });
-      if (unit) {
-        for (const ownership of unit.ownerships) {
+      if (unitWithOwners) {
+        for (const ownership of unitWithOwners.ownerships) {
           const { user } = ownership;
           void createNotification(ctx.db, {
             userId: user.id,
             type: "LEVY_CREATED",
             title: `New levy raised: ${input.levyType.replace(/_/g, " ")}`,
-            body: `Unit ${unit.unitNumber} — due ${new Date(input.dueDate).toLocaleDateString("en-AU")}`,
+            body: `Unit ${unitWithOwners.unitNumber} — due ${new Date(input.dueDate).toLocaleDateString("en-AU")}`,
             linkUrl: "/resident/levies",
           });
           void sendLevyNoticeEmail(user.email, {
             recipientName: `${user.firstName} ${user.lastName}`,
-            buildingName: unit.building.name,
-            unitNumber: unit.unitNumber,
+            buildingName: unitWithOwners.building.name,
+            unitNumber: unitWithOwners.unitNumber,
             levyType: input.levyType,
             amountCents: input.amountCents,
             dueDate: new Date(input.dueDate),
@@ -213,6 +244,8 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
       const strataInfo = await ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
       });
@@ -296,6 +329,15 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const levy = await ctx.db.strataLevy.findUniqueOrThrow({
+        where: { id: input.id },
+        select: {
+          strataInfo: { select: { buildingId: true } },
+        },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, levy.strataInfo.buildingId);
+
       return ctx.db.strataLevy.update({
         where: { id: input.id },
         data: {
@@ -313,6 +355,15 @@ export const strataRouter = createTRPCRouter({
   deleteLevy: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const levy = await ctx.db.strataLevy.findUniqueOrThrow({
+        where: { id: input.id },
+        select: {
+          strataInfo: { select: { buildingId: true } },
+        },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, levy.strataInfo.buildingId);
+
       return ctx.db.strataLevy.delete({ where: { id: input.id } });
     }),
 });

@@ -46,26 +46,32 @@ export function ResidentSidebar() {
   }
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b px-6 py-4">
-        <Link href="/resident" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-            <Building2 className="h-4 w-4 text-white" />
+    <Sidebar variant="floating" className="border-r-0">
+      <SidebarHeader className="sidebar-surface border-b border-sidebar-border/70 px-5 py-5">
+        <Link href="/resident" className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(6,182,212,0.92),rgba(37,99,235,0.9))] text-white shadow-[0_16px_36px_-20px_rgba(34,211,238,0.8)]">
+            <Building2 className="h-5 w-5" />
           </div>
-          <span className="text-lg font-bold">StrataHub</span>
+          <div>
+            <p className="text-lg font-semibold tracking-[-0.04em] text-sidebar-foreground">StrataHub</p>
+            <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">Resident portal</p>
+          </div>
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Resident Portal</SidebarGroupLabel>
+      <SidebarContent className="sidebar-surface px-3 py-4">
+        <SidebarGroup className="p-0">
+          <SidebarGroupLabel className="sidebar-section-label">
+            Resident Portal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {residentNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={pathname === item.href}
+                    className="sidebar-nav-button"
                   >
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
@@ -77,10 +83,13 @@ export function ResidentSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="sidebar-surface border-t border-sidebar-border/70 p-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={handleSignOut}>
+            <SidebarMenuButton
+              onClick={handleSignOut}
+              className="sidebar-nav-button"
+            >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
             </SidebarMenuButton>

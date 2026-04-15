@@ -1,12 +1,51 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   managerProcedure,
-  protectedProcedure,
+  type Context,
 } from "@/server/trpc/trpc";
+import { hasBuildingManagementAccess } from "@/server/auth/building-access";
+
+async function assertResidentManagementAccess(ctx: Context, residentId: string) {
+  const resident = await ctx.db.user.findUniqueOrThrow({
+    where: { id: residentId },
+    select: {
+      buildingAssignments: {
+        where: { isActive: true },
+        select: { buildingId: true },
+      },
+      ownerships: {
+        where: { isActive: true },
+        select: { unit: { select: { buildingId: true } } },
+      },
+      tenancies: {
+        where: { isActive: true },
+        select: { unit: { select: { buildingId: true } } },
+      },
+    },
+  });
+
+  const buildingIds = new Set<string>([
+    ...resident.buildingAssignments.map((assignment) => assignment.buildingId),
+    ...resident.ownerships.map((ownership) => ownership.unit.buildingId),
+    ...resident.tenancies.map((tenancy) => tenancy.unit.buildingId),
+  ]);
+
+  const allowed = Array.from(buildingIds).some((buildingId) =>
+    hasBuildingManagementAccess(ctx.user!, buildingId)
+  );
+
+  if (!allowed) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to manage this resident.",
+    });
+  }
+}
 
 export const residentsRouter = createTRPCRouter({
-  listByBuilding: protectedProcedure
+  listByBuilding: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -15,6 +54,13 @@ export const residentsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
+      if (!hasBuildingManagementAccess(ctx.user!, input.buildingId)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not have permission to manage this building.",
+        });
+      }
+
       const buildingAssignments = await ctx.db.buildingAssignment.findMany({
         where: {
           buildingId: input.buildingId,
@@ -56,9 +102,11 @@ export const residentsRouter = createTRPCRouter({
       return residents;
     }),
 
-  getById: protectedProcedure
+  getById: managerProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
+      await assertResidentManagementAccess(ctx, input.id);
+
       return ctx.db.user.findUniqueOrThrow({
         where: { id: input.id },
         include: {
@@ -91,12 +139,21 @@ export const residentsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      await assertResidentManagementAccess(ctx, input.userId);
+
       return ctx.db.emergencyContact.create({ data: input });
     }),
 
   removeEmergencyContact: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const contact = await ctx.db.emergencyContact.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { userId: true },
+      });
+
+      await assertResidentManagementAccess(ctx, contact.userId);
+
       return ctx.db.emergencyContact.delete({ where: { id: input.id } });
     }),
 });
