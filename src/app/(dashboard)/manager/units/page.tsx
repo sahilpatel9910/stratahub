@@ -253,13 +253,24 @@ export default function UnitsPage() {
                   onChange={(e) => setFormParking(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="storage">Storage Spaces</Label>
+                <Input
+                  id="storage"
+                  type="number"
+                  min="0"
+                  className="h-11 rounded-xl bg-background"
+                  value={formStorage}
+                  onChange={(e) => setFormStorage(e.target.value)}
+                />
+              </div>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Planning details
                   </p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Capture the layout and capacity basics now so occupancy, maintenance, and resident assignment screens stay accurate later.
+                    Capture the layout and capacity basics now so occupancy, parking, storage, maintenance, and resident assignment screens stay accurate later.
                   </p>
                 </div>
               </div>
