@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { skipToken } from "@tanstack/react-query";
 import { Inbox, MessageSquare, Send, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
+import { useBuildingContext } from "@/hooks/use-building-context";
 import { toast } from "sonner";
 
 function formatTime(d: Date | string) {
@@ -36,6 +45,7 @@ function initials(first: string, last: string) {
 }
 
 export default function MessagesPage() {
+  const { selectedBuildingId } = useBuildingContext();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [composeOpen, setComposeOpen] = useState(false);
@@ -44,11 +54,16 @@ export default function MessagesPage() {
   const [formContent, setFormContent] = useState("");
 
   const utils = trpc.useUtils();
+  const { data: me } = trpc.users.getMe.useQuery();
 
   const threadsQuery = trpc.messaging.listThreads.useQuery();
   const threadQuery = trpc.messaging.getThread.useQuery(
     selectedThreadId ? { threadId: selectedThreadId } : { threadId: "" },
     { enabled: !!selectedThreadId }
+  );
+  const residentsQuery = trpc.residents.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
   );
 
   const sendMutation = trpc.messaging.send.useMutation({
@@ -76,12 +91,12 @@ export default function MessagesPage() {
   }
 
   function handleReply() {
-    if (!selectedThreadId || !replyContent.trim()) return;
+    if (!selectedThreadId || !replyContent.trim() || !me) return;
     const thread = threadsQuery.data?.find((t: { threadId: string | null }) => t.threadId === selectedThreadId);
     if (!thread) return;
 
     sendMutation.mutate({
-      recipientId: thread.senderId === thread.sender.id ? thread.recipientId : thread.senderId,
+      recipientId: thread.sender.id === me.id ? thread.recipient.id : thread.sender.id,
       content: replyContent.trim(),
       threadId: selectedThreadId,
     });
@@ -104,6 +119,7 @@ export default function MessagesPage() {
   const messages = threadQuery.data ?? [];
   const selectedThread = threads.find((t) => t.threadId === selectedThreadId);
   const unreadCount = threads.filter((thread) => !thread.isRead).length;
+  const residents = residentsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -150,16 +166,44 @@ export default function MessagesPage() {
               <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="recipientId">Recipient User ID *</Label>
-                    <Input
-                      id="recipientId"
-                      className="h-11 rounded-xl bg-background"
-                      placeholder="User ID"
+                    <Label>Recipient *</Label>
+                    <Select
                       value={formRecipientId}
-                      onChange={(e) => setFormRecipientId(e.target.value)}
-                    />
+                      onValueChange={(value) => value !== null && setFormRecipientId(value)}
+                      itemToStringLabel={(value) => {
+                        const resident = residents.find((item) => item.id === value);
+                        if (!resident) return String(value);
+                        return `${resident.firstName} ${resident.lastName}`;
+                      }}
+                    >
+                      <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue
+                          placeholder={
+                            selectedBuildingId
+                              ? residentsQuery.isLoading
+                                ? "Loading residents..."
+                                : "Select a resident"
+                              : "Select a building first"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {residents.map((resident) => {
+                          const unitNumber =
+                            resident.buildingRole === "OWNER"
+                              ? resident.ownerships[0]?.unit.unitNumber
+                              : resident.tenancies[0]?.unit.unitNumber;
+                          const label = `${resident.firstName} ${resident.lastName}${unitNumber ? ` — Unit ${unitNumber}` : ""}`;
+                          return (
+                            <SelectItem key={resident.id} value={resident.id} label={label}>
+                              {label}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
-                      Enter the recipient&apos;s user ID from the residents list
+                      Choose a resident from the currently selected building.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -214,6 +258,7 @@ export default function MessagesPage() {
               <Button
                 onClick={handleCompose}
                 disabled={
+                  !selectedBuildingId ||
                   !formRecipientId.trim() ||
                   !formContent.trim() ||
                   sendMutation.isPending
@@ -253,9 +298,7 @@ export default function MessagesPage() {
             ) : (
               threads.map((thread) => {
                 const other =
-                  thread.sender.id !== thread.recipient.id
-                    ? thread.sender
-                    : thread.recipient;
+                  thread.sender.id === me?.id ? thread.recipient : thread.sender;
                 const isSelected = thread.threadId === selectedThreadId;
 
                 return (

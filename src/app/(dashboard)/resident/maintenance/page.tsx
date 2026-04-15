@@ -88,6 +88,7 @@ export default function ResidentMaintenancePage() {
     ...(profile?.ownerships ?? []).map((o) => o.unit),
     ...(profile?.tenancies ?? []).map((t) => t.unit),
   ];
+  const resolvedUnitId = unitId || (allUnits.length === 1 ? allUnits[0]?.id ?? "" : "");
 
   const createRequest = trpc.resident.createMaintenanceRequest.useMutation({
     onSuccess: () => {
@@ -100,10 +101,10 @@ export default function ResidentMaintenancePage() {
   });
 
   function handleSubmit() {
-    if (!unitId) return toast.error("Please select a unit");
+    if (!resolvedUnitId) return toast.error("Please select a unit");
     if (!title.trim()) return toast.error("Title is required");
     if (!description.trim()) return toast.error("Description is required");
-    createRequest.mutate({ unitId, title, description, category: category as "OTHER", priority: priority as "MEDIUM" });
+    createRequest.mutate({ unitId: resolvedUnitId, title, description, category: category as "OTHER", priority: priority as "MEDIUM" });
   }
 
   const activeCount = requests.filter((request) => !["COMPLETED", "CLOSED", "CANCELLED"].includes(request.status)).length;
@@ -149,6 +150,14 @@ export default function ResidentMaintenancePage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    {allUnits.length === 1 && (
+                      <div className="space-y-2">
+                        <Label>Unit</Label>
+                        <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm font-medium text-foreground">
+                          Unit {allUnits[0]?.unitNumber}
+                        </div>
                       </div>
                     )}
                     <div className="space-y-2">

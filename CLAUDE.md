@@ -946,3 +946,21 @@ Security changes:
 Verification notes:
 - `npx tsc --noEmit` passes.
 - `npm run lint` passes with warnings only; remaining warnings are pre-existing unrelated files.
+
+# updated this with codex agent - phase 1 verification fixes
+
+Closed the first round of workflow blockers found during the verification sweep while keeping the app free-tier friendly and preserving the existing security hardening.
+
+Verification fixes:
+- Secured `messaging.getThread` so thread reads are limited to the current thread participants instead of trusting a raw `threadId`.
+- Hardened `messaging.send` so replies cannot be attached to unrelated threads and users cannot message themselves.
+- Fixed manager messaging UI in [src/app/(dashboard)/manager/messages/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/messages/page.tsx) so:
+  - reply routing targets the actual other participant
+  - thread previews show the correct counterpart instead of often showing the current user
+  - new message compose uses a selected-building resident picker instead of a raw user ID input
+- Fixed the resident maintenance request flow in [src/app/(dashboard)/resident/maintenance/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/maintenance/page.tsx) so residents with exactly one unit can submit requests without being blocked by a hidden unit selector.
+- Fixed the units create dialog in [src/app/(dashboard)/manager/units/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/units/page.tsx) to expose the existing `storageSpaces` field in the UI instead of silently submitting the default value.
+
+Verification notes:
+- Changes were implemented without adding any paid services or paid-tier dependencies.
+- This session focused on code-level fixes only; no new infra, storage products, or external integrations were introduced.
