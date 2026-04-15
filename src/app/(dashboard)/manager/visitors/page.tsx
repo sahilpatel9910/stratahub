@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Clock, LogIn, LogOut } from "lucide-react";
+import { CalendarDays, Clock, LogIn, LogOut, Plus, ShieldCheck, UserRoundCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -156,10 +156,32 @@ export default function VisitorsPage() {
 
   return (
     <div className="space-y-6">
+      <section className="app-panel overflow-hidden p-6 md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <p className="eyebrow-label text-primary/80">Manager Workspace</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
+              Visitor access log
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Keep a live record of expected guests, arrivals, and departures so front-desk activity stays organised.
+            </p>
+          </div>
+          <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
+            <p className="panel-kicker">Today&apos;s flow</p>
+            <div className="mt-4 space-y-3">
+              <VisitorSignal icon={Clock} label="Expected" value={`${expectedCount}`} tone="text-blue-600" />
+              <VisitorSignal icon={LogIn} label="Present" value={`${presentCount}`} tone="text-emerald-600" />
+              <VisitorSignal icon={LogOut} label="Departed" value={`${departedCount}`} tone="text-slate-500" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Visitors</h1>
-          <p className="text-muted-foreground">
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Visitor register</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Log and track visitor access to the building
           </p>
         </div>
@@ -170,106 +192,135 @@ export default function VisitorsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger render={<Button disabled={!selectedBuildingId} />}>
+          <DialogTrigger render={<Button disabled={!selectedBuildingId} className="h-11 rounded-xl px-5" />}>
             <Plus className="mr-2 h-4 w-4" />
             Log Visitor
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl p-0">
             <DialogHeader>
-              <DialogTitle>Log Visitor</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="px-6 pt-6">Log Visitor</DialogTitle>
+              <DialogDescription className="px-6">
                 Register a visitor for this building
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="visitorName">Visitor Name *</Label>
-                <Input
-                  id="visitorName"
-                  placeholder="Full name"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="visitorPhone">Phone</Label>
-                <Input
-                  id="visitorPhone"
-                  placeholder="04XX XXX XXX"
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="visitorCompany">Company</Label>
-                <Input
-                  id="visitorCompany"
-                  placeholder="Company name"
-                  value={formCompany}
-                  onChange={(e) => setFormCompany(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Purpose</Label>
-                <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)} itemToStringLabel={(v) => PURPOSES.find(([val]) => val === v)?.[1] ?? String(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PURPOSES.map(([value, label]) => (
-                      <SelectItem key={value} value={value} label={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="unitToVisit">Unit to Visit</Label>
-                <Input
-                  id="unitToVisit"
-                  placeholder="e.g. 302"
-                  value={formUnit}
-                  onChange={(e) => setFormUnit(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Pre-Approved?</Label>
-                <Select
-                  value={formPreApproved}
-                  onValueChange={(v) => v !== null && setFormPreApproved(v)}
-                  itemToStringLabel={(v) => v === "true" ? "Yes" : "No"}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="false" label="No">No</SelectItem>
-                    <SelectItem value="true" label="Yes">Yes</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="vehiclePlate">Vehicle Plate</Label>
-                <Input
-                  id="vehiclePlate"
-                  placeholder="e.g. ABC123"
-                  value={formVehiclePlate}
-                  onChange={(e) => setFormVehiclePlate(e.target.value)}
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="visitorNotes">Notes</Label>
-                <Textarea
-                  id="visitorNotes"
-                  placeholder="Additional instructions or notes..."
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  rows={2}
-                />
+            <div className="overflow-y-auto px-6 pb-6">
+              <div className="grid gap-5 py-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="visitorName">Visitor Name *</Label>
+                    <Input
+                      id="visitorName"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="Full name"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="visitorPhone">Phone</Label>
+                    <Input
+                      id="visitorPhone"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="04XX XXX XXX"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="visitorCompany">Company</Label>
+                    <Input
+                      id="visitorCompany"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="Company name"
+                      value={formCompany}
+                      onChange={(e) => setFormCompany(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unitToVisit">Unit to Visit</Label>
+                    <Input
+                      id="unitToVisit"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. 302"
+                      value={formUnit}
+                      onChange={(e) => setFormUnit(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vehiclePlate">Vehicle Plate</Label>
+                    <Input
+                      id="vehiclePlate"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="e.g. ABC123"
+                      value={formVehiclePlate}
+                      onChange={(e) => setFormVehiclePlate(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="visitorNotes">Notes</Label>
+                    <Textarea
+                      id="visitorNotes"
+                      className="min-h-24 rounded-xl bg-background"
+                      placeholder="Additional instructions or notes..."
+                      value={formNotes}
+                      onChange={(e) => setFormNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Access details
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Capture why the visitor is here and whether the visit was approved ahead of arrival.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Purpose</Label>
+                      <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)} itemToStringLabel={(v) => PURPOSES.find(([val]) => val === v)?.[1] ?? String(v)}>
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PURPOSES.map(([value, label]) => (
+                            <SelectItem key={value} value={value} label={label}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Pre-Approved?</Label>
+                      <Select
+                        value={formPreApproved}
+                        onValueChange={(v) => v !== null && setFormPreApproved(v)}
+                        itemToStringLabel={(v) => v === "true" ? "Yes" : "No"}
+                      >
+                        <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="false" label="No">No</SelectItem>
+                          <SelectItem value="true" label="Yes">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 font-medium text-foreground">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        Front desk tip
+                      </div>
+                      <p className="mt-2 leading-6">
+                        Pre-approved visitors can be processed faster, while detailed notes help staff handle deliveries and contractor access smoothly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6">
               <Button
                 variant="outline"
                 onClick={() => setCreateOpen(false)}
@@ -297,15 +348,15 @@ export default function VisitorsPage() {
       ) : (
         <>
           {/* Date filter + summary */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="app-grid-panel flex flex-wrap items-center gap-4 p-4">
             <div className="flex items-center gap-2">
-              <Label htmlFor="dateFilter" className="shrink-0 text-sm">
+              <Label htmlFor="dateFilter" className="shrink-0 text-sm font-medium">
                 Date
               </Label>
               <Input
                 id="dateFilter"
                 type="date"
-                className="w-44"
+                className="h-11 w-44 rounded-xl bg-background"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
               />
@@ -319,18 +370,18 @@ export default function VisitorsPage() {
             </div>
 
             {!query.isLoading && (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5 text-blue-500" />
+              <div className="ml-auto flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
                   <strong className="text-foreground">{expectedCount}</strong>{" "}
                   expected
                 </span>
-                <span className="flex items-center gap-1">
-                  <LogIn className="h-3.5 w-3.5 text-green-500" />
+                <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1.5">
+                  <UserRoundCheck className="h-3.5 w-3.5 text-green-500" />
                   <strong className="text-foreground">{presentCount}</strong>{" "}
                   present
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1.5">
                   <LogOut className="h-3.5 w-3.5 text-gray-400" />
                   <strong className="text-foreground">{departedCount}</strong>{" "}
                   departed
@@ -452,6 +503,7 @@ export default function VisitorsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  aria-label={`Log arrival for ${visitor.visitorName}`}
                                   className="h-7 px-2 text-xs"
                                   disabled={logArrivalMutation.isPending}
                                   onClick={() =>
@@ -468,6 +520,7 @@ export default function VisitorsPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  aria-label={`Log departure for ${visitor.visitorName}`}
                                   className="h-7 px-2 text-xs"
                                   disabled={logDepartureMutation.isPending}
                                   onClick={() =>
@@ -492,6 +545,28 @@ export default function VisitorsPage() {
           </Card>
         </>
       )}
+    </div>
+  );
+}
+
+function VisitorSignal({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`h-4 w-4 ${tone}`} />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      <p className="text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
