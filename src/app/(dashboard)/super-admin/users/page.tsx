@@ -373,7 +373,7 @@ export default function SuperAdminUsersPage() {
                                     deactivateMutation.mutate({ userId: user.id })
                                   }
                                 >
-                                  Remove from All Buildings
+                                  Deactivate User
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
