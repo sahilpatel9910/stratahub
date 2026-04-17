@@ -7,6 +7,49 @@ import {
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { assertBuildingManagementAccess, hasBuildingManagementAccess } from "@/server/auth/building-access";
+import { isTenancySetupPending } from "@/lib/tenancies";
+
+const rentFrequencyEnum = z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY"]);
+
+function buildRentScheduleEntries({
+  tenancyId,
+  leaseStartDate,
+  rentFrequency,
+  rentAmountCents,
+  months,
+}: {
+  tenancyId: string;
+  leaseStartDate: Date;
+  rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
+  rentAmountCents: number;
+  months: number;
+}) {
+  const payments = [];
+  const startDate = new Date(leaseStartDate);
+
+  for (let i = 0; i < months; i++) {
+    let dueDate: Date;
+    if (rentFrequency === "WEEKLY") {
+      dueDate = new Date(startDate);
+      dueDate.setDate(dueDate.getDate() + i * 7);
+    } else if (rentFrequency === "FORTNIGHTLY") {
+      dueDate = new Date(startDate);
+      dueDate.setDate(dueDate.getDate() + i * 14);
+    } else {
+      dueDate = new Date(startDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+    }
+
+    payments.push({
+      tenancyId,
+      amountCents: rentAmountCents,
+      dueDate,
+      status: "PENDING" as const,
+    });
+  }
+
+  return payments;
+}
 
 export const rentRouter = createTRPCRouter({
   listByBuilding: buildingManagerProcedure
@@ -37,6 +80,33 @@ export const rentRouter = createTRPCRouter({
         },
         orderBy: { dueDate: "desc" },
       });
+    }),
+
+  listPendingSetupByBuilding: buildingManagerProcedure
+    .input(z.object({ buildingId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      const tenancies = await ctx.db.tenancy.findMany({
+        where: {
+          isActive: true,
+          unit: { buildingId: input.buildingId },
+        },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          unit: { select: { unitNumber: true } },
+          rentPayments: {
+            select: { id: true },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return tenancies.filter(
+        (tenancy) =>
+          isTenancySetupPending(tenancy) && tenancy.rentPayments.length === 0
+      );
     }),
 
   listByTenancy: protectedProcedure
@@ -112,31 +182,71 @@ export const rentRouter = createTRPCRouter({
 
       await assertBuildingManagementAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
 
-      const payments = [];
-      const startDate = new Date(tenancy.leaseStartDate);
-
-      for (let i = 0; i < input.months; i++) {
-        let dueDate: Date;
-        if (tenancy.rentFrequency === "WEEKLY") {
-          dueDate = new Date(startDate);
-          dueDate.setDate(dueDate.getDate() + i * 7);
-        } else if (tenancy.rentFrequency === "FORTNIGHTLY") {
-          dueDate = new Date(startDate);
-          dueDate.setDate(dueDate.getDate() + i * 14);
-        } else {
-          dueDate = new Date(startDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
-        }
-
-        payments.push({
-          tenancyId: input.tenancyId,
-          amountCents: tenancy.rentAmountCents,
-          dueDate,
-          status: "PENDING" as const,
-        });
-      }
+      const payments = buildRentScheduleEntries({
+        tenancyId: input.tenancyId,
+        leaseStartDate: tenancy.leaseStartDate,
+        rentFrequency: tenancy.rentFrequency,
+        rentAmountCents: tenancy.rentAmountCents,
+        months: input.months,
+      });
 
       return ctx.db.rentPayment.createMany({ data: payments });
+    }),
+
+  completeTenancySetup: buildingManagerProcedure
+    .input(
+      z.object({
+        tenancyId: z.string(),
+        leaseStartDate: z.date(),
+        leaseEndDate: z.date().nullable().optional(),
+        rentAmountCents: z.number().int().positive(),
+        rentFrequency: rentFrequencyEnum,
+        bondAmountCents: z.number().int().min(0),
+        moveInDate: z.date().nullable().optional(),
+        createSchedule: z.boolean().default(true),
+        scheduleMonths: z.number().int().min(1).max(24).default(12),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenancy = await ctx.db.tenancy.findUniqueOrThrow({
+        where: { id: input.tenancyId },
+        include: {
+          unit: { select: { buildingId: true } },
+          rentPayments: { select: { id: true }, take: 1 },
+        },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
+
+      const updatedTenancy = await ctx.db.$transaction(async (tx) => {
+        const updated = await tx.tenancy.update({
+          where: { id: input.tenancyId },
+          data: {
+            leaseStartDate: input.leaseStartDate,
+            leaseEndDate: input.leaseEndDate ?? null,
+            rentAmountCents: input.rentAmountCents,
+            rentFrequency: input.rentFrequency,
+            bondAmountCents: input.bondAmountCents,
+            moveInDate: input.moveInDate ?? input.leaseStartDate,
+          },
+        });
+
+        if (input.createSchedule && tenancy.rentPayments.length === 0) {
+          await tx.rentPayment.createMany({
+            data: buildRentScheduleEntries({
+              tenancyId: updated.id,
+              leaseStartDate: input.leaseStartDate,
+              rentFrequency: input.rentFrequency,
+              rentAmountCents: input.rentAmountCents,
+              months: input.scheduleMonths,
+            }),
+          });
+        }
+
+        return updated;
+      });
+
+      return updatedTenancy;
     }),
 
   getRentRoll: buildingManagerProcedure

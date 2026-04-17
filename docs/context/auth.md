@@ -29,6 +29,7 @@ The Prisma user is created inside `POST /api/invite/accept` — it reads `authUs
 - Super-admins can also invite `OWNER` or `TENANT`, but those invites must also include the target unit.
 - Owner invite acceptance creates / reactivates the ownership for that unit.
 - Tenant invite acceptance creates an active tenancy placeholder for that unit with zeroed financial defaults; managers should review and update tenancy details afterward in Units or Rent.
+- Rent now owns the follow-up workflow: `rent.listPendingSetupByBuilding` surfaces placeholder tenancies, and `rent.completeTenancySetup` finalises lease/rent/bond details and can generate the first payment schedule in one step.
 
 ## Login flow
 

@@ -40,6 +40,7 @@ import {
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
 import { UNIT_TYPE_LABELS } from "@/lib/constants";
+import { isTenancySetupPending } from "@/lib/tenancies";
 import { toast } from "sonner";
 
 type OccupancyFilter = "all" | "occupied" | "vacant";
@@ -505,6 +506,7 @@ export default function UnitsPage() {
                       filtered.map((unit) => {
                         const owner = unit.ownerships[0]?.user;
                         const tenant = unit.tenancies[0]?.user;
+                        const activeTenancy = unit.tenancies[0];
                         const residentName = owner
                           ? `${owner.firstName} ${owner.lastName}`
                           : tenant
@@ -581,6 +583,11 @@ export default function UnitsPage() {
                                   <p className="text-xs text-muted-foreground">
                                     {residentRole}
                                   </p>
+                                  {activeTenancy && isTenancySetupPending(activeTenancy) && (
+                                    <Badge variant="outline" className="mt-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700">
+                                      Tenant setup needed
+                                    </Badge>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-sm text-muted-foreground">

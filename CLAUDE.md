@@ -42,6 +42,7 @@ Completed in Phase 3:
 - ✅ Super-admin UI can now invite other `SUPER_ADMIN` users
 - ✅ Resident invites are unit-scoped; owner accepts create ownership and tenant accepts create tenancy placeholders
 - ✅ `RECEPTION` is now separated from `BUILDING_MANAGER`: reception is operations-only, managers keep admin/control workflows
+- ✅ Rent now includes a “Complete Tenant Setup” flow for invite-created tenancy placeholders
 - ✅ Auth redirect decisions extracted into `src/lib/auth/redirects.ts` with tests
 - ✅ Next.js warning cleanup: `src/proxy.ts` replaces `src/middleware.ts`, and `next.config.ts` sets `turbopack.root`
 

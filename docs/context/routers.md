@@ -60,7 +60,9 @@ Unit types: `APARTMENT, STUDIO, PENTHOUSE, TOWNHOUSE, COMMERCIAL, STORAGE, PARKI
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
 | `listByBuilding` | query | buildingManager | `buildingId, status?` | Payments filtered by status |
+| `listPendingSetupByBuilding` | query | buildingManager | `buildingId` | Active tenant placeholders that still need lease/rent/bond setup |
 | `listByTenancy` | query | protected | `tenancyId` | Rent history for tenancy |
+| `completeTenancySetup` | mutation | buildingManager | `tenancyId, leaseStartDate, leaseEndDate?, rentAmountCents, rentFrequency, bondAmountCents, moveInDate?, createSchedule?, scheduleMonths?` | Finalises tenant placeholder details and optionally creates initial pending payments |
 | `recordPayment` | mutation | buildingManager | `id, amountCents, paidDate, paymentMethod?, notes?` | Mark paid (PAID or PARTIAL) |
 | `generateSchedule` | mutation | buildingManager | `tenancyId, months?` | Generate payment schedule |
 | `getRentRoll` | query | buildingManager | `buildingId` | `unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, overduePayments, nextDue` |

@@ -95,7 +95,7 @@ All require manager portal access plus building context.
 - `/manager` — dashboard stats + maintenance + announcements
 - `/manager/residents` — resident roster
 - `/manager/units` — unit list + create
-- `/manager/rent` — rent roll + payment recording
+- `/manager/rent` — rent roll + payment recording + pending tenant setup completion
 - `/manager/keys` — key records
 - `/manager/maintenance` — request list + status updates
 - `/manager/visitors` — visitor log
