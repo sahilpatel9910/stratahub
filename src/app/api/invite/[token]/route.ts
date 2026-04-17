@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db/client";
+import { getInvitationStatus } from "@/lib/auth/invitations";
 
 export async function GET(
   _req: NextRequest,
@@ -33,9 +34,9 @@ export async function GET(
     role: invite.role,
     expiresAt: invite.expiresAt,
     acceptedAt: invite.acceptedAt,
+    revokedAt: invite.revokedAt,
     organisation: org,
     building: building,
-    expired: invite.expiresAt < new Date(),
-    accepted: !!invite.acceptedAt,
+    status: getInvitationStatus(invite),
   });
 }

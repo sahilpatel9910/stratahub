@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
-import { getDefaultDashboardPath } from "@/lib/auth/roles";
+import { findPendingInvitationByEmail } from "@/server/auth/invitations";
+import { getRootRedirectPath } from "@/lib/auth/redirects";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -10,7 +11,13 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   if (!authUser) {
-    redirect("/login");
+    redirect(
+      getRootRedirectPath({
+        hasAuthUser: false,
+        hasAppUser: false,
+        roles: [],
+      })
+    );
   }
 
   const dbUser = await db.user.findUnique({
@@ -22,7 +29,18 @@ export default async function Home() {
   });
 
   if (!dbUser) {
-    redirect("/login");
+    const pendingInvite = authUser.email
+      ? await findPendingInvitationByEmail(authUser.email)
+      : null;
+
+    redirect(
+      getRootRedirectPath({
+        hasAuthUser: true,
+        hasAppUser: false,
+        pendingInviteToken: pendingInvite?.token,
+        roles: [],
+      })
+    );
   }
 
   const roles = [
@@ -30,5 +48,16 @@ export default async function Home() {
     ...dbUser.buildingAssignments.map((a) => a.role),
   ];
 
-  redirect(getDefaultDashboardPath(roles));
+  const pendingInvite = roles.length === 0
+    ? await findPendingInvitationByEmail(dbUser.email)
+    : null;
+
+  redirect(
+    getRootRedirectPath({
+      hasAuthUser: true,
+      hasAppUser: true,
+      pendingInviteToken: pendingInvite?.token,
+      roles,
+    })
+  );
 }

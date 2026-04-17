@@ -1,11 +1,16 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
+  buildingManagerProcedure,
   superAdminProcedure,
   managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
-import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  assertBuildingAccess,
+  assertBuildingManagementAccess,
+  assertBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 
 const stateEnum = z.enum(["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"]);
 
@@ -81,7 +86,7 @@ export const buildingsRouter = createTRPCRouter({
       return ctx.db.building.create({ data: input });
     }),
 
-  update: managerProcedure
+  update: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -107,10 +112,107 @@ export const buildingsRouter = createTRPCRouter({
       return ctx.db.building.delete({ where: { id: input.id } });
     }),
 
-  getStats: managerProcedure
+  getTrends: buildingManagerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      const now = new Date();
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+      const months = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+        return {
+          key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+          label: d.toLocaleDateString("en-AU", { month: "short", year: "2-digit" }),
+        };
+      });
+
+      const [maintenanceRequests, parcels, rentPayments, newResidents] =
+        await Promise.all([
+          ctx.db.maintenanceRequest.findMany({
+            where: {
+              unit: { buildingId: input.buildingId },
+              createdAt: { gte: sixMonthsAgo },
+            },
+            select: { createdAt: true },
+          }),
+          ctx.db.parcel.findMany({
+            where: {
+              buildingId: input.buildingId,
+              loggedAt: { gte: sixMonthsAgo },
+            },
+            select: { loggedAt: true },
+          }),
+          ctx.db.rentPayment.findMany({
+            where: {
+              tenancy: { unit: { buildingId: input.buildingId } },
+              status: "PAID",
+              paidDate: { gte: sixMonthsAgo },
+            },
+            select: { paidDate: true, amountCents: true },
+          }),
+          ctx.db.buildingAssignment.findMany({
+            where: {
+              buildingId: input.buildingId,
+              role: { in: ["OWNER", "TENANT"] },
+              createdAt: { gte: sixMonthsAgo },
+            },
+            select: { createdAt: true },
+          }),
+        ]);
+
+      function monthKey(date: Date) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      const maintenanceByMonth = new Map<string, number>();
+      const parcelsByMonth = new Map<string, number>();
+      const rentByMonth = new Map<string, number>();
+      const residentsByMonth = new Map<string, number>();
+
+      for (const { key } of months) {
+        maintenanceByMonth.set(key, 0);
+        parcelsByMonth.set(key, 0);
+        rentByMonth.set(key, 0);
+        residentsByMonth.set(key, 0);
+      }
+
+      for (const m of maintenanceRequests) {
+        const k = monthKey(m.createdAt);
+        if (maintenanceByMonth.has(k))
+          maintenanceByMonth.set(k, (maintenanceByMonth.get(k) ?? 0) + 1);
+      }
+      for (const p of parcels) {
+        const k = monthKey(p.loggedAt);
+        if (parcelsByMonth.has(k))
+          parcelsByMonth.set(k, (parcelsByMonth.get(k) ?? 0) + 1);
+      }
+      for (const r of rentPayments) {
+        if (!r.paidDate) continue;
+        const k = monthKey(r.paidDate);
+        if (rentByMonth.has(k))
+          rentByMonth.set(k, (rentByMonth.get(k) ?? 0) + r.amountCents);
+      }
+      for (const a of newResidents) {
+        const k = monthKey(a.createdAt);
+        if (residentsByMonth.has(k))
+          residentsByMonth.set(k, (residentsByMonth.get(k) ?? 0) + 1);
+      }
+
+      return months.map(({ key, label }) => ({
+        month: label,
+        maintenanceRequests: maintenanceByMonth.get(key) ?? 0,
+        parcelsReceived: parcelsByMonth.get(key) ?? 0,
+        rentCollectedCents: rentByMonth.get(key) ?? 0,
+        newResidents: residentsByMonth.get(key) ?? 0,
+      }));
+    }),
+
+  getStats: managerProcedure
+    .input(z.object({ buildingId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

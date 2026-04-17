@@ -55,6 +55,7 @@ export default function ResidentsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("TENANT");
+  const [inviteUnitId, setInviteUnitId] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -62,6 +63,10 @@ export default function ResidentsPage() {
   const utils = trpc.useUtils();
 
   const query = trpc.residents.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
+  );
+  const unitsQuery = trpc.units.listByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
@@ -92,19 +97,22 @@ export default function ResidentsPage() {
 
   const ownerCount = allResidents.filter((r) => r.buildingRole === "OWNER").length;
   const tenantCount = allResidents.filter((r) => r.buildingRole === "TENANT").length;
+  const units = unitsQuery.data ?? [];
 
   function resetInviteForm() {
     setInviteEmail("");
     setInviteRole("TENANT");
+    setInviteUnitId("");
     setInviteLink("");
     setCopied(false);
   }
 
   function handleInvite() {
-    if (!selectedBuildingId || !inviteEmail.trim()) return;
+    if (!selectedBuildingId || !inviteEmail.trim() || !inviteUnitId) return;
     inviteMutation.mutate({
       email: inviteEmail.trim(),
       buildingId: selectedBuildingId,
+      unitId: inviteUnitId,
       role: inviteRole,
     });
   }
@@ -372,6 +380,28 @@ export default function ResidentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Unit *</Label>
+                  <Select
+                    value={inviteUnitId}
+                    onValueChange={(value) => value !== null && setInviteUnitId(value)}
+                    itemToStringLabel={(value) => {
+                      const unit = units.find((item) => item.id === value);
+                      return unit ? `Unit ${unit.unitNumber}` : String(value);
+                    }}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id} label={`Unit ${unit.unitNumber}`}>
+                          Unit {unit.unitNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {inviteLink && (
                   <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
                     <p className="text-sm font-medium text-foreground">Invite link ready</p>
@@ -396,12 +426,12 @@ export default function ResidentsPage() {
                   Invite scope
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Building managers can invite residents only into the currently selected building, and only as an owner or tenant.
+                  Building managers can invite residents only into the currently selected building, only as an owner or tenant, and only for a specific unit.
                 </p>
                 <div className="mt-4 rounded-2xl border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">What happens next</p>
                   <p className="mt-2 leading-6">
-                    Once the invite is accepted, the user will be linked to this building and routed into the resident experience based on their assigned role.
+                    Once the invite is accepted, the user will be linked to this building and unit. Owner invites create ownership immediately; tenant invites create an active tenancy placeholder that should be reviewed in Units or Rent.
                   </p>
                 </div>
               </div>
@@ -418,7 +448,7 @@ export default function ResidentsPage() {
             </Button>
             <Button
               onClick={handleInvite}
-              disabled={!inviteEmail.trim() || inviteMutation.isPending}
+              disabled={!inviteEmail.trim() || !inviteUnitId || inviteMutation.isPending}
               className="h-11 rounded-xl px-5"
             >
               {inviteMutation.isPending ? "Creating..." : "Create Invite"}

@@ -6,6 +6,8 @@ import {
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 import { ROLE_RANK } from "@/lib/auth/roles";
+import { normalizeEmail } from "@/lib/auth/invitations";
+import { roleCanTargetBuilding, roleRequiresUnit } from "@/lib/auth/invite-scope";
 import { TRPCError } from "@trpc/server";
 
 const ROLE_ENUM = z.enum([
@@ -17,6 +19,41 @@ const ROLE_ENUM = z.enum([
 ]);
 
 const MANAGER_INVITE_ROLE_ENUM = z.enum(["OWNER", "TENANT"]);
+const INVITE_LIFECYCLE_INPUT = z.object({ id: z.string() });
+
+async function sendInvitationEmail(
+  ctx: { db: { organisation: { findUnique: Function }; building: { findUnique: Function } } },
+  invite: {
+    email: string;
+    organisationId: string;
+    buildingId: string | null;
+    role: z.infer<typeof ROLE_ENUM>;
+    token: string;
+    expiresAt: Date;
+  }
+) {
+  const [org, building] = await Promise.all([
+    ctx.db.organisation.findUnique({
+      where: { id: invite.organisationId },
+      select: { name: true },
+    }),
+    invite.buildingId
+      ? ctx.db.building.findUnique({
+          where: { id: invite.buildingId },
+          select: { name: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
+  void sendWelcomeInviteEmail(invite.email, {
+    organisationName: org?.name ?? "StrataHub",
+    buildingName: building?.name,
+    role: invite.role,
+    inviteUrl,
+    expiresAt: invite.expiresAt,
+  });
+}
 
 export const usersRouter = createTRPCRouter({
   list: superAdminProcedure
@@ -149,37 +186,61 @@ export const usersRouter = createTRPCRouter({
         email: z.string().email(),
         organisationId: z.string(),
         buildingId: z.string().optional(),
+        unitId: z.string().optional(),
         role: ROLE_ENUM,
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      if (roleRequiresUnit(input.role) && (!input.buildingId || !input.unitId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Owner and tenant invites must target a specific building and unit.",
+        });
+      }
+
+      if (!roleCanTargetBuilding(input.role) && (input.buildingId || input.unitId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Super admin invites should not be scoped to a building or unit.",
+        });
+      }
+
+      if (!roleRequiresUnit(input.role) && input.unitId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only owner and tenant invites can target a unit.",
+        });
+      }
+
+      if (input.unitId) {
+        const unit = await ctx.db.unit.findUnique({
+          where: { id: input.unitId },
+          select: { id: true, buildingId: true, building: { select: { organisationId: true } } },
+        });
+
+        if (!unit || unit.buildingId !== input.buildingId || unit.building.organisationId !== input.organisationId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "The selected unit must belong to the selected building and organisation.",
+          });
+        }
+      }
 
       const invite = await ctx.db.invitation.create({
         data: {
-          email: input.email,
+          email,
           organisationId: input.organisationId,
           buildingId: input.buildingId,
+          unitId: input.unitId,
           role: input.role,
           expiresAt,
         },
       });
 
-      // Send invite email (fire-and-forget)
-      const [org, building] = await Promise.all([
-        ctx.db.organisation.findUnique({ where: { id: input.organisationId }, select: { name: true } }),
-        input.buildingId
-          ? ctx.db.building.findUnique({ where: { id: input.buildingId }, select: { name: true } })
-          : Promise.resolve(null),
-      ]);
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
-      void sendWelcomeInviteEmail(input.email, {
-        organisationName: org?.name ?? "StrataHub",
-        buildingName: building?.name,
-        role: input.role,
-        inviteUrl,
-        expiresAt,
-      });
+      await sendInvitationEmail(ctx, invite);
 
       return invite;
     }),
@@ -189,10 +250,12 @@ export const usersRouter = createTRPCRouter({
       z.object({
         email: z.string().email(),
         buildingId: z.string(),
+        unitId: z.string(),
         role: MANAGER_INVITE_ROLE_ENUM,
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const email = normalizeEmail(input.email);
       const isSuperAdmin = ctx.user!.orgMemberships.some(
         (membership) => membership.role === "SUPER_ADMIN"
       );
@@ -219,26 +282,32 @@ export const usersRouter = createTRPCRouter({
         },
       });
 
+      const unit = await ctx.db.unit.findUnique({
+        where: { id: input.unitId },
+        select: { id: true, buildingId: true, unitNumber: true },
+      });
+
+      if (!unit || unit.buildingId !== building.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Resident invites must target a unit in the selected building.",
+        });
+      }
+
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const invite = await ctx.db.invitation.create({
         data: {
-          email: input.email,
+          email,
           organisationId: building.organisationId,
           buildingId: building.id,
+          unitId: unit.id,
           role: input.role,
           expiresAt,
         },
       });
 
-      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invite.token}`;
-      void sendWelcomeInviteEmail(input.email, {
-        organisationName: building.organisation.name,
-        buildingName: building.name,
-        role: input.role,
-        inviteUrl,
-        expiresAt,
-      });
+      await sendInvitationEmail(ctx, invite);
 
       return invite;
     }),
@@ -248,8 +317,6 @@ export const usersRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return ctx.db.invitation.findMany({
         where: {
-          acceptedAt: null,
-          expiresAt: { gt: new Date() },
           ...(input.organisationId
             ? { organisationId: input.organisationId }
             : {}),
@@ -259,9 +326,66 @@ export const usersRouter = createTRPCRouter({
     }),
 
   revokeInvite: superAdminProcedure
-    .input(z.object({ id: z.string() }))
+    .input(INVITE_LIFECYCLE_INPUT)
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.invitation.delete({ where: { id: input.id } });
+      const invite = await ctx.db.invitation.findUniqueOrThrow({
+        where: { id: input.id },
+      });
+
+      if (invite.acceptedAt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Accepted invites cannot be revoked.",
+        });
+      }
+
+      if (invite.revokedAt) {
+        return invite;
+      }
+
+      return ctx.db.invitation.update({
+        where: { id: invite.id },
+        data: { revokedAt: new Date() },
+      });
+    }),
+
+  resendInvite: superAdminProcedure
+    .input(INVITE_LIFECYCLE_INPUT)
+    .mutation(async ({ ctx, input }) => {
+      const existingInvite = await ctx.db.invitation.findUniqueOrThrow({
+        where: { id: input.id },
+      });
+
+      if (existingInvite.acceptedAt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Accepted invites do not need to be resent.",
+        });
+      }
+
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const resentInvite = await ctx.db.$transaction(async (tx) => {
+        if (!existingInvite.revokedAt && existingInvite.expiresAt > new Date()) {
+          await tx.invitation.update({
+            where: { id: existingInvite.id },
+            data: { revokedAt: new Date() },
+          });
+        }
+
+        return tx.invitation.create({
+          data: {
+            email: existingInvite.email,
+            organisationId: existingInvite.organisationId,
+            buildingId: existingInvite.buildingId,
+            unitId: existingInvite.unitId,
+            role: existingInvite.role,
+            expiresAt,
+          },
+        });
+      });
+
+      await sendInvitationEmail(ctx, resentInvite);
+      return resentInvite;
     }),
 
   deactivateAssignments: superAdminProcedure

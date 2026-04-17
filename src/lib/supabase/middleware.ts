@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getAuthPageRedirectPath, isPublicAuthPath } from "@/lib/auth/redirects";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -35,14 +36,8 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require auth
-  const publicRoutes = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith("/api/webhooks")
-  ) || pathname.startsWith("/invite") || pathname.startsWith("/api/auth/");
-
   // Redirect unauthenticated users to login
-  if (!user && !isPublicRoute) {
+  if (!user && !isPublicAuthPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
@@ -52,7 +47,8 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from auth pages — go to root which handles role-based redirect
   if (user && (pathname === "/login" || pathname === "/register")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    const inviteToken = request.nextUrl.searchParams.get("invite");
+    url.pathname = getAuthPageRedirectPath(pathname, inviteToken);
     return NextResponse.redirect(url);
   }
 
