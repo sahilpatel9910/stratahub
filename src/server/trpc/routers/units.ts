@@ -3,9 +3,13 @@ import { TRPCError } from "@trpc/server";
 import { Prisma } from "@/generated/prisma/client";
 import {
   createTRPCRouter,
+  buildingManagerProcedure,
   managerProcedure,
 } from "@/server/trpc/trpc";
-import { assertBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  assertBuildingManagementAccess,
+  assertBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 import { ROLE_RANK } from "@/lib/auth/roles";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 
@@ -72,7 +76,7 @@ export const unitsRouter = createTRPCRouter({
   listByBuilding: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.unit.findMany({
         where: { buildingId: input.buildingId },
@@ -102,7 +106,7 @@ export const unitsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, unit.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, unit.buildingId);
 
       return ctx.db.unit.findUniqueOrThrow({
         where: { id: input.id },
@@ -125,7 +129,7 @@ export const unitsRouter = createTRPCRouter({
       });
     }),
 
-  create: managerProcedure
+  create: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -291,7 +295,7 @@ export const unitsRouter = createTRPCRouter({
       }
     }),
 
-  assignResident: managerProcedure
+  assignResident: buildingManagerProcedure
     .input(
       z.object({
         unitId: z.string(),
@@ -424,7 +428,7 @@ export const unitsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  update: managerProcedure
+  update: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -450,7 +454,7 @@ export const unitsRouter = createTRPCRouter({
       return ctx.db.unit.update({ where: { id }, data });
     }),
 
-  delete: managerProcedure
+  delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const unit = await ctx.db.unit.findUniqueOrThrow({

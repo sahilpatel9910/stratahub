@@ -1,12 +1,12 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
-  managerProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const financialsRouter = createTRPCRouter({
-  listByBuilding: managerProcedure
+  listByBuilding: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -35,7 +35,7 @@ export const financialsRouter = createTRPCRouter({
       });
     }),
 
-  getSummary: managerProcedure
+  getSummary: buildingManagerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
@@ -61,7 +61,7 @@ export const financialsRouter = createTRPCRouter({
       };
     }),
 
-  create: managerProcedure
+  create: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -84,7 +84,7 @@ export const financialsRouter = createTRPCRouter({
       });
     }),
 
-  delete: managerProcedure
+  delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const record = await ctx.db.financialRecord.findUniqueOrThrow({

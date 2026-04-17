@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
   managerProcedure,
   protectedProcedure,
@@ -8,7 +9,7 @@ import { TRPCError } from "@trpc/server";
 import { assertBuildingManagementAccess, hasBuildingManagementAccess } from "@/server/auth/building-access";
 
 export const rentRouter = createTRPCRouter({
-  listByBuilding: managerProcedure
+  listByBuilding: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -65,7 +66,7 @@ export const rentRouter = createTRPCRouter({
       });
     }),
 
-  recordPayment: managerProcedure
+  recordPayment: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -91,7 +92,7 @@ export const rentRouter = createTRPCRouter({
       });
     }),
 
-  generateSchedule: managerProcedure
+  generateSchedule: buildingManagerProcedure
     .input(
       z.object({
         tenancyId: z.string(),
@@ -138,7 +139,7 @@ export const rentRouter = createTRPCRouter({
       return ctx.db.rentPayment.createMany({ data: payments });
     }),
 
-  getRentRoll: managerProcedure
+  getRentRoll: buildingManagerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);

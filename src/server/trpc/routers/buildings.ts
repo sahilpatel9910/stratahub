@@ -1,11 +1,16 @@
 import { z } from "zod";
 import {
   createTRPCRouter,
+  buildingManagerProcedure,
   superAdminProcedure,
   managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
-import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  assertBuildingAccess,
+  assertBuildingManagementAccess,
+  assertBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 
 const stateEnum = z.enum(["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"]);
 
@@ -81,7 +86,7 @@ export const buildingsRouter = createTRPCRouter({
       return ctx.db.building.create({ data: input });
     }),
 
-  update: managerProcedure
+  update: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -107,7 +112,7 @@ export const buildingsRouter = createTRPCRouter({
       return ctx.db.building.delete({ where: { id: input.id } });
     }),
 
-  getTrends: managerProcedure
+  getTrends: buildingManagerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
@@ -207,7 +212,7 @@ export const buildingsRouter = createTRPCRouter({
   getStats: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

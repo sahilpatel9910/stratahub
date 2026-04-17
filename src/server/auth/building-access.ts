@@ -9,7 +9,8 @@ type AccessUser = {
   buildingAssignments: Array<{ buildingId: string; role: AccessRole; isActive?: boolean }>;
 };
 
-const MANAGER_ROLES = new Set<AccessRole>(["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"]);
+const BUILDING_MANAGEMENT_ROLES = new Set<AccessRole>(["SUPER_ADMIN", "BUILDING_MANAGER"]);
+const BUILDING_OPERATIONS_ROLES = new Set<AccessRole>(["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"]);
 
 export function isSuperAdmin(user: AccessUser) {
   return user.orgMemberships.some(
@@ -24,7 +25,19 @@ export function hasBuildingManagementAccess(user: AccessUser, buildingId: string
       (assignment) =>
         assignment.buildingId === buildingId &&
         assignment.isActive !== false &&
-        MANAGER_ROLES.has(assignment.role)
+        BUILDING_MANAGEMENT_ROLES.has(assignment.role)
+    )
+  );
+}
+
+export function hasBuildingOperationsAccess(user: AccessUser, buildingId: string) {
+  return (
+    isSuperAdmin(user) ||
+    user.buildingAssignments.some(
+      (assignment) =>
+        assignment.buildingId === buildingId &&
+        assignment.isActive !== false &&
+        BUILDING_OPERATIONS_ROLES.has(assignment.role)
     )
   );
 }
@@ -97,6 +110,19 @@ export async function assertBuildingManagementAccess(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You do not have permission to manage this building.",
+    });
+  }
+}
+
+export async function assertBuildingOperationsAccess(
+  db: PrismaClient,
+  user: AccessUser,
+  buildingId: string
+) {
+  if (!hasBuildingOperationsAccess(user, buildingId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to operate in this building.",
     });
   }
 }

@@ -58,10 +58,15 @@ npx prisma studio    # Prisma Studio GUI
 - [ ] Verified sender domain in Resend (or use `onboarding@resend.dev` on free tier)
 - [ ] `NEXT_PUBLIC_APP_URL` matches deployed Vercel URL
 - [ ] Supabase Site URL + Redirect URLs include deployed URL
+- [ ] Supabase Auth → Email provider has self-serve signup disabled so accounts can only enter through the invite flow
 
 ## Known Gaps / Deferred Work
 
-- **Automated test coverage** — no tests for auth redirects, building scoping, document delivery, messaging permissions
-- **Middleware deprecation** — Next.js 16 prefers `proxy` over `middleware`. Low priority — still functional, just a build warning
+- **Automated test coverage** — auth redirect helpers and invite status logic are covered, but full browser/email invite E2E still needs a live Supabase mailbox test
 - **Analytics trend data** — now implemented (6-month charts); analytics page still uses only real-time data for KPI cards
 - **Resend free tier** — 3,000 emails/month, 100/day
+
+## Notes
+
+- `next.config.ts` sets `turbopack.root` because the parent workspace also has a lockfile; this silences Next.js root-detection warnings.
+- Disabling open signup is still a manual Supabase dashboard change because this repo does not include a checked-in local Supabase config.

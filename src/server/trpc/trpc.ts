@@ -85,6 +85,9 @@ export const superAdminProcedure = t.procedure.use(enforceRole("SUPER_ADMIN"));
 export const managerProcedure = t.procedure.use(
   enforceRole("SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION")
 );
+export const buildingManagerProcedure = t.procedure.use(
+  enforceRole("SUPER_ADMIN", "BUILDING_MANAGER")
+);
 export const ownerProcedure = t.procedure.use(
   enforceRole("SUPER_ADMIN", "BUILDING_MANAGER", "OWNER")
 );

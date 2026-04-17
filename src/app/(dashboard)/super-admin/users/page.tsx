@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, MoreHorizontal, Users, UserPlus, Link2, Copy, Check } from "lucide-react";
+import { skipToken } from "@tanstack/react-query";
+import { Search, MoreHorizontal, Users, UserPlus, Link2, Copy, Check, RefreshCw, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,15 +43,23 @@ import {
 import { trpc } from "@/lib/trpc/client";
 import { USER_ROLE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
+import { roleCanTargetBuilding, roleRequiresUnit } from "@/lib/auth/invite-scope";
+import { getInvitationStatus, INVITATION_STATUS_LABELS, type InvitationStatus } from "@/lib/auth/invitations";
 
-const ASSIGNABLE_ROLES = [
+const INVITEABLE_ROLES = [
+  { value: "SUPER_ADMIN", label: "Super Admin" },
   { value: "BUILDING_MANAGER", label: "Building Manager" },
   { value: "RECEPTION", label: "Reception" },
   { value: "OWNER", label: "Owner" },
   { value: "TENANT", label: "Tenant" },
 ] as const;
 
-type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]["value"];
+const ASSIGNABLE_BUILDING_ROLES = INVITEABLE_ROLES.filter(
+  (role) => role.value !== "SUPER_ADMIN"
+);
+
+type AssignableRole = (typeof INVITEABLE_ROLES)[number]["value"];
+type AssignableBuildingRole = (typeof ASSIGNABLE_BUILDING_ROLES)[number]["value"];
 
 function initials(first: string, last: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
@@ -69,6 +78,69 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
+function getInvitationStatusBadge(status: InvitationStatus) {
+  switch (status) {
+    case "accepted":
+      return {
+        label: INVITATION_STATUS_LABELS.accepted,
+        className: "border-green-200 bg-green-50 text-green-700",
+      };
+    case "revoked":
+      return {
+        label: INVITATION_STATUS_LABELS.revoked,
+        className: "border-slate-200 bg-slate-100 text-slate-700",
+      };
+    case "expired":
+      return {
+        label: INVITATION_STATUS_LABELS.expired,
+        className: "border-amber-200 bg-amber-50 text-amber-700",
+      };
+    case "pending":
+      return {
+        label: INVITATION_STATUS_LABELS.pending,
+        className: "border-blue-200 bg-blue-50 text-blue-700",
+      };
+    default:
+      return { label: "Unknown", className: "" };
+  }
+}
+
+function getInviteScope(
+  invite: { organisationId: string; buildingId?: string | null },
+  orgs: { id: string; name: string }[],
+  buildings: { id: string; name: string; suburb: string; organisationId: string }[]
+) {
+  const organisation = orgs.find((org) => org.id === invite.organisationId)?.name ?? "Unknown organisation";
+  const building = invite.buildingId
+    ? buildings.find((item) => item.id === invite.buildingId)
+    : null;
+
+  if (!building) {
+    return organisation;
+  }
+
+  return `${organisation} • ${building.name}${building.suburb ? `, ${building.suburb}` : ""}`;
+}
+
+function getInviteStatusDetail(
+  invite: { acceptedAt: Date | string | null; revokedAt?: Date | string | null; expiresAt: Date | string },
+  status: InvitationStatus
+) {
+  if (status === "accepted" && invite.acceptedAt) {
+    return `Accepted ${formatDate(invite.acceptedAt)}`;
+  }
+
+  if (status === "revoked" && invite.revokedAt) {
+    return `Revoked ${formatDate(invite.revokedAt)}`;
+  }
+
+  if (status === "expired") {
+    return `Expired ${formatDate(invite.expiresAt)}`;
+  }
+
+  return `Expires ${formatDate(invite.expiresAt)}`;
+}
+
 export default function SuperAdminUsersPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("users");
@@ -78,13 +150,14 @@ export default function SuperAdminUsersPage() {
   const [assignUserId, setAssignUserId] = useState("");
   const [assignOrgId, setAssignOrgId] = useState("");
   const [assignBuildingId, setAssignBuildingId] = useState("");
-  const [assignRole, setAssignRole] = useState<AssignableRole>("BUILDING_MANAGER");
+  const [assignRole, setAssignRole] = useState<AssignableBuildingRole>("BUILDING_MANAGER");
 
   // Invite dialog state
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteOrgId, setInviteOrgId] = useState("");
   const [inviteBuildingId, setInviteBuildingId] = useState("");
+  const [inviteUnitId, setInviteUnitId] = useState("");
   const [inviteRole, setInviteRole] = useState<AssignableRole>("TENANT");
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -94,6 +167,9 @@ export default function SuperAdminUsersPage() {
   const usersQuery = trpc.users.list.useQuery({ search: search || undefined });
   const orgsQuery = trpc.organisations.list.useQuery();
   const buildingsQuery = trpc.buildings.list.useQuery({});
+  const unitsQuery = trpc.units.listByBuilding.useQuery(
+    inviteBuildingId ? { buildingId: inviteBuildingId } : skipToken
+  );
   const invitesQuery = trpc.users.listInvites.useQuery({});
 
   const assignMutation = trpc.users.assignToBuilding.useMutation({
@@ -122,6 +198,14 @@ export default function SuperAdminUsersPage() {
     onError: (err) => toast.error(err.message ?? "Failed to revoke invite"),
   });
 
+  const resendMutation = trpc.users.resendInvite.useMutation({
+    onSuccess: () => {
+      utils.users.listInvites.invalidate();
+      toast.success("Invite resent");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to resend invite"),
+  });
+
   const deactivateMutation = trpc.users.deactivateAssignments.useMutation({
     onSuccess: () => {
       utils.users.list.invalidate();
@@ -141,6 +225,7 @@ export default function SuperAdminUsersPage() {
     setInviteEmail("");
     setInviteOrgId("");
     setInviteBuildingId("");
+    setInviteUnitId("");
     setInviteRole("TENANT");
     setInviteLink("");
     setCopied(false);
@@ -158,10 +243,12 @@ export default function SuperAdminUsersPage() {
 
   function handleInvite() {
     if (!inviteEmail.trim() || !inviteOrgId || !inviteRole) return;
+    if (roleRequiresUnit(inviteRole) && (!inviteBuildingId || !inviteUnitId)) return;
     inviteMutation.mutate({
       email: inviteEmail.trim(),
       organisationId: inviteOrgId,
-      buildingId: inviteBuildingId || undefined,
+      buildingId: roleCanTargetBuilding(inviteRole) ? inviteBuildingId || undefined : undefined,
+      unitId: roleRequiresUnit(inviteRole) ? inviteUnitId : undefined,
       role: inviteRole,
     });
   }
@@ -184,6 +271,7 @@ export default function SuperAdminUsersPage() {
   const inviteBuildings = buildings.filter(
     (b) => !inviteOrgId || b.organisationId === inviteOrgId
   );
+  const inviteUnits = unitsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -228,7 +316,7 @@ export default function SuperAdminUsersPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="invites">
-            Pending Invites
+            Invite History
             {!invitesQuery.isLoading && invites.length > 0 && (
               <span className="ml-1.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">
                 {invites.length}
@@ -396,8 +484,10 @@ export default function SuperAdminUsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Email</TableHead>
+                    <TableHead>Scope</TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Expires</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sent</TableHead>
                     <TableHead>Invite Link</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
@@ -406,7 +496,7 @@ export default function SuperAdminUsersPage() {
                   {invitesQuery.isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 5 }).map((_, j) => (
+                        {Array.from({ length: 6 }).map((_, j) => (
                           <TableCell key={j}>
                             <Skeleton className="h-4 w-24" />
                           </TableCell>
@@ -416,27 +506,45 @@ export default function SuperAdminUsersPage() {
                   ) : invites.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="py-12 text-center text-muted-foreground"
                       >
-                        No pending invites.
+                        No invites yet.
                       </TableCell>
                     </TableRow>
                   ) : (
                     invites.map((inv) => {
                       const link = `${getAppUrl()}/invite/${inv.token}`;
+                      const status = getInvitationStatus(inv);
+                      const badge = getInvitationStatusBadge(status);
+                      const canResend = status !== "accepted";
+                      const canRevoke = status === "pending";
+
                       return (
                         <TableRow key={inv.id}>
                           <TableCell className="font-medium text-sm">
                             {inv.email}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {getInviteScope(inv, orgs, buildings)}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
                               {USER_ROLE_LABELS[inv.role as keyof typeof USER_ROLE_LABELS] ?? inv.role}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <Badge variant="outline" className={`text-xs ${badge.className}`}>
+                                {badge.label}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground">
+                                {getInviteStatusDetail(inv, status)}
+                              </p>
+                            </div>
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {formatDate(inv.expiresAt)}
+                            {formatDate(inv.createdAt)}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -457,17 +565,32 @@ export default function SuperAdminUsersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 text-xs"
-                              disabled={revokeMutation.isPending}
-                              onClick={() =>
-                                revokeMutation.mutate({ id: inv.id })
-                              }
-                            >
-                              Revoke
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {canResend && (
+                                  <DropdownMenuItem
+                                    disabled={resendMutation.isPending}
+                                    onClick={() => resendMutation.mutate({ id: inv.id })}
+                                  >
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Resend Invite
+                                  </DropdownMenuItem>
+                                )}
+                                {canRevoke && (
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    disabled={revokeMutation.isPending}
+                                    onClick={() => revokeMutation.mutate({ id: inv.id })}
+                                  >
+                                    <Ban className="mr-2 h-4 w-4" />
+                                    Revoke Invite
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
@@ -563,14 +686,14 @@ export default function SuperAdminUsersPage() {
               <Label>Role *</Label>
               <Select
                 value={assignRole}
-                onValueChange={(v) => { if (v) setAssignRole(v as AssignableRole); }}
-                itemToStringLabel={(v) => ASSIGNABLE_ROLES.find(r => r.value === v)?.label ?? String(v)}
+                onValueChange={(v) => { if (v) setAssignRole(v as AssignableBuildingRole); }}
+                itemToStringLabel={(v) => ASSIGNABLE_BUILDING_ROLES.find(r => r.value === v)?.label ?? String(v)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ASSIGNABLE_ROLES.map((r) => (
+                  {ASSIGNABLE_BUILDING_ROLES.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
                       {r.label}
                     </SelectItem>
@@ -669,6 +792,7 @@ export default function SuperAdminUsersPage() {
                       if (v) {
                         setInviteOrgId(v);
                         setInviteBuildingId("");
+                        setInviteUnitId("");
                       }
                     }}
                     itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? String(v)}
@@ -689,12 +813,23 @@ export default function SuperAdminUsersPage() {
                   <Label>Building (optional)</Label>
                   <Select
                     value={inviteBuildingId}
-                    onValueChange={(v) => { if (v) setInviteBuildingId(v); }}
-                    disabled={!inviteOrgId}
+                    onValueChange={(v) => {
+                      if (v) {
+                        setInviteBuildingId(v);
+                        setInviteUnitId("");
+                      }
+                    }}
+                    disabled={!inviteOrgId || !roleCanTargetBuilding(inviteRole)}
                     itemToStringLabel={(v) => { const b = inviteBuildings.find(b => b.id === v); return b ? `${b.name} — ${b.suburb}` : String(v); }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={inviteOrgId ? "Select building" : "Select organisation first"} />
+                      <SelectValue placeholder={
+                        !roleCanTargetBuilding(inviteRole)
+                          ? "Not required for super admins"
+                          : inviteOrgId
+                            ? (roleRequiresUnit(inviteRole) ? "Select building" : "Optional building")
+                            : "Select organisation first"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
                       {inviteBuildings.map((b) => (
@@ -705,21 +840,64 @@ export default function SuperAdminUsersPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    If no building is selected, the user gets org-level access only.
+                    {roleRequiresUnit(inviteRole)
+                      ? "Resident invites must target a specific unit in a building."
+                      : roleCanTargetBuilding(inviteRole)
+                        ? "Leave building empty for organisation-level access."
+                        : "Super admin invites stay platform-scoped with no building assignment."}
                   </p>
                 </div>
+                {roleRequiresUnit(inviteRole) && (
+                  <div className="space-y-2">
+                    <Label>Unit *</Label>
+                    <Select
+                      value={inviteUnitId}
+                      onValueChange={(v) => { if (v) setInviteUnitId(v); }}
+                      disabled={!inviteBuildingId}
+                      itemToStringLabel={(v) => {
+                        const unit = inviteUnits.find((u) => u.id === v);
+                        return unit ? `Unit ${unit.unitNumber}` : String(v);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={inviteBuildingId ? "Select unit" : "Select building first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {inviteUnits.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id} label={`Unit ${unit.unitNumber}`}>
+                            Unit {unit.unitNumber}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Best practice: resident invites are unit-scoped so ownership and tenancy stay attached to a real property record.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Role *</Label>
                   <Select
                     value={inviteRole}
-                    onValueChange={(v) => { if (v) setInviteRole(v as AssignableRole); }}
-                    itemToStringLabel={(v) => ASSIGNABLE_ROLES.find(r => r.value === v)?.label ?? String(v)}
+                    onValueChange={(v) => {
+                      if (v) {
+                        const nextRole = v as AssignableRole;
+                        setInviteRole(nextRole);
+                        if (!roleCanTargetBuilding(nextRole)) {
+                          setInviteBuildingId("");
+                          setInviteUnitId("");
+                        } else if (!roleRequiresUnit(nextRole)) {
+                          setInviteUnitId("");
+                        }
+                      }
+                    }}
+                    itemToStringLabel={(v) => INVITEABLE_ROLES.find(r => r.value === v)?.label ?? String(v)}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ASSIGNABLE_ROLES.map((r) => (
+                      {INVITEABLE_ROLES.map((r) => (
                         <SelectItem key={r.value} value={r.value}>
                           {r.label}
                         </SelectItem>
@@ -741,6 +919,7 @@ export default function SuperAdminUsersPage() {
                   disabled={
                     !inviteEmail.trim() ||
                     !inviteOrgId ||
+                    (roleRequiresUnit(inviteRole) && (!inviteBuildingId || !inviteUnitId)) ||
                     inviteMutation.isPending
                   }
                 >

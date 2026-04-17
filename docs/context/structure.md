@@ -22,8 +22,8 @@ strata-hub/
     │   │   └── forgot-password/page.tsx
     │   ├── (dashboard)/        # Protected pages (sidebar + topbar)
     │   │   ├── layout.tsx           # Thin wrapper: TRPCProvider + SidebarProvider + Toaster
-    │   │   ├── manager/             # Manager portal
-    │   │   │   ├── layout.tsx       # AppSidebar + Topbar (with building switcher)
+    │   │   ├── manager/             # Shared manager portal shell; reception is route-limited inside it
+    │   │   │   ├── layout.tsx       # AppSidebar + Topbar (with building switcher) + role-aware route guard
     │   │   │   ├── page.tsx         # Dashboard
     │   │   │   ├── residents/  units/  rent/  keys/  maintenance/
     │   │   │   ├── visitors/   parcels/  announcements/  documents/
@@ -34,7 +34,7 @@ strata-hub/
     │   │   │   ├── page.tsx         # Dashboard
     │   │   │   ├── levies/  maintenance/  documents/  announcements/
     │   │   └── super-admin/
-    │   │       ├── organisations/  buildings/  users/
+    │   │       ├── organisations/  buildings/  users/   # users includes super-admin invites + unit-scoped resident invites
     │   ├── api/
     │   │   ├── auth/callback/route.ts
     │   │   ├── auth/signout/route.ts
@@ -61,7 +61,8 @@ strata-hub/
     ├── lib/
     │   ├── auth/
     │   │   ├── roles.ts        # ROLE_RANK, getDefaultDashboardPath
-    │   │   └── invitations.ts  # getInvitationStatus, emailsMatch, normalizeEmail
+    │   │   ├── invitations.ts  # getInvitationStatus, emailsMatch, normalizeEmail
+    │   │   └── redirects.ts    # pure helpers for root/proxy auth redirects
     │   ├── constants.ts        # formatCurrency, USER_ROLE_LABELS, AUSTRALIAN_STATES, etc.
     │   ├── email/
     │   │   ├── resend.ts       # Lazy Resend client — getResend()
@@ -69,11 +70,11 @@ strata-hub/
     │   ├── supabase/
     │   │   ├── client.ts       # createBrowserClient
     │   │   ├── server.ts       # createServerClient with cookie handlers
-    │   │   └── middleware.ts   # updateSession + route protection
+    │   │   └── middleware.ts   # updateSession() used by src/proxy.ts
     │   └── trpc/
     │       ├── client.ts       # trpc = createTRPCReact<AppRouter>()
     │       └── provider.tsx    # TRPCProvider: QueryClient + httpBatchLink + superjson
-    ├── middleware.ts            # Next.js entry — calls updateSession()
+    ├── proxy.ts                 # Next.js 16 entry — calls updateSession()
     ├── server/
     │   ├── auth/
     │   │   ├── building-access.ts   # assertBuildingAccess, assertBuildingManagementAccess
@@ -90,7 +91,7 @@ strata-hub/
 ## Routing
 
 ### Manager routes (`/manager/**`)
-All require `managerProcedure` or `protectedProcedure` + building context.
+All require manager portal access plus building context.
 - `/manager` — dashboard stats + maintenance + announcements
 - `/manager/residents` — resident roster
 - `/manager/units` — unit list + create
@@ -107,6 +108,15 @@ All require `managerProcedure` or `protectedProcedure` + building context.
 - `/manager/analytics` — KPI cards + 6-month trend charts
 - `/manager/settings` — profile + password + roles
 
+Reception-only allowed subset:
+- `/manager`
+- `/manager/maintenance`
+- `/manager/visitors`
+- `/manager/parcels`
+- `/manager/keys`
+- `/manager/messages`
+- `/manager/settings`
+
 ### Resident routes (`/resident/**`)
 Uses `ResidentSidebar`. Data scoped to user's own units — no building switcher (unless multi-building owner).
 - `/resident` — dashboard
@@ -118,4 +128,4 @@ Uses `ResidentSidebar`. Data scoped to user's own units — no building switcher
 ### Super-admin routes (`/super-admin/**`)
 - `/super-admin/organisations`
 - `/super-admin/buildings`
-- `/super-admin/users`
+- `/super-admin/users` — user roster plus invite history, resend, revoke, status tracking, and super-admin/resident invite management

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
-  managerProcedure,
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
@@ -27,7 +27,7 @@ export const announcementsRouter = createTRPCRouter({
       });
     }),
 
-  create: managerProcedure
+  create: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -51,7 +51,7 @@ export const announcementsRouter = createTRPCRouter({
       });
     }),
 
-  delete: managerProcedure
+  delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const announcement = await ctx.db.announcement.findUniqueOrThrow({

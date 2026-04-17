@@ -4,7 +4,10 @@ import {
   managerProcedure,
   tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
-import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  assertBuildingAccess,
+  assertBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 
 const purposeEnum = z.enum([
   "PERSONAL", "DELIVERY", "TRADESPERSON", "REAL_ESTATE", "INSPECTION", "OTHER",
@@ -19,7 +22,7 @@ export const visitorsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       const where: Record<string, unknown> = { buildingId: input.buildingId };
 
@@ -70,7 +73,7 @@ export const visitorsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, visitor.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, visitor.buildingId);
 
       return ctx.db.visitorEntry.update({
         where: { id: input.id },
@@ -86,7 +89,7 @@ export const visitorsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, visitor.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, visitor.buildingId);
 
       return ctx.db.visitorEntry.update({
         where: { id: input.id },

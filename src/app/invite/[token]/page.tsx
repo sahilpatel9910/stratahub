@@ -38,6 +38,10 @@ export default async function InvitePage({
     return <InviteLayout><ErrorCard title="Already Accepted" message="This invite has already been accepted." icon="check" /></InviteLayout>;
   }
 
+  if (inviteStatus === "revoked") {
+    return <InviteLayout><ErrorCard title="Invite Revoked" message="This invite was revoked. Please ask your administrator to send a new invite." /></InviteLayout>;
+  }
+
   if (inviteStatus === "expired") {
     return <InviteLayout><ErrorCard title="Invite Expired" message="This invite link has expired. Please ask your administrator for a new invite." icon="clock" /></InviteLayout>;
   }

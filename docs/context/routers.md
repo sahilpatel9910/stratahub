@@ -10,6 +10,7 @@ All routers in `src/server/trpc/routers/`. Combined in `src/server/trpc/router.t
 | `protectedProcedure` | Any authenticated user with a Prisma record |
 | `tenantOrAboveProcedure` | TENANT, OWNER, RECEPTION, BUILDING_MANAGER, SUPER_ADMIN |
 | `managerProcedure` | RECEPTION, BUILDING_MANAGER, SUPER_ADMIN |
+| `buildingManagerProcedure` | BUILDING_MANAGER, SUPER_ADMIN |
 | `ownerProcedure` | OWNER, BUILDING_MANAGER, SUPER_ADMIN |
 | `superAdminProcedure` | SUPER_ADMIN only |
 
@@ -30,10 +31,10 @@ All routers in `src/server/trpc/routers/`. Combined in `src/server/trpc/router.t
 | `list` | query | protected | — | SUPER_ADMIN gets all; others get assigned only |
 | `getById` | query | protected | `id` | Full detail with units, floors, strataInfo |
 | `create` | mutation | SUPER_ADMIN | `organisationId, name, address, suburb, state, postcode, totalFloors, totalUnits, strataSchemeNo?` | Create building |
-| `update` | mutation | manager | `id, ...fields` | Update fields |
+| `update` | mutation | buildingManager | `id, ...fields` | Update fields |
 | `delete` | mutation | SUPER_ADMIN | `id` | Hard delete |
 | `getStats` | query | manager | `buildingId` | `totalUnits, occupiedUnits, residentCount, openMaintenanceCount, pendingParcelCount, overdueRentCount, keysToRotate, rentCollectedThisMonthCents, occupancyRate` |
-| `getTrends` | query | manager | `buildingId` | Last 6 months: `month, maintenanceRequests, parcelsReceived, rentCollectedCents, newResidents` |
+| `getTrends` | query | buildingManager | `buildingId` | Last 6 months: `month, maintenanceRequests, parcelsReceived, rentCollectedCents, newResidents` |
 
 ## `units`
 Unit types: `APARTMENT, STUDIO, PENTHOUSE, TOWNHOUSE, COMMERCIAL, STORAGE, PARKING`
@@ -42,27 +43,27 @@ Unit types: `APARTMENT, STUDIO, PENTHOUSE, TOWNHOUSE, COMMERCIAL, STORAGE, PARKI
 |---|---|---|---|---|
 | `listByBuilding` | query | protected | `buildingId` | Units with ownerships, tenancies, parking, storage |
 | `getById` | query | protected | `id` | Full unit with 12-month rent history |
-| `create` | mutation | manager | `buildingId, unitNumber, unitType, bedrooms?, bathrooms?, parkingSpaces, storageSpaces, squareMetres?, lotNumber?, unitEntitlement?, ownerFirstName, ownerLastName, ownerEmail, ownerPhone` | Creates unit + owner link or owner invite |
-| `assignResident` | mutation | manager | `unitId, residentUserId, role, purchaseDate?, leaseStartDate?, leaseEndDate?, rentAmountCents?, rentFrequency?, bondAmountCents?, moveInDate?` | Assign owner or tenant to unit |
-| `update` | mutation | manager | `id, ...fields` | Update unit |
-| `delete` | mutation | manager | `id` | Hard delete |
+| `create` | mutation | buildingManager | `buildingId, unitNumber, unitType, bedrooms?, bathrooms?, parkingSpaces, storageSpaces, squareMetres?, lotNumber?, unitEntitlement?, ownerFirstName, ownerLastName, ownerEmail, ownerPhone` | Creates unit + owner link or owner invite |
+| `assignResident` | mutation | buildingManager | `unitId, residentUserId, role, purchaseDate?, leaseStartDate?, leaseEndDate?, rentAmountCents?, rentFrequency?, bondAmountCents?, moveInDate?` | Assign owner or tenant to unit |
+| `update` | mutation | buildingManager | `id, ...fields` | Update unit |
+| `delete` | mutation | buildingManager | `id` | Hard delete |
 
 ## `residents`
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
 | `listByBuilding` | query | protected | `buildingId, role?, search?` | Active assignments with user detail |
 | `getById` | query | protected | `id` | Full profile with ownerships, tenancies, emergency contacts |
-| `addEmergencyContact` | mutation | manager | `userId, name, relationship, phone, email?` | Add contact |
-| `removeEmergencyContact` | mutation | manager | `id` | Remove contact |
+| `addEmergencyContact` | mutation | buildingManager | `userId, name, relationship, phone, email?` | Add contact |
+| `removeEmergencyContact` | mutation | buildingManager | `id` | Remove contact |
 
 ## `rent`
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `listByBuilding` | query | manager | `buildingId, status?` | Payments filtered by status |
+| `listByBuilding` | query | buildingManager | `buildingId, status?` | Payments filtered by status |
 | `listByTenancy` | query | protected | `tenancyId` | Rent history for tenancy |
-| `recordPayment` | mutation | manager | `id, amountCents, paidDate, paymentMethod?, notes?` | Mark paid (PAID or PARTIAL) |
-| `generateSchedule` | mutation | manager | `tenancyId, months?` | Generate payment schedule |
-| `getRentRoll` | query | manager | `buildingId` | `unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, overduePayments, nextDue` |
+| `recordPayment` | mutation | buildingManager | `id, amountCents, paidDate, paymentMethod?, notes?` | Mark paid (PAID or PARTIAL) |
+| `generateSchedule` | mutation | buildingManager | `tenancyId, months?` | Generate payment schedule |
+| `getRentRoll` | query | buildingManager | `buildingId` | `unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, overduePayments, nextDue` |
 
 ## `keys`
 Key types: `PHYSICAL_KEY, FOB, ACCESS_CODE, REMOTE, SWIPE_CARD`
@@ -135,10 +136,10 @@ Types: `INCOME, EXPENSE`
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `listByBuilding` | query | manager | `buildingId, type?, from?, to?` | Records with date range filter |
-| `getSummary` | query | manager | `buildingId` | `totalIncome, totalExpense, net` (all cents) |
-| `create` | mutation | manager | `buildingId, type, category, description, amountCents, date, receiptUrl?` | Create record |
-| `delete` | mutation | manager | `id` | Hard delete |
+| `listByBuilding` | query | buildingManager | `buildingId, type?, from?, to?` | Records with date range filter |
+| `getSummary` | query | buildingManager | `buildingId` | `totalIncome, totalExpense, net` (all cents) |
+| `create` | mutation | buildingManager | `buildingId, type, category, description, amountCents, date, receiptUrl?` | Create record |
+| `delete` | mutation | buildingManager | `id` | Hard delete |
 
 ## `strata`
 Levy types: `ADMIN_FUND, CAPITAL_WORKS, SPECIAL_LEVY`
@@ -146,15 +147,15 @@ Payment statuses: `PENDING, PAID, OVERDUE, PARTIAL, WAIVED`
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `getByBuilding` | query | manager | `buildingId` | StrataInfo with levies, bylaws, meetings |
-| `upsertInfo` | mutation | manager | `buildingId, strataPlanNumber, strataManagerName?, strataManagerEmail?, strataManagerPhone?, adminFundBalance?, capitalWorksBalance?, insurancePolicyNo?, insuranceExpiry?, nextAgmDate?` | Create or update |
-| `createMeeting` | mutation | manager | `buildingId, title, meetingDate, location?, notes?` | Requires StrataInfo to exist first |
-| `deleteMeeting` | mutation | manager | `id` | Hard delete |
-| `listLevies` | query | manager | `buildingId, status?, levyType?` | Levies with `unitNumber` joined from units table |
-| `createLevy` | mutation | manager | `buildingId, unitId, levyType, amountCents, quarterStart, dueDate` | Single unit levy |
-| `bulkCreateLevies` | mutation | manager | `buildingId, levyType, amountCents, quarterStart, dueDate` | Creates one levy per unit in the building |
-| `updateLevyStatus` | mutation | manager | `id, status, paidDate?` | Updates status; auto-sets `paidDate=now` when status=PAID |
-| `deleteLevy` | mutation | manager | `id` | Hard delete |
+| `getByBuilding` | query | buildingManager | `buildingId` | StrataInfo with levies, bylaws, meetings |
+| `upsertInfo` | mutation | buildingManager | `buildingId, strataPlanNumber, strataManagerName?, strataManagerEmail?, strataManagerPhone?, adminFundBalance?, capitalWorksBalance?, insurancePolicyNo?, insuranceExpiry?, nextAgmDate?` | Create or update |
+| `createMeeting` | mutation | buildingManager | `buildingId, title, meetingDate, location?, notes?` | Requires StrataInfo to exist first |
+| `deleteMeeting` | mutation | buildingManager | `id` | Hard delete |
+| `listLevies` | query | buildingManager | `buildingId, status?, levyType?` | Levies with `unitNumber` joined from units table |
+| `createLevy` | mutation | buildingManager | `buildingId, unitId, levyType, amountCents, quarterStart, dueDate` | Single unit levy |
+| `bulkCreateLevies` | mutation | buildingManager | `buildingId, levyType, amountCents, quarterStart, dueDate` | Creates one levy per unit in the building |
+| `updateLevyStatus` | mutation | buildingManager | `id, status, paidDate?` | Updates status; auto-sets `paidDate=now` when status=PAID |
+| `deleteLevy` | mutation | buildingManager | `id` | Hard delete |
 
 ## `documents`
 Categories: `LEASE_AGREEMENT, BUILDING_RULES, STRATA_MINUTES, FINANCIAL_REPORT, INSURANCE, COMPLIANCE, NOTICE, OTHER`
@@ -164,9 +165,9 @@ Upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `signe
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
 | `listByBuilding` | query | protected | `buildingId, category?` | Filtered by category |
-| `create` | mutation | manager | `buildingId, title, description?, category, fileUrl, storagePath?, fileSize, mimeType, isPublic?` | Create record |
+| `create` | mutation | buildingManager | `buildingId, title, description?, category, fileUrl, storagePath?, fileSize, mimeType, isPublic?` | Create record |
 | `getDownloadUrl` | query | protected | `id` | Returns short-lived signed URL after authorization |
-| `delete` | mutation | manager | `id` | Hard delete (storage file deleted via `DELETE /api/storage/delete` on client) |
+| `delete` | mutation | buildingManager | `id` | Hard delete (storage file deleted via `DELETE /api/storage/delete` on client) |
 
 ## `users` (super-admin)
 | Procedure | Type | Auth | Input | Description |
@@ -175,9 +176,10 @@ Upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `signe
 | `getMe` | query | protected | — | Current user profile with orgMemberships |
 | `updateMe` | mutation | protected | `firstName?, lastName?, phone?` | Update own profile |
 | `assignToBuilding` | mutation | SUPER_ADMIN | `userId, organisationId, buildingId, role` | Upserts OrgMembership + BuildingAssignment |
-| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, role` | Creates Invitation (7-day expiry) + fires invite email via Resend |
-| `listInvites` | query | SUPER_ADMIN | `organisationId?` | Pending (non-expired, non-accepted) invites |
-| `revokeInvite` | mutation | SUPER_ADMIN | `id` | Hard delete |
+| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, unitId?, role` | Creates Invitation (7-day expiry) + fires invite email via Resend |
+| `listInvites` | query | SUPER_ADMIN | `organisationId?` | Full invite history with pending / accepted / expired / revoked status |
+| `revokeInvite` | mutation | SUPER_ADMIN | `id` | Sets `revokedAt` |
+| `resendInvite` | mutation | SUPER_ADMIN | `id` | Revokes the still-pending prior link and creates a fresh invite |
 | `deactivateAssignments` | mutation | SUPER_ADMIN | `userId` | Sets all BuildingAssignments `isActive=false` + `User.isActive=false` |
 
 ## `notifications`
@@ -216,7 +218,7 @@ Building lookup priority: ownership → tenancy → buildingAssignment.
 ### `POST /api/invite/accept`
 - **Auth:** Requires Supabase session
 - **Body:** `{ token: string }`
-- **Behaviour:** Finds or creates Prisma user from Supabase metadata. Upserts OrgMembership + BuildingAssignment (never downgrades role). For unit-linked OWNER invites: deactivates existing ownership/tenancy, upserts Ownership, marks unit occupied. Validates invite exists/not-accepted/not-expired/email-match.
+- **Behaviour:** Finds or creates Prisma user from Supabase metadata. Upserts OrgMembership + BuildingAssignment (never downgrades role). For unit-linked OWNER invites: deactivates existing ownership/tenancy, upserts Ownership, marks unit occupied. For unit-linked TENANT invites: creates an active tenancy placeholder. Validates invite exists/not-accepted/not-expired/not-revoked/email-match.
 
 ### `GET /api/invite/[token]`
 - **Auth:** Public — returns invite details by token

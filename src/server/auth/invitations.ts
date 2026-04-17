@@ -12,6 +12,7 @@ export async function findPendingInvitationByEmail(email: string) {
     where: {
       email: normalizeEmail(email),
       acceptedAt: null,
+      revokedAt: null,
       expiresAt: {
         gt: new Date(),
       },

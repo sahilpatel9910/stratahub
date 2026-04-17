@@ -2,108 +2,72 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-16** — Phase 3 active on `feat/phase3-features`. Phase 1 (UI stabilization) and Phase 2 (verification + security hardening) are complete.
+> **Last updated: 2026-04-17** — Phase 3 active on `feat/phase3-features`.
 
 ## Project Overview
 
-Australian strata/apartment property management SaaS. Users: building managers, reception, property owners, tenants, super-admins.
-
+Australian strata/apartment property management SaaS for building managers, reception, owners, tenants, and super-admins.
 Live: `stratahub-six.vercel.app`
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4 |
-| UI Components | shadcn/ui via `@base-ui/react` (**NOT** `@radix-ui`) |
-| Auth | Supabase Auth (SSR via `@supabase/ssr`) |
-| Database | PostgreSQL (Supabase) |
-| ORM | Prisma 7 — output → `src/generated/prisma` |
-| API Layer | tRPC v11 + TanStack Query v5 + SuperJSON |
-| State | Zustand v5 (building context only) |
-| Email | Resend v6 |
-| Charts | Recharts v3 |
-| Package Manager | npm |
+- Next.js 16 App Router
+- TypeScript 5
+- Tailwind CSS v4
+- shadcn/ui via `@base-ui/react` (not Radix)
+- Supabase Auth SSR via `@supabase/ssr`
+- PostgreSQL + Prisma 7 (`src/generated/prisma`)
+- tRPC v11 + TanStack Query v5 + SuperJSON
+- Zustand v5 for building context
+- Resend v6
 
----
+## Critical Patterns
 
-## CRITICAL: Prisma 7 Patterns
+- Prisma 7: never call `new PrismaClient()` without the `PrismaPg` adapter from `src/server/db/client.ts`.
+- Prisma config lives in `prisma.config.ts`; use `npx prisma db push`, not `migrate dev`.
+- Prisma imports come from `@/generated/prisma/client`.
+- Base UI: no `asChild`; use `render={<Component />}`.
+- Base UI `Select` can emit `null` from `onValueChange`; always guard it.
 
-`new PrismaClient()` with no args is a **type error**. Always use driver adapter:
+## Current Phase
 
-```ts
-// src/server/db/client.ts
-import { PrismaPg } from "@prisma/adapter-pg";
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-return new PrismaClient({ adapter });
-```
+Branch: `feat/phase3-features`
 
-`prisma.config.ts` holds the DB URL (not `schema.prisma`). Always use **`npx prisma db push`** (not `migrate dev`) — schema was bootstrapped with `db push`.
+Completed in Phase 3:
+- ✅ Analytics 6-month trend charts via `buildings.getTrends`
+- ✅ "Deactivate User" rename
+- ✅ `/api/auth/signout` open redirect fix
+- ✅ Resident docs/announcements fallback fix
+- ✅ Invite lifecycle now uses `revokedAt` instead of hard deletes, with resend support and status/history UI
+- ✅ Super-admin UI can now invite other `SUPER_ADMIN` users
+- ✅ Resident invites are unit-scoped; owner accepts create ownership and tenant accepts create tenancy placeholders
+- ✅ `RECEPTION` is now separated from `BUILDING_MANAGER`: reception is operations-only, managers keep admin/control workflows
+- ✅ Auth redirect decisions extracted into `src/lib/auth/redirects.ts` with tests
+- ✅ Next.js warning cleanup: `src/proxy.ts` replaces `src/middleware.ts`, and `next.config.ts` sets `turbopack.root`
 
-All Prisma imports come from `@/generated/prisma/client` (note the `/client` suffix).
-
----
-
-## CRITICAL: Base UI Patterns
-
-shadcn uses `@base-ui/react` — two breaking differences from Radix:
-
-### 1. No `asChild` — use `render` prop
-```tsx
-// ❌ Wrong
-<DialogTrigger asChild><Button>New</Button></DialogTrigger>
-
-// ✅ Correct
-<DialogTrigger render={<Button />}>New</DialogTrigger>
-<Button render={<Link href="/register" />}>Create Account</Button>
-```
-
-### 2. Select `onValueChange` receives `null`
-```tsx
-// ✅ Always guard
-<Select onValueChange={(v) => v !== null && setFormStatus(v)}>
-```
-
----
-
-## Current Phase — Phase 3: New Features (`feat/phase3-features`)
-
-**Branch:** `feat/phase3-features` (off `main`)
-
-**Completed this phase so far:**
-- ✅ 6-month trend charts in Analytics (`buildings.getTrends` tRPC procedure)
-- ✅ Renamed "Remove from All Buildings" → "Deactivate User"
-- ✅ Fixed open redirect in `/api/auth/signout`
-- ✅ Fixed `getMyDocuments` + `getMyAnnouncements` missing `buildingAssignment` fallback
-
-**Next priorities (decide with user):**
-- New feature development (resident improvements, manager workflow, financial features, etc.)
-- Test coverage for high-risk paths
-
----
+Next priorities:
+- Live invite-only E2E verification against Supabase email flow
+- Route/API coverage for invite acceptance behavior
+- Manual Supabase hardening: disable open signup in dashboard
 
 ## Quick Start
 
 ```bash
-cd strata-hub && npm run dev   # http://localhost:3000
+cd strata-hub
+npx prisma generate
+npx prisma db push
+npm run dev
 ```
 
 Seed account: `admin@stratahub.com.au` / `Admin1234!` (SUPER_ADMIN)
 
----
-
 ## Reference Docs
 
-Read these files **when you need them** — do not load all at once:
-
-| File | When to read |
-|---|---|
-| `docs/context/routers.md` | Looking up tRPC procedure inputs/outputs or API routes |
-| `docs/context/schema.md` | Understanding data model, relationships, field names |
-| `docs/context/auth.md` | Auth flow, invite-only registration, role redirects |
-| `docs/context/structure.md` | Project directory layout, routing map |
-| `docs/context/architecture.md` | Architectural decisions, skipToken pattern, building-auth pattern |
-| `docs/context/deployment.md` | Env vars, Vercel setup, production checklist |
-| `docs/supabase-security.md` | Security model, RLS posture, storage bucket setup |
+Read only the relevant doc:
+- `docs/context/routers.md` — tRPC procedure inputs/outputs and API routes
+- `docs/context/schema.md` — data model and field names
+- `docs/context/auth.md` — invite-only auth flow, redirects, proxy behavior
+- `docs/context/structure.md` — project layout and routing map
+- `docs/context/architecture.md` — app patterns like `skipToken` and building auth
+- `docs/context/deployment.md` — env vars, Vercel, production checklist
+- `docs/supabase-security.md` — security model, RLS posture, storage setup

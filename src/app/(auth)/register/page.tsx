@@ -55,6 +55,15 @@ export default async function RegisterPage({
     );
   }
 
+  if (inviteStatus === "revoked") {
+    return (
+      <AuthMessageCard
+        title="Invite Revoked"
+        description="This registration link has been revoked. Ask your administrator to send a fresh invitation."
+      />
+    );
+  }
+
   if (inviteStatus === "expired") {
     return (
       <AuthMessageCard

@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
   if (inviteStatus === "accepted") {
     return NextResponse.json({ error: "This invite has already been accepted." }, { status: 409 });
   }
+  if (inviteStatus === "revoked") {
+    return NextResponse.json({ error: "This invite has been revoked." }, { status: 410 });
+  }
   if (inviteStatus === "expired") {
     return NextResponse.json({ error: "This invite has expired." }, { status: 410 });
   }
@@ -165,6 +168,37 @@ export async function POST(req: NextRequest) {
 
       await tx.unit.update({
         where: { id: ownerUnitId },
+        data: { isOccupied: true },
+      });
+    });
+  }
+
+  const tenantUnitId = activeInvite.unitId;
+
+  if (tenantUnitId && activeInvite.role === "TENANT") {
+    await db.$transaction(async (tx) => {
+      await tx.tenancy.updateMany({
+        where: { unitId: tenantUnitId, isActive: true },
+        data: {
+          isActive: false,
+          moveOutDate: new Date(),
+        },
+      });
+
+      await tx.tenancy.create({
+        data: {
+          userId: dbUser.id,
+          unitId: tenantUnitId,
+          leaseStartDate: new Date(),
+          rentAmountCents: 0,
+          rentFrequency: "MONTHLY",
+          bondAmountCents: 0,
+          moveInDate: new Date(),
+        },
+      });
+
+      await tx.unit.update({
+        where: { id: tenantUnitId },
         data: { isOccupied: true },
       });
     });

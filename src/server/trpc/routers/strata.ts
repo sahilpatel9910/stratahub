@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
-  managerProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { sendLevyNoticeEmail } from "@/lib/email/send";
@@ -12,7 +12,7 @@ const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
 const paymentStatusEnum = z.enum(["PENDING", "PAID", "OVERDUE", "PARTIAL", "WAIVED"]);
 
 export const strataRouter = createTRPCRouter({
-  getByBuilding: managerProcedure
+  getByBuilding: buildingManagerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
@@ -27,7 +27,7 @@ export const strataRouter = createTRPCRouter({
       });
     }),
 
-  upsertInfo: managerProcedure
+  upsertInfo: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -61,7 +61,7 @@ export const strataRouter = createTRPCRouter({
       });
     }),
 
-  createMeeting: managerProcedure
+  createMeeting: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -95,7 +95,7 @@ export const strataRouter = createTRPCRouter({
       });
     }),
 
-  deleteMeeting: managerProcedure
+  deleteMeeting: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const meeting = await ctx.db.strataMeeting.findUniqueOrThrow({
@@ -112,7 +112,7 @@ export const strataRouter = createTRPCRouter({
 
   // ── Levies ────────────────────────────────────────────────────────────────
 
-  listLevies: managerProcedure
+  listLevies: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -151,7 +151,7 @@ export const strataRouter = createTRPCRouter({
       }));
     }),
 
-  createLevy: managerProcedure
+  createLevy: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -233,7 +233,7 @@ export const strataRouter = createTRPCRouter({
       return levy;
     }),
 
-  bulkCreateLevies: managerProcedure
+  bulkCreateLevies: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -320,7 +320,7 @@ export const strataRouter = createTRPCRouter({
       return { count: result.count };
     }),
 
-  updateLevyStatus: managerProcedure
+  updateLevyStatus: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -352,7 +352,7 @@ export const strataRouter = createTRPCRouter({
       });
     }),
 
-  deleteLevy: managerProcedure
+  deleteLevy: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const levy = await ctx.db.strataLevy.findUniqueOrThrow({

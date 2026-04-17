@@ -3,7 +3,7 @@ import {
   createTRPCRouter,
   managerProcedure,
 } from "@/server/trpc/trpc";
-import { assertBuildingManagementAccess } from "@/server/auth/building-access";
+import { assertBuildingOperationsAccess } from "@/server/auth/building-access";
 
 export const parcelsRouter = createTRPCRouter({
   listByBuilding: managerProcedure
@@ -14,7 +14,7 @@ export const parcelsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.parcel.findMany({
         where: {
@@ -41,7 +41,7 @@ export const parcelsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.parcel.create({
         data: { ...input, loggedById: ctx.user!.id, status: "RECEIVED" },
@@ -56,7 +56,7 @@ export const parcelsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, parcel.buildingId);
 
       return ctx.db.parcel.update({
         where: { id: input.id },
@@ -72,7 +72,7 @@ export const parcelsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, parcel.buildingId);
 
       return ctx.db.parcel.update({
         where: { id: input.id },
@@ -92,7 +92,7 @@ export const parcelsRouter = createTRPCRouter({
         select: { buildingId: true },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, parcel.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, parcel.buildingId);
 
       return ctx.db.parcel.update({
         where: { id: input.id },
