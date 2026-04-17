@@ -23,7 +23,7 @@ strata-hub/
     │   ├── (dashboard)/        # Protected pages (sidebar + topbar)
     │   │   ├── layout.tsx           # Thin wrapper: TRPCProvider + SidebarProvider + Toaster
     │   │   ├── manager/             # Shared manager portal shell; reception is route-limited inside it
-    │   │   │   ├── layout.tsx       # AppSidebar + Topbar (with building switcher) + role-aware route guard
+    │   │   │   ├── layout.tsx       # AppSidebar + Topbar (with building switcher, manager-root greeting) + role-aware route guard
     │   │   │   ├── page.tsx         # Dashboard
     │   │   │   ├── residents/  units/  rent/  keys/  maintenance/
     │   │   │   ├── visitors/   parcels/  announcements/  documents/

@@ -24,12 +24,14 @@ interface TopbarProps {
   buildings: Building[];
   showBuildingSwitcher?: boolean;
   searchPlaceholder?: string;
+  greetingName?: string | null;
 }
 
 export function Topbar({
   buildings,
   showBuildingSwitcher = true,
   searchPlaceholder = "Search residents, units, parcels...",
+  greetingName,
 }: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ top: number; right: number } | null>(null);
@@ -39,6 +41,7 @@ export function Topbar({
   const { selectedBuildingId, setSelectedBuilding, clearSelectedBuilding } =
     useBuildingContext();
   const isSuperAdminPage = pathname.startsWith("/super-admin");
+  const showGreeting = pathname === "/manager" && !!greetingName;
   const canShowBuildingSwitcher =
     showBuildingSwitcher && !isSuperAdminPage && buildings.length > 0;
 
@@ -115,6 +118,17 @@ export function Topbar({
           <SidebarTrigger className="rounded-xl border border-white/70 bg-white/85 hover:bg-white" />
           <Separator orientation="vertical" className="hidden h-6 bg-border md:block" />
         </div>
+
+        {showGreeting && (
+          <div className="hidden min-w-0 lg:block">
+            <p className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+              Welcome, {greetingName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Here&apos;s your building snapshot for today.
+            </p>
+          </div>
+        )}
 
         {canShowBuildingSwitcher && (
           <div className="hidden min-w-0 flex-1 xl:block">
