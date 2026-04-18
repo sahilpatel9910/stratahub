@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Landmark, Calendar, CheckCircle, AlertCircle, Clock, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Landmark, Calendar, CheckCircle, AlertCircle, Clock, Layers, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +82,14 @@ export default function StrataPage() {
   const [formMeetingLocation, setFormMeetingLocation] = useState("");
   const [formMeetingNotes, setFormMeetingNotes] = useState("");
 
+  // Bylaw dialog state
+  const [bylawOpen, setBylawOpen] = useState(false);
+  const [editingBylaw, setEditingBylaw] = useState<{ id: string; bylawNumber: number; title: string; content: string; effectiveDate: string } | null>(null);
+  const [formBylawNumber, setFormBylawNumber] = useState("");
+  const [formBylawTitle, setFormBylawTitle] = useState("");
+  const [formBylawContent, setFormBylawContent] = useState("");
+  const [formBylawEffectiveDate, setFormBylawEffectiveDate] = useState("");
+
   // Levy dialog state
   const [levyOpen, setLevyOpen] = useState(false);
   const [bulkLevyOpen, setBulkLevyOpen] = useState(false);
@@ -126,6 +134,35 @@ export default function StrataPage() {
       toast.success("Meeting deleted");
     },
     onError: (err) => toast.error(err.message ?? "Failed to delete meeting"),
+  });
+
+  const createBylawMutation = trpc.strata.createBylaw.useMutation({
+    onSuccess: () => {
+      utils.strata.getByBuilding.invalidate();
+      setBylawOpen(false);
+      resetBylawForm();
+      toast.success("Bylaw added");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to add bylaw"),
+  });
+
+  const updateBylawMutation = trpc.strata.updateBylaw.useMutation({
+    onSuccess: () => {
+      utils.strata.getByBuilding.invalidate();
+      setBylawOpen(false);
+      setEditingBylaw(null);
+      resetBylawForm();
+      toast.success("Bylaw updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update bylaw"),
+  });
+
+  const deleteBylawMutation = trpc.strata.deleteBylaw.useMutation({
+    onSuccess: () => {
+      utils.strata.getByBuilding.invalidate();
+      toast.success("Bylaw deleted");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to delete bylaw"),
   });
 
   const leviesQuery = trpc.strata.listLevies.useQuery(
@@ -232,6 +269,58 @@ export default function StrataPage() {
     setBulkLevyAmount("");
     setBulkLevyQuarterStart("");
     setBulkLevyDueDate("");
+  }
+
+  function resetBylawForm() {
+    setFormBylawNumber("");
+    setFormBylawTitle("");
+    setFormBylawContent("");
+    setFormBylawEffectiveDate("");
+  }
+
+  function openAddBylaw() {
+    setEditingBylaw(null);
+    resetBylawForm();
+    setBylawOpen(true);
+  }
+
+  function openEditBylaw(b: { id: string; bylawNumber: number; title: string; content: string; effectiveDate: Date | string }) {
+    setEditingBylaw({
+      id: b.id,
+      bylawNumber: b.bylawNumber,
+      title: b.title,
+      content: b.content,
+      effectiveDate: toInputDate(b.effectiveDate),
+    });
+    setFormBylawNumber(String(b.bylawNumber));
+    setFormBylawTitle(b.title);
+    setFormBylawContent(b.content);
+    setFormBylawEffectiveDate(toInputDate(b.effectiveDate));
+    setBylawOpen(true);
+  }
+
+  function handleSaveBylaw() {
+    if (!selectedBuildingId || !formBylawNumber || !formBylawTitle.trim() || !formBylawContent.trim() || !formBylawEffectiveDate) return;
+    const bylawNumber = parseInt(formBylawNumber, 10);
+    if (isNaN(bylawNumber) || bylawNumber < 1) return;
+
+    if (editingBylaw) {
+      updateBylawMutation.mutate({
+        id: editingBylaw.id,
+        bylawNumber,
+        title: formBylawTitle.trim(),
+        content: formBylawContent.trim(),
+        effectiveDate: formBylawEffectiveDate,
+      });
+    } else {
+      createBylawMutation.mutate({
+        buildingId: selectedBuildingId,
+        bylawNumber,
+        title: formBylawTitle.trim(),
+        content: formBylawContent.trim(),
+        effectiveDate: formBylawEffectiveDate,
+      });
+    }
   }
 
   function handleCreateLevy() {
@@ -627,31 +716,83 @@ export default function StrataPage() {
 
           {/* Bylaws Tab */}
           <TabsContent value="bylaws" className="mt-4">
-            {!strataInfo?.bylaws.length ? (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                  No bylaws recorded.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {strataInfo.bylaws.map((b) => (
-                  <Card key={b.id}>
-                    <CardContent className="p-4">
-                      <p className="font-medium text-sm">
-                        {b.bylawNumber}. {b.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {b.content}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Effective {formatDate(b.effectiveDate)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button
+                  onClick={openAddBylaw}
+                  disabled={!strataInfo}
+                  title={!strataInfo ? "Set up strata info first" : undefined}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Bylaw
+                </Button>
               </div>
-            )}
+              {query.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <Skeleton className="h-5 w-48 mb-2" />
+                        <Skeleton className="h-4 w-full" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : !strataInfo?.bylaws.length ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-muted-foreground text-sm">No bylaws recorded.</p>
+                    {strataInfo && (
+                      <Button className="mt-4" variant="outline" onClick={openAddBylaw}>
+                        Add First Bylaw
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {strataInfo.bylaws.map((b) => (
+                    <Card key={b.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">
+                              {b.bylawNumber}. {b.title}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                              {b.content}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Effective {formatDate(b.effectiveDate)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditBylaw(b)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                              disabled={deleteBylawMutation.isPending}
+                              onClick={() => deleteBylawMutation.mutate({ id: b.id })}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       )}
@@ -972,6 +1113,100 @@ export default function StrataPage() {
               }
             >
               {createMeetingMutation.isPending ? "Adding..." : "Add Meeting"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add / Edit Bylaw Dialog */}
+      <Dialog
+        open={bylawOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingBylaw(null);
+            resetBylawForm();
+          }
+          setBylawOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingBylaw ? "Edit Bylaw" : "Add Bylaw"}</DialogTitle>
+            <DialogDescription>
+              {editingBylaw ? "Update this bylaw's details" : "Record a new bylaw for this strata plan"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bylawNo">Bylaw Number *</Label>
+                <Input
+                  id="bylawNo"
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 1"
+                  value={formBylawNumber}
+                  onChange={(e) => setFormBylawNumber(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bylawDate">Effective Date *</Label>
+                <Input
+                  id="bylawDate"
+                  type="date"
+                  value={formBylawEffectiveDate}
+                  onChange={(e) => setFormBylawEffectiveDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bylawTitle">Title *</Label>
+              <Input
+                id="bylawTitle"
+                placeholder="e.g. Noise restrictions"
+                value={formBylawTitle}
+                onChange={(e) => setFormBylawTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bylawContent">Content *</Label>
+              <Textarea
+                id="bylawContent"
+                rows={5}
+                placeholder="Full text of the bylaw..."
+                value={formBylawContent}
+                onChange={(e) => setFormBylawContent(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingBylaw(null);
+                resetBylawForm();
+                setBylawOpen(false);
+              }}
+              disabled={createBylawMutation.isPending || updateBylawMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveBylaw}
+              disabled={
+                !formBylawNumber ||
+                !formBylawTitle.trim() ||
+                !formBylawContent.trim() ||
+                !formBylawEffectiveDate ||
+                createBylawMutation.isPending ||
+                updateBylawMutation.isPending
+              }
+            >
+              {createBylawMutation.isPending || updateBylawMutation.isPending
+                ? "Saving..."
+                : editingBylaw
+                ? "Save Changes"
+                : "Add Bylaw"}
             </Button>
           </DialogFooter>
         </DialogContent>

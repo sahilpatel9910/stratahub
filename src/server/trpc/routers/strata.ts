@@ -370,4 +370,81 @@ export const strataRouter = createTRPCRouter({
 
       return ctx.db.strataLevy.delete({ where: { id: input.id } });
     }),
+
+  // ── Bylaws ────────────────────────────────────────────────────────────────
+
+  createBylaw: buildingManagerProcedure
+    .input(
+      z.object({
+        buildingId: z.string(),
+        bylawNumber: z.number().int().positive(),
+        title: z.string().min(1),
+        content: z.string().min(1),
+        effectiveDate: z.string(), // ISO date string
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      const strataInfo = await ctx.db.strataInfo.findUnique({
+        where: { buildingId: input.buildingId },
+      });
+      if (!strataInfo) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Set up strata info for this building first.",
+        });
+      }
+
+      return ctx.db.strataBylaw.create({
+        data: {
+          strataInfoId: strataInfo.id,
+          bylawNumber: input.bylawNumber,
+          title: input.title,
+          content: input.content,
+          effectiveDate: new Date(input.effectiveDate),
+        },
+      });
+    }),
+
+  updateBylaw: buildingManagerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        bylawNumber: z.number().int().positive().optional(),
+        title: z.string().min(1).optional(),
+        content: z.string().min(1).optional(),
+        effectiveDate: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const bylaw = await ctx.db.strataBylaw.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { strataInfo: { select: { buildingId: true } } },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, bylaw.strataInfo.buildingId);
+
+      const { id, effectiveDate, ...rest } = input;
+      return ctx.db.strataBylaw.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(effectiveDate ? { effectiveDate: new Date(effectiveDate) } : {}),
+        },
+      });
+    }),
+
+  deleteBylaw: buildingManagerProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const bylaw = await ctx.db.strataBylaw.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { strataInfo: { select: { buildingId: true } } },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, bylaw.strataInfo.buildingId);
+
+      return ctx.db.strataBylaw.delete({ where: { id: input.id } });
+    }),
 });

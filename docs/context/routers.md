@@ -64,8 +64,8 @@ Unit types: `APARTMENT, STUDIO, PENTHOUSE, TOWNHOUSE, COMMERCIAL, STORAGE, PARKI
 | `listByTenancy` | query | protected | `tenancyId` | Rent history for tenancy |
 | `completeTenancySetup` | mutation | buildingManager | `tenancyId, leaseStartDate, leaseEndDate?, rentAmountCents, rentFrequency, bondAmountCents, moveInDate?, createSchedule?, scheduleMonths?` | Finalises tenant placeholder details and optionally creates initial pending payments |
 | `recordPayment` | mutation | buildingManager | `id, amountCents, paidDate, paymentMethod?, notes?` | Mark paid (PAID or PARTIAL) |
-| `generateSchedule` | mutation | buildingManager | `tenancyId, months?` | Generate payment schedule |
-| `getRentRoll` | query | buildingManager | `buildingId` | `unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, overduePayments, nextDue` |
+| `generateSchedule` | mutation | buildingManager | `tenancyId, months?` | Generate payment schedule. **Throws BAD_REQUEST if payments already exist** — no idempotent retry. |
+| `getRentRoll` | query | buildingManager | `buildingId` | `tenancyId, unitNumber, tenantName, rentAmountCents, rentFrequency, leaseEnd, moveInDate, overduePayments, nextDue` |
 
 ## `keys`
 Key types: `PHYSICAL_KEY, FOB, ACCESS_CODE, REMOTE, SWIPE_CARD`
@@ -98,7 +98,7 @@ Purposes: `PERSONAL, DELIVERY, TRADESPERSON, REAL_ESTATE, INSPECTION, OTHER`
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `listByBuilding` | query | protected | `buildingId, date?` | Entries, includes registeredBy user |
+| `listByBuilding` | query | protected | `buildingId, date?` | Entries, includes registeredBy user. Date filter matches on `arrivalTime` (with `createdAt` fallback for pre-registered visitors). |
 | `create` | mutation | tenantOrAbove | `buildingId, visitorName, visitorPhone?, visitorCompany?, purpose, unitToVisit?, preApproved?, vehiclePlate?, deliveryInstructions?, notes?` | Create entry |
 | `logArrival` | mutation | manager | `id` | Sets `arrivalTime` to now |
 | `logDeparture` | mutation | manager | `id` | Sets `departureTime` to now |
@@ -149,15 +149,18 @@ Payment statuses: `PENDING, PAID, OVERDUE, PARTIAL, WAIVED`
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `getByBuilding` | query | buildingManager | `buildingId` | StrataInfo with levies, bylaws, meetings |
+| `getByBuilding` | query | **manager** | `buildingId` | StrataInfo with levies, bylaws, meetings. RECEPTION+ can read. |
 | `upsertInfo` | mutation | buildingManager | `buildingId, strataPlanNumber, strataManagerName?, strataManagerEmail?, strataManagerPhone?, adminFundBalance?, capitalWorksBalance?, insurancePolicyNo?, insuranceExpiry?, nextAgmDate?` | Create or update |
 | `createMeeting` | mutation | buildingManager | `buildingId, title, meetingDate, location?, notes?` | Requires StrataInfo to exist first |
 | `deleteMeeting` | mutation | buildingManager | `id` | Hard delete |
-| `listLevies` | query | buildingManager | `buildingId, status?, levyType?` | Levies with `unitNumber` joined from units table |
+| `listLevies` | query | **manager** | `buildingId, status?, levyType?` | Levies with `unitNumber` joined from units table. RECEPTION+ can read. |
 | `createLevy` | mutation | buildingManager | `buildingId, unitId, levyType, amountCents, quarterStart, dueDate` | Single unit levy |
 | `bulkCreateLevies` | mutation | buildingManager | `buildingId, levyType, amountCents, quarterStart, dueDate` | Creates one levy per unit in the building |
 | `updateLevyStatus` | mutation | buildingManager | `id, status, paidDate?` | Updates status; auto-sets `paidDate=now` when status=PAID |
 | `deleteLevy` | mutation | buildingManager | `id` | Hard delete |
+| `createBylaw` | mutation | buildingManager | `buildingId, bylawNumber, title, content, effectiveDate` | Add bylaw (requires StrataInfo to exist) |
+| `updateBylaw` | mutation | buildingManager | `id, bylawNumber?, title?, content?, effectiveDate?` | Update bylaw fields |
+| `deleteBylaw` | mutation | buildingManager | `id` | Hard delete |
 
 ## `documents`
 Categories: `LEASE_AGREEMENT, BUILDING_RULES, STRATA_MINUTES, FINANCIAL_REPORT, INSURANCE, COMPLIANCE, NOTICE, OTHER`
@@ -166,7 +169,7 @@ Upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `signe
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `listByBuilding` | query | protected | `buildingId, category?` | Filtered by category |
+| `listByBuilding` | query | **manager** | `buildingId, category?` | Filtered by category. Uses `assertBuildingOperationsAccess` — RECEPTION+ can list. |
 | `create` | mutation | buildingManager | `buildingId, title, description?, category, fileUrl, storagePath?, fileSize, mimeType, isPublic?` | Create record |
 | `getDownloadUrl` | query | protected | `id` | Returns short-lived signed URL after authorization |
 | `delete` | mutation | buildingManager | `id` | Hard delete (storage file deleted via `DELETE /api/storage/delete` on client) |
@@ -178,11 +181,24 @@ Upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `signe
 | `getMe` | query | protected | — | Current user profile with orgMemberships |
 | `updateMe` | mutation | protected | `firstName?, lastName?, phone?` | Update own profile |
 | `assignToBuilding` | mutation | SUPER_ADMIN | `userId, organisationId, buildingId, role` | Upserts OrgMembership + BuildingAssignment |
-| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, unitId?, role` | Creates Invitation (7-day expiry) + fires invite email via Resend |
+| `createInvite` | mutation | SUPER_ADMIN | `email, organisationId, buildingId?, unitId?, role` | Creates Invitation (7-day expiry) + fires invite email via Resend. If invitee already has account, fires INVITE_SENT in-app notification. |
+| `createManagerInvite` | mutation | protected | `email, buildingId, unitId, role (OWNER\|TENANT)` | Building manager creates resident invite. Fires invite email + INVITE_SENT in-app notification if invitee already has account. |
 | `listInvites` | query | SUPER_ADMIN | `organisationId?` | Full invite history with pending / accepted / expired / revoked status |
 | `revokeInvite` | mutation | SUPER_ADMIN | `id` | Sets `revokedAt` |
 | `resendInvite` | mutation | SUPER_ADMIN | `id` | Revokes the still-pending prior link and creates a fresh invite |
 | `deactivateAssignments` | mutation | SUPER_ADMIN | `userId` | Sets all BuildingAssignments `isActive=false` + `User.isActive=false` |
+
+## `bond`
+Statuses: `PENDING, LODGED, PARTIALLY_RELEASED, FULLY_RELEASED, DISPUTED`
+States: `NSW, VIC, QLD, SA, WA, TAS, NT, ACT`
+
+**Note:** `lodgementAuthority` is derived server-side from `state` — clients cannot supply it. Deadline measured from `tenancy.moveInDate ?? tenancy.createdAt`, not lodgement date.
+
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | manager | `buildingId` | All bond records for active tenancies with tenant + unit detail |
+| `upsert` | mutation | manager | `tenancyId, amountCents, state, lodgementDate?, referenceNumber?, status, notes?` | Create or update bond record for tenancy (unique per tenancy) |
+| `updateStatus` | mutation | manager | `id, status, notes?` | Quick status update only |
 
 ## `notifications`
 Types: `LEVY_CREATED, MAINTENANCE_STATUS_UPDATED, MAINTENANCE_CREATED, ANNOUNCEMENT_PUBLISHED, PARCEL_RECEIVED, INVITE_SENT`

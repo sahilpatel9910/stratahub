@@ -116,7 +116,7 @@ enum BondStatus { HELD LODGED RELEASED DISPUTED }
 
 ---
 
-### ⬜ Branch 5 — `feat/strata-bylaws`
+### ✅ Branch 5 — `feat/strata-bylaws`
 **Goal:** Let managers create and manage strata bylaws (rules of the building).
 
 **Backend:**
