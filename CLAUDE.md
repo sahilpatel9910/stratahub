@@ -317,7 +317,7 @@ Role is read in tRPC via `user.orgMemberships.map(m => m.role)`.
 - `/manager` — dashboard: `buildings.getStats`, `maintenance.listByBuilding`, `announcements.listByBuilding`
 - `/manager/residents` — `residents.listByBuilding` (search, role filter)
 - `/manager/units` — `units.listByBuilding` + `units.create`
-- `/manager/rent` — `rent.getRentRoll` + `rent.listByBuilding` + `rent.recordPayment`
+- `/manager/rent` — `rent.getRentRoll` + `rent.listByBuilding` + `rent.recordPayment` + `bond.listByBuilding` + `bond.upsert` + `bond.updateStatus` (Bond Tracking tab)
 - `/manager/keys` — `keys.listByBuilding` + `keys.create` + `keys.issue` + `keys.returnKey` + `keys.deactivate`
 - `/manager/maintenance` — `maintenance.listByBuilding` + `maintenance.create` + `maintenance.updateStatus`
 - `/manager/visitors` — `visitors.listByBuilding` + `visitors.create` + `visitors.logArrival` + `visitors.logDeparture`
@@ -558,6 +558,16 @@ File upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `
 | `listByBuilding` | query | protected | `buildingId, category?` | Filtered by category |
 | `create` | mutation | manager | `buildingId, title, description?, category, fileUrl, storagePath?, fileSize, mimeType, isPublic?` | Create record |
 | `delete` | mutation | manager | `id` | Hard delete (storage file deleted via `DELETE /api/storage/delete` on client) |
+
+### `bond`
+| Procedure | Type | Auth | Input | Description |
+|---|---|---|---|---|
+| `listByBuilding` | query | manager | `buildingId` | All bond records for active tenancies in the building |
+| `upsert` | mutation | manager | `tenancyId, amountCents, lodgementAuthority, state, lodgementDate?, referenceNumber?, status, notes?` | Create or update bond record; `lodgementDeadline` auto-calculated from state legislation days |
+| `updateStatus` | mutation | manager | `id, status, notes?` | Change bond status only |
+
+BondStatus values: `PENDING`, `LODGED`, `PARTIALLY_RELEASED`, `FULLY_RELEASED`, `DISPUTED`
+Lodgement authority and deadline are derived from `state` using `BOND_LODGEMENT_AUTHORITIES` and `BOND_LODGEMENT_DEADLINES_DAYS` from `constants.ts`.
 
 ### `users` (super-admin)
 | Procedure | Type | Auth | Input | Description |
