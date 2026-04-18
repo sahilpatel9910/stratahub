@@ -244,8 +244,14 @@ export const usersRouter = createTRPCRouter({
       await sendInvitationEmail(ctx, invite);
 
       // If the invitee already has an account, send an in-app notification (fire-and-forget)
-      void ctx.db.user.findFirst({ where: { email }, select: { id: true } }).then((existing) => {
+      void ctx.db.user.findFirst({ where: { email }, select: { id: true } }).then(async (existing) => {
         if (!existing) return;
+        const [org, building] = await Promise.all([
+          ctx.db.organisation.findUnique({ where: { id: input.organisationId }, select: { name: true } }),
+          input.buildingId
+            ? ctx.db.building.findUnique({ where: { id: input.buildingId }, select: { name: true } })
+            : Promise.resolve(null),
+        ]);
         return createNotification(ctx.db, {
           userId: existing.id,
           type: "INVITE_SENT",
