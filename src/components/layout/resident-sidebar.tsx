@@ -8,6 +8,7 @@ import {
   Wrench,
   FileText,
   Megaphone,
+  MessageSquare,
   LogOut,
 } from "lucide-react";
 import {
@@ -25,6 +26,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
+import { trpc } from "@/lib/trpc/client";
 
 const residentNavItems = [
   { title: "My Home", href: "/resident", icon: Home },
@@ -37,6 +39,10 @@ const residentNavItems = [
 export function ResidentSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+
+  const { data: unreadCount } = trpc.messaging.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -78,6 +84,21 @@ export function ResidentSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/resident/messages" />}
+                  isActive={pathname === "/resident/messages"}
+                  className="sidebar-nav-button"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Messages</span>
+                  {!!unreadCount && unreadCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[10px] font-semibold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
