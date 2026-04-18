@@ -5,7 +5,6 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
-import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const announcementsRouter = createTRPCRouter({
   listByBuilding: protectedProcedure

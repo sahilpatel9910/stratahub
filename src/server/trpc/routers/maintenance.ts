@@ -12,6 +12,9 @@ import {
   assertBuildingManagementAccess,
   hasBuildingManagementAccess,
 } from "@/server/auth/building-access";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const MAINTENANCE_BUCKET = "maintenance";
 
 const categoryEnum = z.enum([
   "PLUMBING", "ELECTRICAL", "HVAC", "STRUCTURAL", "APPLIANCE",
@@ -62,18 +65,48 @@ export const maintenanceRouter = createTRPCRouter({
         await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
       }
 
-      return ctx.db.maintenanceRequest.findUniqueOrThrow({
+      const result = await ctx.db.maintenanceRequest.findUniqueOrThrow({
         where: { id: input.id },
         include: {
           unit: { include: { building: true } },
           requestedBy: true,
-          images: true,
+          images: { orderBy: { createdAt: "asc" } },
           comments: {
             include: { user: { select: { firstName: true, lastName: true, avatarUrl: true } } },
             orderBy: { createdAt: "asc" },
           },
         },
       });
+
+      // Generate signed display URLs for all images (private bucket)
+      let imagesWithUrls = result.images.map((img) => ({
+        ...img,
+        displayUrl: null as string | null,
+      }));
+
+      const paths = result.images
+        .map((img) => img.storagePath ?? img.imageUrl)
+        .filter(Boolean) as string[];
+
+      if (paths.length > 0) {
+        try {
+          const adminClient = createAdminClient();
+          const { data } = await adminClient.storage
+            .from(MAINTENANCE_BUCKET)
+            .createSignedUrls(paths, 60 * 60); // 1-hour expiry
+
+          if (data) {
+            imagesWithUrls = result.images.map((img, i) => ({
+              ...img,
+              displayUrl: data[i]?.signedUrl ?? null,
+            }));
+          }
+        } catch (err) {
+          console.error("[maintenance] signed URL generation failed:", err);
+        }
+      }
+
+      return { ...result, images: imagesWithUrls };
     }),
 
   create: tenantOrAboveProcedure
@@ -234,5 +267,71 @@ export const maintenanceRouter = createTRPCRouter({
           userId: ctx.user!.id,
         },
       });
+    }),
+
+  addImage: protectedProcedure
+    .input(
+      z.object({
+        maintenanceRequestId: z.string(),
+        storagePath: z.string().min(1),
+        caption: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const request = await ctx.db.maintenanceRequest.findUniqueOrThrow({
+        where: { id: input.maintenanceRequestId },
+        select: { requestedById: true, unit: { select: { buildingId: true } } },
+      });
+
+      // Caller must be the requester or a building manager
+      if (request.requestedById !== ctx.user!.id) {
+        await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
+      }
+
+      return ctx.db.maintenanceImage.create({
+        data: {
+          maintenanceRequestId: input.maintenanceRequestId,
+          imageUrl: input.storagePath, // imageUrl holds the path; signed URL generated on getById
+          storagePath: input.storagePath,
+          caption: input.caption,
+        },
+      });
+    }),
+
+  deleteImage: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const image = await ctx.db.maintenanceImage.findUniqueOrThrow({
+        where: { id: input.id },
+        select: {
+          storagePath: true,
+          imageUrl: true,
+          maintenanceRequest: {
+            select: { requestedById: true, unit: { select: { buildingId: true } } },
+          },
+        },
+      });
+
+      // Caller must be the requester or a building manager
+      if (image.maintenanceRequest.requestedById !== ctx.user!.id) {
+        await assertBuildingManagementAccess(
+          ctx.db,
+          ctx.user!,
+          image.maintenanceRequest.unit.buildingId
+        );
+      }
+
+      // Remove from Supabase Storage (best-effort)
+      const path = image.storagePath ?? image.imageUrl;
+      if (path) {
+        try {
+          const adminClient = createAdminClient();
+          await adminClient.storage.from(MAINTENANCE_BUCKET).remove([path]);
+        } catch (err) {
+          console.error("[maintenance] storage image delete error:", err);
+        }
+      }
+
+      return ctx.db.maintenanceImage.delete({ where: { id: input.id } });
     }),
 });

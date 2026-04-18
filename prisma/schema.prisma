@@ -495,7 +495,8 @@ model MaintenanceRequest {
 model MaintenanceImage {
   id                   String   @id @default(cuid())
   maintenanceRequestId String
-  imageUrl             String
+  imageUrl             String   // holds storagePath; signed URL is generated server-side on getById
+  storagePath          String?  // explicit field for storage operations (delete)
   caption              String?
   createdAt            DateTime @default(now())
 

@@ -1,49 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { AlertTriangle, ClipboardList, MessageSquare, MoreHorizontal, Plus, Search, Wrench } from "lucide-react";
+import {
+  AlertTriangle, ClipboardList, Image as ImageIcon, MessageSquare,
+  MoreHorizontal, Plus, Search, Upload, Wrench, X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
@@ -55,11 +37,7 @@ type TabValue = "all" | "active" | "completed" | "cancelled";
 type PriorityFilter = "ALL" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 const ACTIVE_STATUSES = [
-  "SUBMITTED",
-  "ACKNOWLEDGED",
-  "IN_PROGRESS",
-  "AWAITING_PARTS",
-  "SCHEDULED",
+  "SUBMITTED", "ACKNOWLEDGED", "IN_PROGRESS", "AWAITING_PARTS", "SCHEDULED",
 ];
 const COMPLETED_STATUSES = ["COMPLETED", "CLOSED"];
 
@@ -104,21 +82,17 @@ const NEXT_STATUSES: Record<string, string[]> = {
 };
 
 const CATEGORIES = Object.entries(MAINTENANCE_CATEGORY_LABELS) as [
-  keyof typeof MAINTENANCE_CATEGORY_LABELS,
-  string,
+  keyof typeof MAINTENANCE_CATEGORY_LABELS, string,
 ][];
 
 const PRIORITIES = Object.entries(PRIORITY_LABELS) as [
-  keyof typeof PRIORITY_LABELS,
-  string,
+  keyof typeof PRIORITY_LABELS, string,
 ][];
 
 function formatDate(date: Date | string | null | undefined) {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+    day: "numeric", month: "short", year: "numeric",
   });
 }
 
@@ -128,6 +102,7 @@ export default function MaintenancePage() {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("ALL");
   const [search, setSearch] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   // Create form state
   const [formUnitId, setFormUnitId] = useState("");
@@ -145,7 +120,6 @@ export default function MaintenancePage() {
     { placeholderData: (prev) => prev }
   );
 
-  // Fetch units for the create dialog unit selector
   const unitsQuery = trpc.units.listByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
   );
@@ -154,6 +128,7 @@ export default function MaintenancePage() {
     onSuccess: () => {
       utils.maintenance.listByBuilding.invalidate();
       utils.buildings.getStats.invalidate();
+      if (selectedRequestId) utils.maintenance.getById.invalidate({ id: selectedRequestId });
       toast.success("Status updated");
     },
     onError: (err) => toast.error(err.message ?? "Failed to update status"),
@@ -171,11 +146,8 @@ export default function MaintenancePage() {
   });
 
   function resetCreateForm() {
-    setFormUnitId("");
-    setFormTitle("");
-    setFormDescription("");
-    setFormCategory("OTHER");
-    setFormPriority("MEDIUM");
+    setFormUnitId(""); setFormTitle(""); setFormDescription("");
+    setFormCategory("OTHER"); setFormPriority("MEDIUM");
   }
 
   function handleCreate() {
@@ -206,15 +178,9 @@ export default function MaintenancePage() {
         r.unit.unitNumber.includes(search)
     );
 
-  const activeCount = allRequests.filter((r) =>
-    ACTIVE_STATUSES.includes(r.status)
-  ).length;
-  const completedCount = allRequests.filter((r) =>
-    COMPLETED_STATUSES.includes(r.status)
-  ).length;
-  const cancelledCount = allRequests.filter(
-    (r) => r.status === "CANCELLED"
-  ).length;
+  const activeCount = allRequests.filter((r) => ACTIVE_STATUSES.includes(r.status)).length;
+  const completedCount = allRequests.filter((r) => COMPLETED_STATUSES.includes(r.status)).length;
+  const cancelledCount = allRequests.filter((r) => r.status === "CANCELLED").length;
 
   const units = unitsQuery.data ?? [];
 
@@ -246,7 +212,7 @@ export default function MaintenancePage() {
         <div>
           <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Maintenance requests</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Track and manage maintenance requests
+            Click any row to view details and manage photos
           </p>
         </div>
         <Dialog
@@ -272,7 +238,11 @@ export default function MaintenancePage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Unit *</Label>
-                    <Select value={formUnitId} onValueChange={(v) => v !== null && setFormUnitId(v)} itemToStringLabel={(v) => { const u = units.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}>
+                    <Select
+                      value={formUnitId}
+                      onValueChange={(v) => v !== null && setFormUnitId(v)}
+                      itemToStringLabel={(v) => { const u = units.find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}
+                    >
                       <SelectTrigger className="h-11 w-full rounded-xl bg-background">
                         <SelectValue placeholder="Select unit..." />
                       </SelectTrigger>
@@ -313,9 +283,7 @@ export default function MaintenancePage() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Triage details
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Triage details</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Categorise the issue properly so staff can prioritise urgent jobs and assign contractors faster.
                   </p>
@@ -324,11 +292,7 @@ export default function MaintenancePage() {
                       <Label>Category</Label>
                       <Select
                         value={formCategory}
-                        onValueChange={(v) =>
-                          setFormCategory(
-                            v as keyof typeof MAINTENANCE_CATEGORY_LABELS
-                          )
-                        }
+                        onValueChange={(v) => setFormCategory(v as keyof typeof MAINTENANCE_CATEGORY_LABELS)}
                         itemToStringLabel={(v) => CATEGORIES.find(([val]) => val === v)?.[1] ?? String(v)}
                       >
                         <SelectTrigger className="h-11 w-full rounded-xl bg-background">
@@ -336,9 +300,7 @@ export default function MaintenancePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {CATEGORIES.map(([value, label]) => (
-                            <SelectItem key={value} value={value} label={label}>
-                              {label}
-                            </SelectItem>
+                            <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -347,9 +309,7 @@ export default function MaintenancePage() {
                       <Label>Priority</Label>
                       <Select
                         value={formPriority}
-                        onValueChange={(v) =>
-                          setFormPriority(v as keyof typeof PRIORITY_LABELS)
-                        }
+                        onValueChange={(v) => setFormPriority(v as keyof typeof PRIORITY_LABELS)}
                         itemToStringLabel={(v) => PRIORITIES.find(([val]) => val === v)?.[1] ?? String(v)}
                       >
                         <SelectTrigger className="h-11 w-full rounded-xl bg-background">
@@ -357,9 +317,7 @@ export default function MaintenancePage() {
                         </SelectTrigger>
                         <SelectContent>
                           {PRIORITIES.map(([value, label]) => (
-                            <SelectItem key={value} value={value} label={label}>
-                              {label}
-                            </SelectItem>
+                            <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -369,21 +327,12 @@ export default function MaintenancePage() {
               </div>
             </div>
             <DialogFooter className="px-6">
-              <Button
-                variant="outline"
-                onClick={() => setCreateDialogOpen(false)}
-                disabled={createMutation.isPending}
-              >
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={createMutation.isPending}>
                 Cancel
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={
-                  !formUnitId ||
-                  !formTitle.trim() ||
-                  !formDescription.trim() ||
-                  createMutation.isPending
-                }
+                disabled={!formUnitId || !formTitle.trim() || !formDescription.trim() || createMutation.isPending}
               >
                 {createMutation.isPending ? "Submitting..." : "Submit Request"}
               </Button>
@@ -404,12 +353,8 @@ export default function MaintenancePage() {
             <TabsList className="bg-background/80">
               <TabsTrigger value="all">All ({allRequests.length})</TabsTrigger>
               <TabsTrigger value="active">Active ({activeCount})</TabsTrigger>
-              <TabsTrigger value="completed">
-                Completed ({completedCount})
-              </TabsTrigger>
-              <TabsTrigger value="cancelled">
-                Cancelled ({cancelledCount})
-              </TabsTrigger>
+              <TabsTrigger value="completed">Completed ({completedCount})</TabsTrigger>
+              <TabsTrigger value="cancelled">Cancelled ({cancelledCount})</TabsTrigger>
             </TabsList>
 
             <div className="flex items-center gap-2 ml-auto">
@@ -424,9 +369,7 @@ export default function MaintenancePage() {
                 <SelectContent>
                   <SelectItem value="ALL" label="All Priorities">All Priorities</SelectItem>
                   {PRIORITIES.map(([value, label]) => (
-                    <SelectItem key={value} value={value} label={label}>
-                      {label}
-                    </SelectItem>
+                    <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -464,18 +407,13 @@ export default function MaintenancePage() {
                       Array.from({ length: 6 }).map((_, i) => (
                         <TableRow key={i}>
                           {Array.from({ length: 8 }).map((_, j) => (
-                            <TableCell key={j}>
-                              <Skeleton className="h-4 w-20" />
-                            </TableCell>
+                            <TableCell key={j}><Skeleton className="h-4 w-20" /></TableCell>
                           ))}
                         </TableRow>
                       ))
                     ) : filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className="py-12 text-center text-muted-foreground"
-                        >
+                        <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
                           No maintenance requests found.
                         </TableCell>
                       </TableRow>
@@ -484,51 +422,41 @@ export default function MaintenancePage() {
                         <TableRow
                           key={req.id}
                           className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedRequestId(req.id)}
                         >
                           <TableCell>
                             <div>
                               <p className="font-medium">{req.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {req.requestedBy.firstName}{" "}
-                                {req.requestedBy.lastName}
+                              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                {req.requestedBy.firstName} {req.requestedBy.lastName}
                                 {req._count.comments > 0 && (
-                                  <span className="ml-2 inline-flex items-center gap-0.5">
+                                  <span className="inline-flex items-center gap-0.5">
                                     <MessageSquare className="h-3 w-3" />
                                     {req._count.comments}
+                                  </span>
+                                )}
+                                {req._count.images > 0 && (
+                                  <span className="inline-flex items-center gap-0.5 text-blue-600">
+                                    <ImageIcon className="h-3 w-3" />
+                                    {req._count.images}
                                   </span>
                                 )}
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell className="font-semibold">
-                            {req.unit.unitNumber}
-                          </TableCell>
+                          <TableCell className="font-semibold">{req.unit.unitNumber}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-xs">
-                              {MAINTENANCE_CATEGORY_LABELS[
-                                req.category as keyof typeof MAINTENANCE_CATEGORY_LABELS
-                              ] ?? req.category}
+                              {MAINTENANCE_CATEGORY_LABELS[req.category as keyof typeof MAINTENANCE_CATEGORY_LABELS] ?? req.category}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span
-                              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                                PRIORITY_STYLES[req.priority] ??
-                                "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {PRIORITY_LABELS[
-                                req.priority as keyof typeof PRIORITY_LABELS
-                              ] ?? req.priority}
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[req.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                              {PRIORITY_LABELS[req.priority as keyof typeof PRIORITY_LABELS] ?? req.priority}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <span
-                              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                                STATUS_STYLES[req.status] ??
-                                "bg-gray-100 text-gray-600"
-                              }`}
-                            >
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[req.status] ?? "bg-gray-100 text-gray-600"}`}>
                               {STATUS_LABELS[req.status] ?? req.status}
                             </span>
                           </TableCell>
@@ -538,7 +466,7 @@ export default function MaintenancePage() {
                           <TableCell className="text-muted-foreground text-sm">
                             {req.assignedTo ?? "—"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Open maintenance actions for ${req.title}`} className="h-8 w-8" disabled={updateStatusMutation.isPending} />}>
                                 <MoreHorizontal className="h-4 w-4" />
@@ -548,37 +476,26 @@ export default function MaintenancePage() {
                                   Update Status
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                {(NEXT_STATUSES[req.status] ?? []).length ===
-                                0 ? (
-                                  <DropdownMenuItem disabled>
-                                    No actions available
-                                  </DropdownMenuItem>
+                                {(NEXT_STATUSES[req.status] ?? []).length === 0 ? (
+                                  <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
                                 ) : (
-                                  (NEXT_STATUSES[req.status] ?? []).map(
-                                    (nextStatus) => (
-                                      <DropdownMenuItem
-                                        key={nextStatus}
-                                        onClick={() =>
-                                          updateStatusMutation.mutate({
-                                            id: req.id,
-                                            status: nextStatus as Parameters<
-                                              typeof updateStatusMutation.mutate
-                                            >[0]["status"],
-                                          })
-                                        }
-                                        className={
-                                          nextStatus === "CANCELLED"
-                                            ? "text-red-600"
-                                            : nextStatus === "COMPLETED" ||
-                                                nextStatus === "CLOSED"
-                                              ? "text-green-700"
-                                              : ""
-                                        }
-                                      >
-                                        → {STATUS_LABELS[nextStatus]}
-                                      </DropdownMenuItem>
-                                    )
-                                  )
+                                  (NEXT_STATUSES[req.status] ?? []).map((nextStatus) => (
+                                    <DropdownMenuItem
+                                      key={nextStatus}
+                                      onClick={() =>
+                                        updateStatusMutation.mutate({
+                                          id: req.id,
+                                          status: nextStatus as Parameters<typeof updateStatusMutation.mutate>[0]["status"],
+                                        })
+                                      }
+                                      className={
+                                        nextStatus === "CANCELLED" ? "text-red-600" :
+                                        nextStatus === "COMPLETED" || nextStatus === "CLOSED" ? "text-green-700" : ""
+                                      }
+                                    >
+                                      → {STATUS_LABELS[nextStatus]}
+                                    </DropdownMenuItem>
+                                  ))
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -593,15 +510,297 @@ export default function MaintenancePage() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Detail Dialog */}
+      <MaintenanceDetailDialog
+        requestId={selectedRequestId}
+        onClose={() => setSelectedRequestId(null)}
+        isManager={true}
+        onStatusChange={(id, status) =>
+          updateStatusMutation.mutate({
+            id,
+            status: status as Parameters<typeof updateStatusMutation.mutate>[0]["status"],
+          })
+        }
+      />
     </div>
   );
 }
 
+// ─── Detail Dialog ────────────────────────────────────────────────────────────
+
+function MaintenanceDetailDialog({
+  requestId,
+  onClose,
+  isManager,
+  onStatusChange,
+}: {
+  requestId: string | null;
+  onClose: () => void;
+  isManager: boolean;
+  onStatusChange?: (id: string, status: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const detailQuery = trpc.maintenance.getById.useQuery(
+    requestId ? { id: requestId } : skipToken
+  );
+
+  const addImageMutation = trpc.maintenance.addImage.useMutation({
+    onSuccess: () => {
+      utils.maintenance.getById.invalidate({ id: requestId! });
+      utils.maintenance.listByBuilding.invalidate();
+      toast.success("Photo added");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to add photo"),
+  });
+
+  const deleteImageMutation = trpc.maintenance.deleteImage.useMutation({
+    onSuccess: () => {
+      utils.maintenance.getById.invalidate({ id: requestId! });
+      utils.maintenance.listByBuilding.invalidate();
+      toast.success("Photo removed");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to remove photo"),
+  });
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !requestId) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // 1. Get signed upload URL
+      const urlRes = await fetch("/api/storage/maintenance-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          maintenanceRequestId: requestId,
+        }),
+      });
+      if (!urlRes.ok) {
+        const err = await urlRes.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to get upload URL");
+      }
+      const { signedUrl, path } = await urlRes.json() as { signedUrl: string; path: string };
+
+      // 2. PUT file directly to Supabase Storage
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      // 3. Save image record
+      await addImageMutation.mutateAsync({
+        maintenanceRequestId: requestId,
+        storagePath: path,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  const req = detailQuery.data;
+
+  return (
+    <Dialog open={!!requestId} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-3xl p-0 max-h-[90vh] flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+          {detailQuery.isLoading ? (
+            <Skeleton className="h-6 w-64" />
+          ) : req ? (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogTitle className="text-lg font-semibold">{req.title}</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Unit {req.unit.unitNumber} · {req.unit.building.name} ·{" "}
+                  {req.requestedBy.firstName} {req.requestedBy.lastName}
+                </DialogDescription>
+              </div>
+              <span className={`shrink-0 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[req.status] ?? "bg-gray-100 text-gray-600"}`}>
+                {STATUS_LABELS[req.status] ?? req.status}
+              </span>
+            </div>
+          ) : null}
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {detailQuery.isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+            </div>
+          ) : req ? (
+            <>
+              {/* Metadata chips */}
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_STYLES[req.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                  {PRIORITY_LABELS[req.priority as keyof typeof PRIORITY_LABELS] ?? req.priority}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {MAINTENANCE_CATEGORY_LABELS[req.category as keyof typeof MAINTENANCE_CATEGORY_LABELS] ?? req.category}
+                </Badge>
+                {req.assignedTo && (
+                  <Badge variant="outline" className="text-xs">
+                    Assigned: {req.assignedTo}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">Description</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{req.description}</p>
+              </div>
+
+              {/* Photos */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Photos ({req.images.length})
+                  </p>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg text-xs"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading || addImageMutation.isPending}
+                    >
+                      <Upload className="mr-1.5 h-3 w-3" />
+                      {uploading ? "Uploading..." : "Upload Photo"}
+                    </Button>
+                  </div>
+                </div>
+
+                {req.images.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border/70 py-8 text-center text-sm text-muted-foreground">
+                    <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                    No photos attached yet
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    {req.images.map((img) => (
+                      <div key={img.id} className="group relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+                        {img.displayUrl ? (
+                          <img
+                            src={img.displayUrl}
+                            alt={img.caption ?? "Maintenance photo"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <ImageIcon className="h-8 w-8 opacity-30" />
+                          </div>
+                        )}
+                        {isManager && (
+                          <button
+                            className="absolute right-1.5 top-1.5 hidden group-hover:flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow"
+                            onClick={() => deleteImageMutation.mutate({ id: img.id })}
+                            disabled={deleteImageMutation.isPending}
+                            aria-label="Delete photo"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {img.caption && (
+                          <p className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 text-[10px] text-white truncate">
+                            {img.caption}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Comments */}
+              {req.comments.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
+                    Comments ({req.comments.length})
+                  </p>
+                  <div className="space-y-3">
+                    {req.comments.map((c) => (
+                      <div key={c.id} className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-medium text-foreground">
+                            {c.user.firstName} {c.user.lastName}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {formatDate(c.createdAt)}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{c.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Status actions for managers */}
+              {isManager && onStatusChange && (NEXT_STATUSES[req.status] ?? []).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">Move to</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(NEXT_STATUSES[req.status] ?? []).map((nextStatus) => (
+                      <Button
+                        key={nextStatus}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 rounded-lg text-xs ${nextStatus === "CANCELLED" ? "border-red-200 text-red-700 hover:bg-red-50" : nextStatus === "COMPLETED" || nextStatus === "CLOSED" ? "border-green-200 text-green-700 hover:bg-green-50" : ""}`}
+                        onClick={() => {
+                          onStatusChange(req.id, nextStatus);
+                          onClose();
+                        }}
+                      >
+                        {STATUS_LABELS[nextStatus]}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t border-border/60">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function MaintenanceSignal({
-  icon: Icon,
-  label,
-  value,
-  tone,
+  icon: Icon, label, value, tone,
 }: {
   icon: React.ElementType;
   label: string;

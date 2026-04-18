@@ -168,7 +168,8 @@ strata-hub/
 │   │   │   │   ├── levies/page.tsx      # Read-only levy history for owned units
 │   │   │   │   ├── maintenance/page.tsx # Submit + track maintenance requests
 │   │   │   │   ├── documents/page.tsx   # Public building documents (download only)
-│   │   │   │   └── announcements/page.tsx
+│   │   │   │   ├── announcements/page.tsx
+│   │   │   │   └── messages/page.tsx    # Thread list + view + compose; staff-only recipients
 │   │   │   └── super-admin/
 │   │   │       ├── organisations/page.tsx
 │   │   │       ├── buildings/page.tsx
@@ -188,7 +189,7 @@ strata-hub/
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── app-sidebar.tsx
-│   │   │   ├── resident-sidebar.tsx  # Resident portal sidebar (Home, Levies, Maintenance, Docs, Announcements)
+│   │   │   ├── resident-sidebar.tsx  # Resident portal sidebar (Home, Levies, Maintenance, Docs, Announcements, Messages with unread badge)
 │   │   │   ├── building-switcher.tsx
 │   │   │   └── topbar.tsx            # Polls notifications.unreadCount every 30s; bell opens dropdown
 │   │   └── ui/                 # shadcn/ui components (never edit directly)
@@ -338,6 +339,7 @@ Uses `ResidentSidebar`. Data is scoped to the user's own units/building — no b
 - `/resident/maintenance` — `resident.getMyMaintenanceRequests` + `resident.createMaintenanceRequest` (unit ownership verified server-side)
 - `/resident/documents` — `resident.getMyDocuments` (isPublic=true only, download links)
 - `/resident/announcements` — `resident.getMyAnnouncements` (non-expired, read-only)
+- `/resident/messages` — `messaging.listThreads` + `messaging.getThread` + `messaging.send` + `messaging.markRead`; recipients filtered client-side to BUILDING_MANAGER + RECEPTION roles only (residents cannot message each other); building ID resolved via `resident.getMyBuilding` (not `useBuildingContext`); unread badge in sidebar polls `messaging.unreadCount` every 30s
 
 ### Super-admin routes (`/super-admin/**`)
 - `/super-admin/organisations` — `organisations.list` + `organisations.create` + `organisations.update`
@@ -376,6 +378,12 @@ Uses `ResidentSidebar`. Data is scoped to the user's own units/building — no b
 - **Body:** `{ filename: string, contentType: string, buildingId: string }`
 - **Returns:** `{ signedUrl, path, publicUrl }`
 - **Behaviour:** Uses service role key to create a signed PUT URL in the `documents` Supabase Storage bucket. Path: `{buildingId}/{userId}/{timestamp}-{safeName}`. Client PUTs the file directly to `signedUrl` — bytes never go through Next.js.
+
+### `POST /api/storage/maintenance-upload-url`
+- **Auth:** Requires Supabase session
+- **Body:** `{ filename: string, contentType: string, maintenanceRequestId: string }`
+- **Returns:** `{ signedUrl, path }`
+- **Behaviour:** Verifies caller owns the maintenance request OR has building management access for the building. Creates signed PUT URL in the `maintenance` bucket. Path: `{buildingId}/{requestId}/{timestamp}-{safeName}`. ⚠️ Bucket `maintenance` must exist in Supabase dashboard (private).
 
 ### `DELETE /api/storage/delete`
 - **Auth:** Requires Supabase session
@@ -460,12 +468,23 @@ Statuses: `SUBMITTED`, `ACKNOWLEDGED`, `IN_PROGRESS`, `AWAITING_PARTS`, `SCHEDUL
 
 | Procedure | Type | Auth | Input | Description |
 |---|---|---|---|---|
-| `listByBuilding` | query | protected | `buildingId, status?, priority?` | Filtered requests |
-| `getById` | query | protected | `id` | Full request with images and comments |
+| `listByBuilding` | query | protected | `buildingId, status?, priority?` | Filtered requests with `_count.images` |
+| `getById` | query | protected | `id` | Full request with images (signed URLs in `displayUrl`) and comments |
 | `create` | mutation | tenantOrAbove | `unitId, title, description, category, priority?` | Submit request |
 | `updateStatus` | mutation | manager | `id, status` | Auto-sets `completedDate` if status=COMPLETED |
 | `assign` | mutation | manager | `id, assignedTo` | Assign + set status=ACKNOWLEDGED |
 | `addComment` | mutation | protected | `maintenanceRequestId, content` | Adds comment as current user |
+| `addImage` | mutation | protected | `maintenanceRequestId, storagePath, caption?` | Saves image record; caller must own request or be building manager |
+| `deleteImage` | mutation | protected | `id` | Removes from Supabase Storage + deletes DB record |
+
+**Image upload flow:**
+1. Client POSTs to `POST /api/storage/maintenance-upload-url` (`{ filename, contentType, maintenanceRequestId }`) → receives `{ signedUrl, path }`
+2. Client PUTs file directly to `signedUrl`
+3. Client calls `maintenance.addImage` with `{ maintenanceRequestId, storagePath: path }`
+
+**Image display:** `getById` generates signed 1-hour URLs via `adminClient.storage.from('maintenance').createSignedUrls()` and returns them as `image.displayUrl`. Bucket: `maintenance` (private). ⚠️ Create this bucket in Supabase dashboard before testing.
+
+**`MaintenanceImage.imageUrl`** stores the same value as `storagePath` (required field, semantic: storage path not a public URL).
 
 ### `visitors`
 Purposes: `PERSONAL`, `DELIVERY`, `TRADESPERSON`, `REAL_ESTATE`, `INSPECTION`, `OTHER`
@@ -564,9 +583,13 @@ File upload flow: client calls `POST /api/storage/upload-url` → PUTs file to `
 **Notification types:** `LEVY_CREATED`, `MAINTENANCE_STATUS_UPDATED`, `MAINTENANCE_CREATED`, `ANNOUNCEMENT_PUBLISHED`, `PARCEL_RECEIVED`, `INVITE_SENT`
 
 **Where notifications are created (fire-and-forget via `createNotification()` helper):**
-- `strata.createLevy` → notifies active unit owners: `LEVY_CREATED`
-- `strata.bulkCreateLevies` → notifies all active owners in building via `createMany`: `LEVY_CREATED`
-- `maintenance.updateStatus` → notifies requester on status `ACKNOWLEDGED/IN_PROGRESS/SCHEDULED/COMPLETED/CANCELLED`: `MAINTENANCE_STATUS_UPDATED`
+- `strata.createLevy` → active unit owners: `LEVY_CREATED`
+- `strata.bulkCreateLevies` → all active owners in building via `createMany`: `LEVY_CREATED`
+- `maintenance.updateStatus` → requester on `ACKNOWLEDGED/IN_PROGRESS/SCHEDULED/COMPLETED/CANCELLED`: `MAINTENANCE_STATUS_UPDATED`
+- `maintenance.create` → all `BUILDING_MANAGER` + `RECEPTION` assignments for the building: `MAINTENANCE_CREATED`
+- `parcels.create` → active owners + tenants matched by `unitNumber` string (not FK): `PARCEL_RECEIVED` ⚠️ unitNumber is a string match, not a relation
+- `announcements.create` → all active building owners + tenants via `createMany` directly (not helper, bulk): `ANNOUNCEMENT_PUBLISHED`
+- `users.createInvite` → invited user only if they already have a Prisma User record: `INVITE_SENT`
 
 ### `resident`
 All procedures use `tenantOrAboveProcedure`. Data scoped to the calling user's units — no `buildingId` input.
@@ -779,6 +802,8 @@ npx prisma studio    # Prisma Studio GUI
 - **End-to-end verification pass** — Manager, resident, and super-admin surfaces are present and visually refreshed, but several flows still need a structured QA sweep in a realistic seeded environment.
 
 ### Completed (no longer gaps)
+- ✅ Resident messaging page (`/resident/messages`) — thread list, message view, compose dialog; recipients filtered to staff only; unread badge in sidebar with 30s polling
+- ✅ Notification completeness — `maintenance.create` → BUILDING_MANAGER/RECEPTION; `parcels.create` → unit residents (string unitNumber match); `announcements.create` → all building residents (bulk createMany); `users.createInvite` → existing users only (INVITE_SENT)
 - ✅ `/reset-password` page + `/api/auth/callback` route — password reset flow fully working
 - ✅ Keys to Rotate dashboard stat — wired to `buildings.getStats` (active KeyRecords where `rotationDue <= now`)
 - ✅ Document file upload — drag-and-drop to Supabase Storage via signed URL; `storagePath` stored for cleanup on delete
