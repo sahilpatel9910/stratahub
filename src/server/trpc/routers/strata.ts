@@ -380,7 +380,7 @@ export const strataRouter = createTRPCRouter({
         bylawNumber: z.number().int().positive(),
         title: z.string().min(1),
         content: z.string().min(1),
-        effectiveDate: z.string(), // ISO date string
+        effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveDate must be YYYY-MM-DD"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -414,7 +414,7 @@ export const strataRouter = createTRPCRouter({
         bylawNumber: z.number().int().positive().optional(),
         title: z.string().min(1).optional(),
         content: z.string().min(1).optional(),
-        effectiveDate: z.string().optional(),
+        effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveDate must be YYYY-MM-DD").optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {

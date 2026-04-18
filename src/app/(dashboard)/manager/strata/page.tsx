@@ -56,7 +56,11 @@ function formatDate(d: Date | string | null | undefined) {
 
 function toInputDate(d: Date | string | null | undefined) {
   if (!d) return "";
-  return new Date(d).toISOString().split("T")[0];
+  const dt = new Date(d);
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function StrataPage() {
@@ -85,6 +89,7 @@ export default function StrataPage() {
   // Bylaw dialog state
   const [bylawOpen, setBylawOpen] = useState(false);
   const [editingBylaw, setEditingBylaw] = useState<{ id: string; bylawNumber: number; title: string; content: string; effectiveDate: string } | null>(null);
+  const [deletingBylawId, setDeletingBylawId] = useState<string | null>(null);
   const [formBylawNumber, setFormBylawNumber] = useState("");
   const [formBylawTitle, setFormBylawTitle] = useState("");
   const [formBylawContent, setFormBylawContent] = useState("");
@@ -160,9 +165,13 @@ export default function StrataPage() {
   const deleteBylawMutation = trpc.strata.deleteBylaw.useMutation({
     onSuccess: () => {
       utils.strata.getByBuilding.invalidate();
+      setDeletingBylawId(null);
       toast.success("Bylaw deleted");
     },
-    onError: (err) => toast.error(err.message ?? "Failed to delete bylaw"),
+    onError: (err) => {
+      setDeletingBylawId(null);
+      toast.error(err.message ?? "Failed to delete bylaw");
+    },
   });
 
   const leviesQuery = trpc.strata.listLevies.useQuery(
@@ -780,8 +789,11 @@ export default function StrataPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                              disabled={deleteBylawMutation.isPending}
-                              onClick={() => deleteBylawMutation.mutate({ id: b.id })}
+                              disabled={deletingBylawId === b.id}
+                              onClick={() => {
+                                setDeletingBylawId(b.id);
+                                deleteBylawMutation.mutate({ id: b.id });
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

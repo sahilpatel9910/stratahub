@@ -131,7 +131,7 @@ enum BondStatus { HELD LODGED RELEASED DISPUTED }
 - Inline edit dialog + delete
 - Read-only view for residents on `/resident` or a new `/resident/bylaws` page
 
-**Schema:** `StrataBylaw` already exists in Prisma schema (has `bylawNumber`, `title`, `content`, `category`, `strataInfoId`). No migration needed — just wire up the missing procedures and UI.
+**Schema:** `StrataBylaw` already exists in Prisma schema (has `bylawNumber`, `title`, `content`, `effectiveDate`, `strataInfoId`). No migration needed — just wire up the missing procedures and UI. Note: no `category` field exists on the model.
 
 ---
 
