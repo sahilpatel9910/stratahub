@@ -4,6 +4,7 @@ import {
   managerProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingManagementAccess } from "@/server/auth/building-access";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const parcelsRouter = createTRPCRouter({
   listByBuilding: managerProcedure
@@ -43,9 +44,40 @@ export const parcelsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
 
-      return ctx.db.parcel.create({
+      const parcel = await ctx.db.parcel.create({
         data: { ...input, loggedById: ctx.user!.id, status: "RECEIVED" },
       });
+
+      // Notify matching unit residents (fire-and-forget)
+      void ctx.db.unit.findFirst({
+        where: { buildingId: input.buildingId, unitNumber: input.unitNumber },
+        include: {
+          ownerships: { where: { isActive: true }, select: { userId: true } },
+          tenancies:  { where: { isActive: true }, select: { userId: true } },
+        },
+      }).then((unit) => {
+        if (!unit) return;
+        const seen = new Set<string>();
+        const residents = [...unit.ownerships, ...unit.tenancies].filter(({ userId }) => {
+          if (seen.has(userId)) return false;
+          seen.add(userId);
+          return true;
+        });
+        for (const { userId } of residents) {
+          void createNotification(ctx.db, {
+            userId,
+            type: "PARCEL_RECEIVED",
+            title: "A parcel has arrived for you",
+            body: [
+              input.carrier ? `From: ${input.carrier}` : null,
+              input.storageLocation ? `Location: ${input.storageLocation}` : null,
+            ].filter(Boolean).join(" · ") || "Contact reception to collect",
+            linkUrl: "/resident",
+          });
+        }
+      }).catch((err) => console.error("[notification] PARCEL_RECEIVED failed:", err));
+
+      return parcel;
     }),
 
   markNotified: managerProcedure

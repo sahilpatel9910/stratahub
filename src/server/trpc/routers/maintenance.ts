@@ -110,12 +110,37 @@ export const maintenanceRouter = createTRPCRouter({
         }
       }
 
-      return ctx.db.maintenanceRequest.create({
+      const request = await ctx.db.maintenanceRequest.create({
         data: {
           ...input,
           requestedById: ctx.user!.id,
         },
+        include: {
+          unit: { select: { unitNumber: true } },
+        },
       });
+
+      // Notify all building managers + reception (fire-and-forget)
+      void ctx.db.buildingAssignment.findMany({
+        where: {
+          buildingId: unit.buildingId,
+          isActive: true,
+          role: { in: ["BUILDING_MANAGER", "RECEPTION"] },
+        },
+        select: { userId: true },
+      }).then((managers) => {
+        for (const { userId } of managers) {
+          void createNotification(ctx.db, {
+            userId,
+            type: "MAINTENANCE_CREATED",
+            title: `New maintenance request: ${input.title}`,
+            body: `Unit ${request.unit.unitNumber} — ${input.category.replace(/_/g, " ")}`,
+            linkUrl: "/manager/maintenance",
+          });
+        }
+      }).catch((err) => console.error("[notification] MAINTENANCE_CREATED failed:", err));
+
+      return request;
     }),
 
   updateStatus: managerProcedure
