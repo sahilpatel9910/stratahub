@@ -30,7 +30,12 @@ export const visitorsRouter = createTRPCRouter({
         const day = new Date(input.date);
         const nextDay = new Date(day);
         nextDay.setDate(nextDay.getDate() + 1);
-        where.createdAt = { gte: day, lt: nextDay };
+        // Filter by arrivalTime (when visitor arrived) with fallback to createdAt
+        // so pre-registered visitors appear on the correct day
+        where.OR = [
+          { arrivalTime: { gte: day, lt: nextDay } },
+          { arrivalTime: null, createdAt: { gte: day, lt: nextDay } },
+        ];
       }
 
       return ctx.db.visitorEntry.findMany({

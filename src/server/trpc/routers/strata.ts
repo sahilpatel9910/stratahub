@@ -2,20 +2,24 @@ import { z } from "zod";
 import {
   buildingManagerProcedure,
   createTRPCRouter,
+  managerProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { sendLevyNoticeEmail } from "@/lib/email/send";
 import { createNotification } from "@/server/trpc/lib/create-notification";
-import { assertBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  assertBuildingManagementAccess,
+  assertBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 
 const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
 const paymentStatusEnum = z.enum(["PENDING", "PAID", "OVERDUE", "PARTIAL", "WAIVED"]);
 
 export const strataRouter = createTRPCRouter({
-  getByBuilding: buildingManagerProcedure
+  getByBuilding: managerProcedure
     .input(z.object({ buildingId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },
@@ -112,7 +116,7 @@ export const strataRouter = createTRPCRouter({
 
   // ── Levies ────────────────────────────────────────────────────────────────
 
-  listLevies: buildingManagerProcedure
+  listLevies: managerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -121,7 +125,7 @@ export const strataRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       const strataInfo = await ctx.db.strataInfo.findUnique({
         where: { buildingId: input.buildingId },

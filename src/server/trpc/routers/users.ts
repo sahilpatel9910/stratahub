@@ -328,6 +328,18 @@ export const usersRouter = createTRPCRouter({
 
       await sendInvitationEmail(ctx, invite);
 
+      // If the invitee already has an account, send an in-app notification (fire-and-forget)
+      void ctx.db.user.findFirst({ where: { email }, select: { id: true } }).then((existing) => {
+        if (!existing) return;
+        return createNotification(ctx.db, {
+          userId: existing.id,
+          type: "INVITE_SENT",
+          title: "You have a new invitation",
+          body: `Join ${building.organisation.name} — Unit ${unit.unitNumber}`,
+          linkUrl: `/invite/${invite.token}`,
+        });
+      }).catch((err) => console.error("[notification] MANAGER_INVITE_SENT failed:", err));
+
       return invite;
     }),
 

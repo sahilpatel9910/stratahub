@@ -177,10 +177,18 @@ export const rentRouter = createTRPCRouter({
           rentFrequency: true,
           rentAmountCents: true,
           unit: { select: { buildingId: true } },
+          _count: { select: { rentPayments: true } },
         },
       });
 
       await assertBuildingManagementAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
+
+      if (tenancy._count.rentPayments > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A payment schedule already exists for this tenancy. Delete existing payments before regenerating.",
+        });
+      }
 
       const payments = buildRentScheduleEntries({
         tenancyId: input.tenancyId,

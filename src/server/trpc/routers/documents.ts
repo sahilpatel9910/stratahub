@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import {
   assertBuildingAccess,
   assertBuildingManagementAccess,
+  assertBuildingOperationsAccess,
   isSuperAdmin,
 } from "@/server/auth/building-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -33,7 +34,7 @@ export const documentsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.document.findMany({
         where: {
