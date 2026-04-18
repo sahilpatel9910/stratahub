@@ -270,11 +270,13 @@ export const rentRouter = createTRPCRouter({
       });
 
       return tenancies.map((t) => ({
+        tenancyId: t.id,
         unitNumber: t.unit.unitNumber,
         tenantName: `${t.user.firstName} ${t.user.lastName}`,
         rentAmountCents: t.rentAmountCents,
         rentFrequency: t.rentFrequency,
         leaseEnd: t.leaseEndDate,
+        moveInDate: t.moveInDate,
         overduePayments: t.rentPayments.filter((p) => p.status === "OVERDUE").length,
         nextDue: t.rentPayments[0]?.dueDate ?? null,
       }));

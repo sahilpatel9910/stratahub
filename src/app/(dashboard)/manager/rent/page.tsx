@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -291,7 +291,6 @@ export default function RentPage() {
     upsertBondMutation.mutate({
       tenancyId: selectedBondTenancyId,
       amountCents,
-      lodgementAuthority: BOND_LODGEMENT_AUTHORITIES[bondForm.state],
       state: bondForm.state,
       lodgementDate: bondForm.lodgementDate || undefined,
       referenceNumber: bondForm.referenceNumber || undefined,
@@ -344,7 +343,10 @@ export default function RentPage() {
   const allPayments = paymentsQuery.data ?? [];
   const pendingSetups = pendingSetupQuery.data ?? [];
   const bonds = bondsQuery.data ?? [];
-  const pendingBonds = bonds.filter((b) => b.status === "PENDING").length;
+  const todayISO = new Date().toISOString();
+  const overdueUnlodgedBonds = bonds.filter(
+    (b) => b.status === "PENDING" && b.lodgementDeadline.toISOString() < todayISO
+  ).length;
   const payments =
     paymentStatusFilter === "ALL"
       ? allPayments
@@ -379,7 +381,7 @@ export default function RentPage() {
               <RentSignal icon={AlertTriangle} label="Overdue tenancies" value={`${overdueCount}`} tone="text-red-600" />
               <RentSignal icon={Wallet} label="Pending invoices" value={`${pendingInvoiceCount}`} tone="text-amber-600" />
               <RentSignal icon={ClipboardCheck} label="Setup needed" value={`${pendingSetups.length}`} tone="text-sky-600" />
-              <RentSignal icon={ShieldCheck} label="Bonds pending lodgement" value={`${pendingBonds}`} tone="text-violet-600" />
+              <RentSignal icon={ShieldCheck} label="Bonds overdue lodgement" value={`${overdueUnlodgedBonds}`} tone="text-violet-600" />
             </div>
           </div>
         </div>
@@ -762,7 +764,7 @@ export default function RentPage() {
                         </TableRow>
                       ) : (
                         bonds.map((bond) => {
-                          const isOverdue = bond.status === "PENDING" && new Date(bond.lodgementDeadline) < new Date();
+                          const isOverdue = bond.status === "PENDING" && bond.lodgementDeadline.toISOString() < todayISO;
                           return (
                             <TableRow key={bond.id}>
                               <TableCell className="font-semibold">
@@ -777,8 +779,10 @@ export default function RentPage() {
                               <TableCell className="text-muted-foreground">{bond.state}</TableCell>
                               <TableCell>{bondStatusBadge(bond.status)}</TableCell>
                               <TableCell className={isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}>
-                                {formatDate(bond.lodgementDeadline)}
-                                {isOverdue && " ⚠"}
+                                <span className="flex items-center gap-1">
+                                  {formatDate(bond.lodgementDeadline)}
+                                  {isOverdue && <TriangleAlert className="h-3.5 w-3.5 text-red-600" />}
+                                </span>
                               </TableCell>
                               <TableCell className="text-muted-foreground">
                                 {bond.referenceNumber ?? "—"}
@@ -817,10 +821,10 @@ export default function RentPage() {
                 </CardContent>
               </Card>
 
-              {/* Rent Roll — Lodge bond for tenancies without a bond record */}
+              {/* Tenancies without a bond record */}
               {rentRoll.length > 0 && (() => {
-                const bondedTenancyKeys = new Set(bonds.map((b) => b.tenancy.unit.unitNumber));
-                const unbonded = rentRoll.filter((t) => !bondedTenancyKeys.has(t.unitNumber));
+                const bondedTenancyIds = new Set(bonds.map((b) => b.tenancyId));
+                const unbonded = rentRoll.filter((t) => !bondedTenancyIds.has(t.tenancyId));
                 if (unbonded.length === 0) return null;
                 return (
                   <Card>
@@ -841,21 +845,12 @@ export default function RentPage() {
                         </TableHeader>
                         <TableBody>
                           {unbonded.map((t) => (
-                            <TableRow key={t.unitNumber}>
+                            <TableRow key={t.tenancyId}>
                               <TableCell className="font-semibold">{t.unitNumber}</TableCell>
                               <TableCell>{t.tenantName}</TableCell>
                               <TableCell className="text-muted-foreground">{formatCurrency(t.rentAmountCents)}</TableCell>
                               <TableCell>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    // find tenancyId from rentRoll — need to look up via payments
-                                    const match = allPayments.find(
-                                      (p) => p.tenancy.unit.unitNumber === t.unitNumber
-                                    );
-                                    if (match) openBondDialog(match.tenancy.id);
-                                  }}
-                                >
+                                <Button size="sm" onClick={() => openBondDialog(t.tenancyId)}>
                                   Add Bond Record
                                 </Button>
                               </TableCell>

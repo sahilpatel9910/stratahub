@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, managerProcedure } from "@/server/trpc/trpc";
 import { assertBuildingOperationsAccess } from "@/server/auth/building-access";
-import { BOND_LODGEMENT_DEADLINES_DAYS } from "@/lib/constants";
+import { BOND_LODGEMENT_AUTHORITIES, BOND_LODGEMENT_DEADLINES_DAYS } from "@/lib/constants";
 
 const AUSTRALIAN_STATE = z.enum(["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"]);
 const BOND_STATUS = z.enum(["PENDING", "LODGED", "PARTIALLY_RELEASED", "FULLY_RELEASED", "DISPUTED"]);
@@ -33,7 +33,7 @@ export const bondRouter = createTRPCRouter({
       z.object({
         tenancyId: z.string(),
         amountCents: z.number().int().positive(),
-        lodgementAuthority: z.string().min(1),
+        // lodgementAuthority is derived server-side from state — not accepted from client
         state: AUSTRALIAN_STATE,
         lodgementDate: z.string().optional(), // ISO date string e.g. "2024-01-15"
         referenceNumber: z.string().optional(),
@@ -44,20 +44,28 @@ export const bondRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const tenancy = await ctx.db.tenancy.findUniqueOrThrow({
         where: { id: input.tenancyId },
-        select: { unit: { select: { buildingId: true } } },
+        select: {
+          moveInDate: true,
+          createdAt: true,
+          unit: { select: { buildingId: true } },
+        },
       });
 
       await assertBuildingOperationsAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
 
-      // Calculate lodgement deadline from lodgement date (or today) + state deadline days
-      const baseDate = input.lodgementDate ? new Date(input.lodgementDate) : new Date();
+      // Authority is always determined server-side from state — clients cannot override it
+      const lodgementAuthority = BOND_LODGEMENT_AUTHORITIES[input.state];
+
+      // Deadline is measured from bond receipt date (move-in date, or tenancy creation
+      // if move-in is unknown) — not from the lodgement date itself.
+      const receiptBase = tenancy.moveInDate ?? tenancy.createdAt;
       const deadlineDays = BOND_LODGEMENT_DEADLINES_DAYS[input.state] ?? 10;
-      const lodgementDeadline = new Date(baseDate);
+      const lodgementDeadline = new Date(receiptBase);
       lodgementDeadline.setDate(lodgementDeadline.getDate() + deadlineDays);
 
       const data = {
         amountCents: input.amountCents,
-        lodgementAuthority: input.lodgementAuthority,
+        lodgementAuthority,
         state: input.state,
         lodgementDate: input.lodgementDate ? new Date(input.lodgementDate) : null,
         lodgementDeadline,
