@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
   managerProcedure,
   type Context,
 } from "@/server/trpc/trpc";
-import { hasBuildingManagementAccess } from "@/server/auth/building-access";
+import {
+  hasBuildingManagementAccess,
+  hasBuildingOperationsAccess,
+} from "@/server/auth/building-access";
 
 async function assertResidentManagementAccess(ctx: Context, residentId: string) {
   const resident = await ctx.db.user.findUniqueOrThrow({
@@ -54,10 +58,10 @@ export const residentsRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      if (!hasBuildingManagementAccess(ctx.user!, input.buildingId)) {
+      if (!hasBuildingOperationsAccess(ctx.user!, input.buildingId)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "You do not have permission to manage this building.",
+          message: "You do not have permission to operate in this building.",
         });
       }
 
@@ -128,7 +132,7 @@ export const residentsRouter = createTRPCRouter({
       });
     }),
 
-  addEmergencyContact: managerProcedure
+  addEmergencyContact: buildingManagerProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -144,7 +148,7 @@ export const residentsRouter = createTRPCRouter({
       return ctx.db.emergencyContact.create({ data: input });
     }),
 
-  removeEmergencyContact: managerProcedure
+  removeEmergencyContact: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const contact = await ctx.db.emergencyContact.findUniqueOrThrow({

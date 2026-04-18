@@ -261,6 +261,7 @@ model Invitation {
   token          String   @unique @default(cuid())
   expiresAt      DateTime
   acceptedAt     DateTime?
+  revokedAt      DateTime?
   createdAt      DateTime @default(now())
 
   @@map("invitations")

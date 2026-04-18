@@ -1,7 +1,7 @@
 "use client";
 
 import { skipToken } from "@tanstack/react-query";
-import { AlertTriangle, Building2, ClipboardList, PackageCheck } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, PackageCheck, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,6 +15,9 @@ import {
   PieChart,
   Pie,
   Cell,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
@@ -29,6 +32,10 @@ export default function AnalyticsPage() {
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
   );
 
+  const trendsQuery = trpc.buildings.getTrends.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
+  );
+
   const maintenanceQuery = trpc.maintenance.listByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
   );
@@ -38,6 +45,7 @@ export default function AnalyticsPage() {
   );
 
   const stats = statsQuery.data;
+  const trends = trendsQuery.data ?? [];
   const maintenance = maintenanceQuery.data ?? [];
   const parcels = parcelsQuery.data ?? [];
 
@@ -49,26 +57,28 @@ export default function AnalyticsPage() {
     "COMPLETED",
     "CLOSED",
     "CANCELLED",
-  ].map((status) => ({
-    name: status.replace("_", " "),
-    count: maintenance.filter((m: { status: string }) => m.status === status).length,
-  })).filter((d) => d.count > 0);
+  ]
+    .map((status) => ({
+      name: status.replace("_", " "),
+      count: maintenance.filter((m: { status: string }) => m.status === status).length,
+    }))
+    .filter((d) => d.count > 0);
 
   // Maintenance by priority
-  const maintenanceByPriority = ["LOW", "MEDIUM", "HIGH", "URGENT"].map(
-    (p) => ({
+  const maintenanceByPriority = ["LOW", "MEDIUM", "HIGH", "URGENT"]
+    .map((p) => ({
       name: p,
       value: maintenance.filter((m: { priority: string }) => m.priority === p).length,
-    })
-  ).filter((d) => d.value > 0);
+    }))
+    .filter((d) => d.value > 0);
 
   // Parcels by status
-  const parcelsByStatus = ["RECEIVED", "NOTIFIED", "COLLECTED", "RETURNED"].map(
-    (s) => ({
+  const parcelsByStatus = ["RECEIVED", "NOTIFIED", "COLLECTED", "RETURNED"]
+    .map((s) => ({
       name: s,
       count: parcels.filter((p: { status: string }) => p.status === s).length,
-    })
-  ).filter((d) => d.count > 0);
+    }))
+    .filter((d) => d.count > 0);
 
   // Occupancy data
   const occupancyData = stats
@@ -77,6 +87,12 @@ export default function AnalyticsPage() {
         { name: "Vacant", value: stats.totalUnits - stats.occupiedUnits },
       ]
     : [];
+
+  // Rent trend formatted for display
+  const rentTrend = trends.map((t) => ({
+    ...t,
+    rentCollected: Math.round(t.rentCollectedCents / 100),
+  }));
 
   return (
     <div className="space-y-6">
@@ -88,7 +104,7 @@ export default function AnalyticsPage() {
               Building overview and operations metrics
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-              Use these charts as a quick operational snapshot for occupancy, maintenance workload, parcel handling, and rent collection.
+              Track occupancy, maintenance workload, parcel handling, rent collection, and 6-month trends across your building.
             </p>
           </div>
           <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
@@ -139,21 +155,109 @@ export default function AnalyticsPage() {
             />
           </div>
 
-          {/* Charts row 1 */}
+          {/* 6-Month Trends */}
+          <div className="app-panel overflow-hidden p-6">
+            <div className="mb-5 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">6-Month Trends</p>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              {/* Maintenance trend */}
+              <ChartCard title="Maintenance Requests" loading={trendsQuery.isLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={trends} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="maintenanceRequests"
+                      name="Requests"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              {/* Rent collected trend */}
+              <ChartCard title="Rent Collected (AUD)" loading={trendsQuery.isLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={rentTrend} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                    />
+                    <Tooltip formatter={(v) => [`$${Number(v).toLocaleString()}`, "Rent"]} />
+                    <Bar dataKey="rentCollected" name="Rent" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              {/* Parcels trend */}
+              <ChartCard title="Parcels Received" loading={trendsQuery.isLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={trends} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="parcelsReceived"
+                      name="Parcels"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+
+              {/* New residents trend */}
+              <ChartCard title="New Residents" loading={trendsQuery.isLoading}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={trends} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="newResidents"
+                      name="Residents"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </div>
+          </div>
+
+          {/* Snapshot Charts */}
           <div className="grid gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Unit Occupancy
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Unit Occupancy</CardTitle>
               </CardHeader>
               <CardContent>
                 {statsQuery.isLoading ? (
                   <Skeleton className="h-48 w-full" />
                 ) : occupancyData.every((d) => d.value === 0) ? (
-                  <p className="text-sm text-muted-foreground text-center py-16">
-                    No data available
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-16">No data available</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -168,10 +272,7 @@ export default function AnalyticsPage() {
                         label={({ name, value }) => `${name}: ${value}`}
                       >
                         {occupancyData.map((_, index) => (
-                          <Cell
-                            key={index}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
+                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -183,17 +284,13 @@ export default function AnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Maintenance by Priority
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Maintenance by Priority</CardTitle>
               </CardHeader>
               <CardContent>
                 {maintenanceQuery.isLoading ? (
                   <Skeleton className="h-48 w-full" />
                 ) : maintenanceByPriority.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-16">
-                    No maintenance requests
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-16">No maintenance requests</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -206,10 +303,7 @@ export default function AnalyticsPage() {
                         label={({ name, value }) => `${name}: ${value}`}
                       >
                         {maintenanceByPriority.map((_, index) => (
-                          <Cell
-                            key={index}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
+                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -218,38 +312,22 @@ export default function AnalyticsPage() {
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          {/* Charts row 2 */}
-          <div className="grid gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Maintenance by Status
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Maintenance by Status</CardTitle>
               </CardHeader>
               <CardContent>
                 {maintenanceQuery.isLoading ? (
                   <Skeleton className="h-48 w-full" />
                 ) : maintenanceByStatus.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-16">
-                    No maintenance requests
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-16">No maintenance requests</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={maintenanceByStatus}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <Tooltip />
                       <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -260,32 +338,19 @@ export default function AnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">
-                  Parcels by Status
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Parcels by Status</CardTitle>
               </CardHeader>
               <CardContent>
                 {parcelsQuery.isLoading ? (
                   <Skeleton className="h-48 w-full" />
                 ) : parcelsByStatus.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-16">
-                    No parcels recorded
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-16">No parcels recorded</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={parcelsByStatus}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <Tooltip />
                       <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -297,6 +362,27 @@ export default function AnalyticsPage() {
         </>
       )}
     </div>
+  );
+}
+
+function ChartCard({
+  title,
+  loading,
+  children,
+}: {
+  title: string;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? <Skeleton className="h-[220px] w-full" /> : children}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -312,9 +398,7 @@ function StatCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {value === null ? (

@@ -52,17 +52,33 @@ const managerNavItems = [
   { title: "Analytics", href: "/manager/analytics", icon: BarChart3 },
 ];
 
+const receptionNavItems = [
+  { title: "Visitors", href: "/manager/visitors", icon: UserCheck },
+  { title: "Parcels", href: "/manager/parcels", icon: Package },
+  { title: "Keys & Access", href: "/manager/keys", icon: Key },
+  { title: "Maintenance", href: "/manager/maintenance", icon: Wrench },
+  { title: "Messages", href: "/manager/messages", icon: MessageSquare },
+] as const;
+
 const adminNavItems = [
   { title: "Organisations", href: "/super-admin/organisations", icon: Shield },
   { title: "Buildings", href: "/super-admin/buildings", icon: Building2 },
   { title: "Users", href: "/super-admin/users", icon: Users },
 ];
 
-export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
+export function AppSidebar({
+  isSuperAdmin = false,
+  isReceptionOnly = false,
+}: {
+  isSuperAdmin?: boolean;
+  isReceptionOnly?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
   const isAdmin = isSuperAdmin;
+  const propertyNavItems = isReceptionOnly ? receptionNavItems : managerNavItems;
+  const homeHref = isReceptionOnly ? "/manager/visitors" : "/manager";
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -74,13 +90,15 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
   return (
     <Sidebar variant="floating" className="border-r-0">
       <SidebarHeader className="sidebar-surface border-b border-sidebar-border/70 px-5 py-5">
-        <Link href="/manager" className="flex items-center gap-3">
+        <Link href={homeHref} className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(6,182,212,0.92),rgba(37,99,235,0.9))] text-white shadow-[0_16px_36px_-20px_rgba(34,211,238,0.8)]">
             <Building2 className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <p className="text-lg font-semibold tracking-[-0.04em] text-sidebar-foreground">StrataHub</p>
-            <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">Building operations</p>
+            <p className="text-xs tracking-[0.08em] text-sidebar-foreground/58">
+              {isReceptionOnly ? "Reception operations" : "Building operations"}
+            </p>
           </div>
         </Link>
       </SidebarHeader>
@@ -116,7 +134,7 @@ export function AppSidebar({ isSuperAdmin = false }: { isSuperAdmin?: boolean })
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {managerNavItems.map((item) => (
+              {propertyNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}

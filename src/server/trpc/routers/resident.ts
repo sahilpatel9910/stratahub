@@ -146,7 +146,7 @@ export const residentRouter = createTRPCRouter({
   getMyDocuments: tenantOrAboveProcedure
     .input(z.object({ category: docCategoryEnum.optional() }))
     .query(async ({ ctx, input }) => {
-      // Find building via ownership or tenancy
+      // Find building via ownership → tenancy → buildingAssignment (same priority as getMyBuilding)
       const ownership = await ctx.db.ownership.findFirst({
         where: { userId: ctx.user!.id, isActive: true },
         include: { unit: { select: { buildingId: true } } },
@@ -157,8 +157,15 @@ export const residentRouter = createTRPCRouter({
             include: { unit: { select: { buildingId: true } } },
           })
         : null;
+      const assignment = !ownership && !tenancy
+        ? await ctx.db.buildingAssignment.findFirst({
+            where: { userId: ctx.user!.id, isActive: true },
+            select: { buildingId: true },
+          })
+        : null;
 
-      const buildingId = ownership?.unit.buildingId ?? tenancy?.unit.buildingId;
+      const buildingId =
+        ownership?.unit.buildingId ?? tenancy?.unit.buildingId ?? assignment?.buildingId;
       if (!buildingId) return [];
 
       return ctx.db.document.findMany({
@@ -186,8 +193,15 @@ export const residentRouter = createTRPCRouter({
           include: { unit: { select: { buildingId: true } } },
         })
       : null;
+    const assignment = !ownership && !tenancy
+      ? await ctx.db.buildingAssignment.findFirst({
+          where: { userId: ctx.user!.id, isActive: true },
+          select: { buildingId: true },
+        })
+      : null;
 
-    const buildingId = ownership?.unit.buildingId ?? tenancy?.unit.buildingId;
+    const buildingId =
+      ownership?.unit.buildingId ?? tenancy?.unit.buildingId ?? assignment?.buildingId;
     if (!buildingId) return [];
 
     return ctx.db.announcement.findMany({

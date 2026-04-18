@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
   managerProcedure,
   protectedProcedure,
@@ -9,6 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { sendMaintenanceUpdateEmail } from "@/lib/email/send";
 import { createNotification } from "@/server/trpc/lib/create-notification";
 import {
+  assertBuildingOperationsAccess,
   assertBuildingManagementAccess,
   hasBuildingManagementAccess,
 } from "@/server/auth/building-access";
@@ -36,7 +38,7 @@ export const maintenanceRouter = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       return ctx.db.maintenanceRequest.findMany({
         where: {
@@ -62,7 +64,7 @@ export const maintenanceRouter = createTRPCRouter({
       });
 
       if (request.requestedById !== ctx.user!.id) {
-        await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
+        await assertBuildingOperationsAccess(ctx.db, ctx.user!, request.unit.buildingId);
       }
 
       const result = await ctx.db.maintenanceRequest.findUniqueOrThrow({
@@ -189,7 +191,7 @@ export const maintenanceRouter = createTRPCRouter({
         select: { unit: { select: { buildingId: true } } },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.unit.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, existing.unit.buildingId);
 
       const data: Record<string, unknown> = { status: input.status };
       if (input.status === "COMPLETED") {
@@ -236,7 +238,7 @@ export const maintenanceRouter = createTRPCRouter({
         select: { unit: { select: { buildingId: true } } },
       });
 
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, existing.unit.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, existing.unit.buildingId);
 
       return ctx.db.maintenanceRequest.update({
         where: { id: input.id },
@@ -258,7 +260,7 @@ export const maintenanceRouter = createTRPCRouter({
       });
 
       if (request.requestedById !== ctx.user!.id) {
-        await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
+        await assertBuildingOperationsAccess(ctx.db, ctx.user!, request.unit.buildingId);
       }
 
       return ctx.db.maintenanceComment.create({

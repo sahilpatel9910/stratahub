@@ -7,15 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Building2 } from "lucide-react";
+import { Building2, ChevronRight, ShieldCheck } from "lucide-react";
 
 type RegisterFormProps = {
   inviteToken: string;
@@ -114,88 +106,130 @@ export function RegisterForm({
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-          <Building2 className="h-6 w-6 text-white" />
+    <div className="app-panel overflow-hidden">
+      <div className="border-b border-border/70 bg-[linear-gradient(135deg,rgba(15,118,110,0.12),rgba(30,64,175,0.08))] px-6 py-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="panel-kicker text-primary/75">Invite Access</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.04em] text-foreground">
+              Set up your invited account
+            </h1>
+          </div>
         </div>
-        <CardTitle className="text-2xl">Set up your invited account</CardTitle>
-        <CardDescription>
+        <p className="max-w-sm text-sm leading-6 text-muted-foreground">
           Create access for {organisationName}
           {buildingName ? `, ${buildingName}` : ""}.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleRegister}>
-        <CardContent className="space-y-4">
+        </p>
+      </div>
+
+      <form onSubmit={handleRegister} className="px-6 py-6">
+        <div className="space-y-4">
           {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
+            <div className="rounded-2xl border border-red-200 bg-red-50/90 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First name</Label>
+              <Label htmlFor="firstName" className="text-sm font-medium text-foreground">
+                First name
+              </Label>
               <Input
                 id="firstName"
                 placeholder="John"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last name</Label>
+              <Label htmlFor="lastName" className="text-sm font-medium text-foreground">
+                Last name
+              </Label>
               <Input
                 id="lastName"
                 placeholder="Smith"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
                 required
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Invitation email</Label>
-            <Input id="email" type="email" value={invitedEmail} disabled />
+            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              Invitation email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={invitedEmail}
+              disabled
+              className="h-12 rounded-xl border-white/70 bg-secondary/70 text-muted-foreground shadow-none"
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
               placeholder="Min 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+              Confirm password
+            </Label>
             <Input
               id="confirmPassword"
               type="password"
               placeholder="Confirm your password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              className="h-12 rounded-xl border-white/70 bg-white/90 shadow-none"
               required
             />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <Button
+            type="submit"
+            className="h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            disabled={loading}
+          >
             {loading ? "Creating account..." : "Create invited account"}
+            {!loading && <ChevronRight className="ml-1 h-4 w-4" />}
           </Button>
-          <p className="text-sm text-gray-500">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/55 px-4 py-3 text-sm">
+            <div className="flex items-center gap-2 text-foreground">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              Invite-linked account setup
+            </div>
+            <span className="text-muted-foreground">Secure</span>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
               href={`/login?redirect=/invite/${inviteToken}`}
-              className="text-blue-600 hover:underline"
+              className="font-medium text-primary transition-colors hover:text-primary/80"
             >
               Sign in to accept your invite
             </Link>
           </p>
-        </CardFooter>
+        </div>
       </form>
-    </Card>
+    </div>
   );
 }

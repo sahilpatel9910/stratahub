@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { hasManagerPortalAccess } from "@/lib/auth/roles";
+import {
+  hasManagerPortalAccess,
+  hasReceptionOnlyAccess,
+} from "@/lib/auth/roles";
+import { ManagerRouteGuard } from "./manager-route-guard";
 
 /**
  * Guards all /manager/** routes.
@@ -42,6 +46,7 @@ export default async function ManagerLayout({
   }
 
   const isSuperAdmin = roles.includes("SUPER_ADMIN");
+  const isReceptionOnly = hasReceptionOnlyAccess(roles);
 
   let buildings: { id: string; name: string; suburb: string; organisationName: string }[] = [];
 
@@ -92,11 +97,13 @@ export default async function ManagerLayout({
 
   return (
     <div className="app-shell flex h-screen w-full">
-      <AppSidebar isSuperAdmin={isSuperAdmin} />
+      <ManagerRouteGuard roles={roles} />
+      <AppSidebar isSuperAdmin={isSuperAdmin} isReceptionOnly={isReceptionOnly} />
       <div className="workspace-backdrop flex flex-1 flex-col overflow-hidden">
         <Topbar
           buildings={buildings}
           showBuildingSwitcher={isSuperAdmin || buildings.length > 1}
+          greetingName={dbUser?.firstName ?? authUser.user_metadata?.first_name ?? null}
         />
         <main className="app-main">{children}</main>
       </div>

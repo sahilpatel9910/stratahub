@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { AlertTriangle, CalendarDays, DollarSign, Wallet } from "lucide-react";
+import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,8 @@ import { formatCurrency } from "@/lib/constants";
 import { toast } from "sonner";
 
 type PaymentStatus = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "PARTIAL";
+type RentTab = "roll" | "payments" | "setup";
+type RentFrequency = "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending",
@@ -90,7 +92,7 @@ function formatDate(date: Date | string | null | undefined) {
 
 export default function RentPage() {
   const { selectedBuildingId } = useBuildingContext();
-  const [tab, setTab] = useState("roll");
+  const [tab, setTab] = useState<RentTab>("roll");
   const [paymentStatusFilter, setPaymentStatusFilter] =
     useState<PaymentStatus>("ALL");
 
@@ -109,6 +111,21 @@ export default function RentPage() {
   const [formMethod, setFormMethod] = useState("");
   const [formNotes, setFormNotes] = useState("");
 
+  const [setupDialogOpen, setSetupDialogOpen] = useState(false);
+  const [selectedTenancy, setSelectedTenancy] = useState<{
+    id: string;
+    tenantName: string;
+    unitNumber: string;
+    leaseStartDate: string;
+  } | null>(null);
+  const [setupLeaseStartDate, setSetupLeaseStartDate] = useState("");
+  const [setupLeaseEndDate, setSetupLeaseEndDate] = useState("");
+  const [setupRentAmount, setSetupRentAmount] = useState("");
+  const [setupRentFrequency, setSetupRentFrequency] = useState<RentFrequency>("MONTHLY");
+  const [setupBondAmount, setSetupBondAmount] = useState("");
+  const [setupMoveInDate, setSetupMoveInDate] = useState("");
+  const [setupScheduleMonths, setSetupScheduleMonths] = useState("12");
+
   const utils = trpc.useUtils();
 
   const rentRollQuery = trpc.rent.getRentRoll.useQuery(
@@ -117,6 +134,10 @@ export default function RentPage() {
   );
 
   const paymentsQuery = trpc.rent.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
+  );
+  const pendingSetupQuery = trpc.rent.listPendingSetupByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
@@ -130,6 +151,18 @@ export default function RentPage() {
       toast.success("Payment recorded");
     },
     onError: (err) => toast.error(err.message ?? "Failed to record payment"),
+  });
+
+  const completeTenancySetupMutation = trpc.rent.completeTenancySetup.useMutation({
+    onSuccess: () => {
+      utils.rent.listPendingSetupByBuilding.invalidate();
+      utils.rent.getRentRoll.invalidate();
+      utils.rent.listByBuilding.invalidate();
+      utils.buildings.getStats.invalidate();
+      closeSetupDialog();
+      toast.success("Tenant setup completed");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to complete tenant setup"),
   });
 
   function openRecordDialog(payment: {
@@ -151,6 +184,34 @@ export default function RentPage() {
     setSelectedPayment(null);
   }
 
+  function openSetupDialog(tenancy: {
+    id: string;
+    user: { firstName: string; lastName: string };
+    unit: { unitNumber: string };
+    leaseStartDate: Date | string;
+  }) {
+    const leaseStart = new Date(tenancy.leaseStartDate).toISOString().split("T")[0];
+    setSelectedTenancy({
+      id: tenancy.id,
+      tenantName: `${tenancy.user.firstName} ${tenancy.user.lastName}`,
+      unitNumber: tenancy.unit.unitNumber,
+      leaseStartDate: leaseStart,
+    });
+    setSetupLeaseStartDate(leaseStart);
+    setSetupLeaseEndDate("");
+    setSetupRentAmount("");
+    setSetupRentFrequency("MONTHLY");
+    setSetupBondAmount("");
+    setSetupMoveInDate(leaseStart);
+    setSetupScheduleMonths("12");
+    setSetupDialogOpen(true);
+  }
+
+  function closeSetupDialog() {
+    setSetupDialogOpen(false);
+    setSelectedTenancy(null);
+  }
+
   function handleRecordPayment() {
     if (!selectedPayment) return;
     const amountCents = Math.round(parseFloat(formAmount) * 100);
@@ -164,8 +225,27 @@ export default function RentPage() {
     });
   }
 
+  function handleCompleteSetup() {
+    if (!selectedTenancy || !setupLeaseStartDate || !setupRentAmount || !setupBondAmount) {
+      return;
+    }
+
+    completeTenancySetupMutation.mutate({
+      tenancyId: selectedTenancy.id,
+      leaseStartDate: new Date(setupLeaseStartDate),
+      leaseEndDate: setupLeaseEndDate ? new Date(setupLeaseEndDate) : null,
+      rentAmountCents: Math.round(parseFloat(setupRentAmount) * 100),
+      rentFrequency: setupRentFrequency,
+      bondAmountCents: Math.round(parseFloat(setupBondAmount) * 100),
+      moveInDate: setupMoveInDate ? new Date(setupMoveInDate) : null,
+      createSchedule: true,
+      scheduleMonths: parseInt(setupScheduleMonths, 10) || 12,
+    });
+  }
+
   const rentRoll = rentRollQuery.data ?? [];
   const allPayments = paymentsQuery.data ?? [];
+  const pendingSetups = pendingSetupQuery.data ?? [];
   const payments =
     paymentStatusFilter === "ALL"
       ? allPayments
@@ -199,6 +279,7 @@ export default function RentPage() {
               <RentSignal icon={DollarSign} label="Monthly rent roll" value={formatCurrency(totalRentRoll)} tone="text-emerald-600" />
               <RentSignal icon={AlertTriangle} label="Overdue tenancies" value={`${overdueCount}`} tone="text-red-600" />
               <RentSignal icon={Wallet} label="Pending invoices" value={`${pendingInvoiceCount}`} tone="text-amber-600" />
+              <RentSignal icon={ClipboardCheck} label="Setup needed" value={`${pendingSetups.length}`} tone="text-sky-600" />
             </div>
           </div>
         </div>
@@ -284,6 +365,7 @@ export default function RentPage() {
             <TabsList className="bg-background/80">
               <TabsTrigger value="roll">Rent Roll</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="setup">Tenant Setup</TabsTrigger>
             </TabsList>
 
             {/* RENT ROLL TAB */}
@@ -473,6 +555,71 @@ export default function RentPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="setup" className="mt-4">
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Unit</TableHead>
+                        <TableHead>Tenant</TableHead>
+                        <TableHead>Invite Accepted</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pendingSetupQuery.isLoading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                          <TableRow key={i}>
+                            {Array.from({ length: 5 }).map((_, j) => (
+                              <TableCell key={j}>
+                                <Skeleton className="h-4 w-20" />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : pendingSetups.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
+                            No tenant setups are waiting for completion.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingSetups.map((tenancy) => (
+                          <TableRow key={tenancy.id}>
+                            <TableCell className="font-semibold">
+                              {tenancy.unit.unitNumber}
+                            </TableCell>
+                            <TableCell>
+                              {tenancy.user.firstName} {tenancy.user.lastName}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {formatDate(tenancy.createdAt)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100">
+                                Setup required
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openSetupDialog(tenancy)}
+                              >
+                                Complete Setup
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </>
       )}
@@ -562,6 +709,143 @@ export default function RentPage() {
               {recordPaymentMutation.isPending
                 ? "Recording..."
                 : "Record Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={setupDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setSetupDialogOpen(true);
+            return;
+          }
+          closeSetupDialog();
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Complete Tenant Setup</DialogTitle>
+            <DialogDescription className="px-6">
+              {selectedTenancy && (
+                <>
+                  Unit {selectedTenancy.unitNumber} — {selectedTenancy.tenantName}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="setupLeaseStartDate">Lease Start Date *</Label>
+              <Input
+                id="setupLeaseStartDate"
+                type="date"
+                className="h-11 rounded-xl bg-background"
+                value={setupLeaseStartDate}
+                onChange={(e) => setSetupLeaseStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="setupLeaseEndDate">Lease End Date</Label>
+              <Input
+                id="setupLeaseEndDate"
+                type="date"
+                className="h-11 rounded-xl bg-background"
+                value={setupLeaseEndDate}
+                onChange={(e) => setSetupLeaseEndDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="setupRentAmount">Rent Amount (AUD) *</Label>
+                <Input
+                  id="setupRentAmount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="h-11 rounded-xl bg-background"
+                  placeholder="0.00"
+                  value={setupRentAmount}
+                  onChange={(e) => setSetupRentAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Rent Frequency *</Label>
+                <Select
+                  value={setupRentFrequency}
+                  onValueChange={(v) => setSetupRentFrequency(v as RentFrequency)}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="setupBondAmount">Bond Amount (AUD) *</Label>
+                <Input
+                  id="setupBondAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="h-11 rounded-xl bg-background"
+                  placeholder="0.00"
+                  value={setupBondAmount}
+                  onChange={(e) => setSetupBondAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="setupMoveInDate">Move In Date</Label>
+                <Input
+                  id="setupMoveInDate"
+                  type="date"
+                  className="h-11 rounded-xl bg-background"
+                  value={setupMoveInDate}
+                  onChange={(e) => setSetupMoveInDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="setupScheduleMonths">Initial Schedule (months)</Label>
+              <Input
+                id="setupScheduleMonths"
+                type="number"
+                min="1"
+                max="24"
+                className="h-11 rounded-xl bg-background"
+                value={setupScheduleMonths}
+                onChange={(e) => setSetupScheduleMonths(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                This creates the first rent schedule only when no payments exist yet for the tenancy.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="px-6">
+            <Button
+              variant="outline"
+              onClick={closeSetupDialog}
+              disabled={completeTenancySetupMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCompleteSetup}
+              disabled={
+                !setupLeaseStartDate ||
+                !setupRentAmount ||
+                !setupBondAmount ||
+                completeTenancySetupMutation.isPending
+              }
+            >
+              {completeTenancySetupMutation.isPending ? "Saving..." : "Complete Setup"}
             </Button>
           </DialogFooter>
         </DialogContent>

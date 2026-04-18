@@ -6,14 +6,6 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { getDefaultDashboardPath } from "@/lib/auth/roles";
 
-const ROLE_REDIRECT: Record<string, string> = {
-  OWNER: "/resident",
-  TENANT: "/resident",
-  BUILDING_MANAGER: "/manager",
-  RECEPTION: "/manager",
-  SUPER_ADMIN: "/super-admin/organisations",
-};
-
 export function AcceptInviteButton({ token, role }: { token: string; role: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -39,7 +31,7 @@ export function AcceptInviteButton({ token, role }: { token: string; role: strin
     }
 
     setDone(true);
-    const redirectTo = ROLE_REDIRECT[role] ?? getDefaultDashboardPath([]);
+    const redirectTo = getDefaultDashboardPath([role as Parameters<typeof getDefaultDashboardPath>[0][number]]);
     setTimeout(() => router.push(redirectTo), 1200);
   }
 

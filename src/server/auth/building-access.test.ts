@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  hasBuildingOperationsAccess,
   hasBuildingManagementAccess,
   isSuperAdmin,
 } from "@/server/auth/building-access";
@@ -48,6 +49,19 @@ test("hasBuildingManagementAccess denies resident assignments", () => {
   };
 
   assert.equal(hasBuildingManagementAccess(user, "b-1"), false);
+});
+
+test("hasBuildingManagementAccess denies reception assignments", () => {
+  const user = {
+    id: "user-1",
+    orgMemberships: [],
+    buildingAssignments: [
+      { buildingId: "b-1", role: "RECEPTION" as const, isActive: true },
+    ],
+  };
+
+  assert.equal(hasBuildingManagementAccess(user, "b-1"), false);
+  assert.equal(hasBuildingOperationsAccess(user, "b-1"), true);
 });
 
 test("hasBuildingManagementAccess allows super admins without a building assignment", () => {

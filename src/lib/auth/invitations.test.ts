@@ -29,6 +29,17 @@ test("getInvitationStatus returns accepted when acceptedAt is present", () => {
   );
 });
 
+test("getInvitationStatus returns revoked when revokedAt is present", () => {
+  assert.equal(
+    getInvitationStatus({
+      acceptedAt: null,
+      revokedAt: new Date("2026-04-15T11:00:00Z"),
+      expiresAt: new Date("2026-04-22T10:00:00Z"),
+    }),
+    "revoked"
+  );
+});
+
 test("getInvitationStatus returns expired when the expiry date has passed", () => {
   assert.equal(
     getInvitationStatus(

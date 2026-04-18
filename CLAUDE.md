@@ -2,15 +2,12 @@
 
 # StrataHub — Claude Code Context
 
-> **Last updated: 2026-04-15** — Phase 1 UI stabilization is effectively complete on `phase1/ui-stabilization`. The app is now in verification-and-readiness mode: core manager/resident/super-admin flows exist, first-pass security hardening is in place, and recent work has focused on workflow fixes, shared UI quality, and documentation alignment.
+> **Last updated: 2026-04-17** — Phase 3 active on `feat/phase3-features`.
 
 ## Project Overview
 
-StrataHub is an Australian apartment/strata property management SaaS. It allows property managers to manage multiple buildings, track residents (owners & tenants), handle rent collection, maintenance requests, visitor logs, parcel tracking, keys/access, announcements, and strata financials.
-
-**Target users:** Building managers, reception staff, property owners, tenants, and super-admins managing multiple organisations.
-
----
+Australian strata/apartment property management SaaS for building managers, reception, owners, tenants, and super-admins.
+Live: `stratahub-six.vercel.app`
 
 ## Tech Stack
 
@@ -821,244 +818,43 @@ npx prisma studio    # Prisma Studio GUI
 
 ## Current Phase
 
-### Phase 1 — UI Stabilization
+### Phase 3 completions
+- ✅ Maintenance image attachments — `addImage`, `deleteImage`, signed URL display via private `maintenance` bucket; both manager and resident pages have click-to-detail dialog with photo gallery + upload/delete
+- ✅ Analytics 6-month trend charts via `buildings.getTrends`
+- ✅ "Deactivate User" rename
+- ✅ `/api/auth/signout` open redirect fix
+- ✅ Resident docs/announcements fallback fix
+- ✅ Invite lifecycle now uses `revokedAt` instead of hard deletes, with resend support and status/history UI
+- ✅ Super-admin UI can now invite other `SUPER_ADMIN` users
+- ✅ Resident invites are unit-scoped; owner accepts create ownership and tenant accepts create tenancy placeholders
+- ✅ `RECEPTION` is now separated from `BUILDING_MANAGER`: reception is operations-only (`assertBuildingOperationsAccess`), managers keep admin/control workflows (`assertBuildingManagementAccess`)
+- ✅ Rent now includes a “Complete Tenant Setup” flow for invite-created tenancy placeholders
+- ✅ Auth redirect decisions extracted into `src/lib/auth/redirects.ts` with tests
+- ✅ Next.js warning cleanup: `src/proxy.ts` replaces `src/middleware.ts`, and `next.config.ts` sets `turbopack.root`
 
-This phase is effectively complete on `phase1/ui-stabilization`.
+Next priorities:
+- Live invite-only E2E verification against Supabase email flow
+- Route/API coverage for invite acceptance behavior
+- Manual Supabase hardening: disable open signup in dashboard
 
-Recent work on this branch and its immediate predecessors has already covered:
-- shared dashboard shell polish across auth, manager, and resident routes
-- resident portal visual refresh
-- notification overlay and modal/form usability fixes
-- messaging and resident-maintenance workflow fixes
-- building-scoped authorization hardening and private document access
-- README and security documentation cleanup
+## Quick Start
 
-### Phase 2 — Verification and Production Readiness
+```bash
+cd strata-hub
+npx prisma generate
+npx prisma db push
+npm run dev
+```
 
-This is the next phase to execute before another large feature push.
+Seed account: `admin@stratahub.com.au` / `Admin1234!` (SUPER_ADMIN)
 
-Progress already landed on `phase1/ui-stabilization`:
-- manager-safe resident invite flow limited to `OWNER` and `TENANT` in the selected building
-- manager workspace scoping tightened to manager-capable buildings only, with stale selection clearing and single-building preload
-- super-admin user list now includes active registered-but-unassigned users
-- register/login flow hardened around existing-email signup confusion
-- unit creation now requires owner details and creates a unit-linked owner relationship or owner invite
-- unit assignment flow now supports assigning a specific unit to an owner or tenant, with lease/rent data for tenant occupancy
+## Reference Docs
 
-Priority order:
-1. Run a structured QA sweep across manager, resident, and super-admin flows using seeded data.
-2. Add lightweight regression coverage for the highest-risk paths:
-   - root role redirects
-   - building assignment scoping
-   - document signed-download access
-   - messaging thread/read-write authorization
-3. Clear the remaining lint warnings so CI output is quieter and easier to trust.
-4. Validate environment-sensitive production assumptions:
-   - private `documents` bucket exists
-   - Resend sender/domain setup is correct
-   - Supabase/Vercel URLs match deployed environments
-5. Reassess analytics and other deferred product gaps only after the verification pass is done.
-
-### Suggested QA Coverage
-
-Manager:
-- residents
-- rent
-- keys
-- maintenance
-- visitors
-- parcels
-- announcements
-- documents
-- strata
-- financials
-- messages
-- settings
-
-Resident:
-- dashboard
-- levies
-- maintenance
-- documents
-- announcements
-
-Super-admin:
-- organisations
-- buildings
-- users
-
-### Nice-to-Have Follow-Ups
-
-- rename misleading destructive-action labels in super-admin user management if they no longer reflect actual behavior
-- seed more realistic demo data so summary cards and analytics-style surfaces are easier to validate visually
-- decide whether to migrate from `middleware.ts` to the newer Next.js 16 `proxy` convention once functional work is settled
-
----
-
-### Commits made this session (for reference)
-- `ae64c67` — Fix TypeScript error: itemToStringLabel must return string
-- `9fc84eb` — Building switcher: group by org, hide on super-admin pages
-- `5624cb9` — Replace building switcher with two separate org + building selects
-- `30b74cf` — Also set User.isActive=false when removing user from all buildings
-- `368fef1` — Fix invite acceptance: block wrong-account, role-based redirect after accept
-
----
-
-## Architectural Decisions
-
-1. **Server component layout + client pages** — `(dashboard)/layout.tsx` fetches buildings directly from Prisma (no HTTP tRPC layer). Page components that need Zustand state are client components.
-
-2. **`skipToken` for conditional queries** — All building-scoped queries use `skipToken` (not `enabled: false`) when no building is selected.
-
-3. **Cents for money** — All monetary values stored as integers in cents. `formatCurrency(cents)` formats as AUD.
-
-4. **Dual-layer auth** — Supabase manages sessions + cookie refresh. Prisma stores app user with role data. Link: `User.supabaseAuthId = supabase auth UUID`.
-
-5. **Zustand + localStorage for building context** — Survives page refresh. Auto-selects when exactly one building exists.
-
-6. **Auto-create Prisma user** — On first tRPC call or dashboard load after email verification, both `createTRPCContext()` and the dashboard layout auto-create the Prisma user from Supabase metadata. Idempotent.
-
-7. **Base UI render prop** — shadcn uses Base UI (`@base-ui/react`). Use `render={<Component />}` instead of `asChild`. Select `onValueChange` guards against `null`.
-
-8. **Prisma 7 + driver adapter** — Connection URL in `prisma.config.ts` (for migrations). `PrismaPg` adapter passed to `PrismaClient` constructor (for queries). `postinstall: prisma generate` in `package.json` for Vercel.
-
-9. **Supabase Storage upload pattern** — Files never go through Next.js. Flow: `POST /api/storage/upload-url` (service role creates signed URL after building-management authorization) → client `PUT` directly to Supabase → tRPC saves DB record with `storagePath`. Reads use a short-lived signed URL from `documents.getDownloadUrl`. Bucket: `documents` (private).
-
-10. **Building-scoped authorization pattern** — Do not trust caller-supplied `buildingId` or record IDs by role alone. Resolve the building from the target record and enforce either building access (read) or building management access (write/admin) before querying or mutating.
-
-11. **`prisma db push` not `migrate dev`** — Schema was bootstrapped with `db push`, not migrations. The `migrations/` folder has drift. Always use `npx prisma db push` to apply schema changes, then `npx prisma generate`.
-
-12. **Fire-and-forget for emails and notifications** — Email sends and notification creates are called with `void` inside mutations. Failures are caught and logged server-side but never surfaced to the client. This means the primary mutation (create levy, update status) always succeeds even if Resend is down. All user-controlled strings are HTML-escaped before insertion into email templates.
-
-13. **Lazy Resend client** — `new Resend(key)` throws at module load if the key is missing. The client is wrapped in `getResend()` which initialises lazily on first call, using `"re_placeholder"` as fallback. This prevents build-time failures. Set `RESEND_API_KEY` in `.env` and Vercel env vars for emails to actually send.
-
-14. **Resident router uses unit membership to scope data** — The `resident.*` procedures do NOT accept a `buildingId` input. Building and unit IDs are derived server-side from the caller's active `Ownership` or `Tenancy` records. `createMaintenanceRequest` verifies `unitId` against the caller's active memberships before creating to prevent IDOR.
-
-15. **Notification topbar polling** — `notifications.unreadCount` is polled every 30 seconds via `refetchInterval`. The `listRecent` query is only fetched when the bell dropdown is open (`enabled: bellOpen`). Both are invalidated after `markRead` and `markAllRead`.
-
-16. **Unit-first occupancy workflow** — Units are no longer treated as metadata-only records. Creation now requires owner details, owner invites can be unit-scoped, and occupancy changes should happen through unit assignment so ownership and tenancy stay attached to the actual space.
-
-
-
-# updated this with codex agent
-
-Updated the frontend on `codex/frontendimprovement` with a shared visual refresh across auth, dashboard chrome, and core manager/resident landing pages.
-
-Main UI changes:
-- Reworked global design tokens in [globals.css](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/globals.css): new light neutral/blue palette, softer cards, shared panel utilities, toned-down workspace backdrop, and sidebar styling utilities.
-- Switched typography in [layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/layout.tsx) from Geist to `Plus Jakarta Sans` + `JetBrains Mono`, and fixed font-token wiring in `globals.css`.
-- Redesigned auth shell in [src/app/(auth)/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(auth)/layout.tsx) and [login/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(auth)/login/page.tsx) with a more polished split layout and updated sign-in card.
-- Updated shared dashboard shell in [src/app/(dashboard)/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/layout.tsx) and [src/app/(dashboard)/resident/layout.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/layout.tsx) to use the shared app shell/backdrop classes.
-- Reworked top navigation in [topbar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/topbar.tsx): improved search, notifications dropdown, and mobile building-switcher presentation.
-- Restyled [building-switcher.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/building-switcher.tsx) and removed the lint-triggering sync effect by deriving selected org from state/building context.
-- Redesigned [app-sidebar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/app-sidebar.tsx) and [resident-sidebar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/resident-sidebar.tsx) into a floating, more modern sidebar with cleaner nav states; later removed extra “workspace / mode” info cards and fixed section-label alignment so labels do not wrap awkwardly.
-- Rebuilt [manager/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/page.tsx) into a more editorial operations dashboard with hero summary, stat panels, priority actions, announcements, and maintenance sections.
-- Rebuilt [resident/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/page.tsx) to match the new design language with cleaner status cards and announcements.
-
-Non-visual code changes made to keep checks passing:
-- Fixed React 19 `set-state-in-effect` lint issues in [manager/settings/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/settings/page.tsx) by removing effect-based form seeding and using draft state derived from loaded user data.
-- Fixed the same pattern in [manager/strata/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/strata/page.tsx) by moving dialog form seeding into the dialog open handler instead of `useEffect`.
-
-Git/branch notes:
-- Deleted old conflicting `codex` branch so requested branch name could exist.
-- All work was committed and pushed only to `codex/frontendimprovement`.
-- Latest visible polish commits included backdrop tuning, sidebar/typography refresh, sidebar simplification, and section-label alignment fixes.
-
-Verification notes:
-- `npm run lint -- .` passes with warnings only; remaining warnings are pre-existing unrelated files.
-- `npm run build` was blocked in sandbox because `next/font/google` could not fetch fonts over restricted network, not because of app code errors.
-
-# updated this with codex agent - security hardening
-
-Implemented a first-pass security hardening sweep across authz, storage, and document access.
-
-Security changes:
-- Added shared building access and building management authorization helpers so building-scoped tRPC routes no longer trust caller-supplied IDs by role alone.
-- Hardened building-scoped routers including maintenance, strata, documents, buildings, units, visitors, parcels, keys, financials, announcements, rent, and residents against cross-building access.
-- Updated the tRPC auth context to load only active memberships and assignments.
-- Locked down storage service-role routes so upload URLs require building-management access and document deletion no longer accepts arbitrary storage paths.
-- Moved document delivery away from public URLs to short-lived signed URLs returned by `documents.getDownloadUrl`.
-- Reduced public invite token exposure by removing unnecessary fields from the invite API response.
-- Added [docs/supabase-security.md](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/docs/supabase-security.md) to document the current security model, RLS posture, private storage bucket requirement, and the safe pattern for new building-scoped features.
-
-Verification notes:
-- `npx tsc --noEmit` passes.
-- `npm run lint` passes with warnings only; remaining warnings are pre-existing unrelated files.
-
-# updated this with codex agent - phase 1 verification fixes
-
-Closed the first round of workflow blockers found during the verification sweep while keeping the app free-tier friendly and preserving the existing security hardening.
-
-Verification fixes:
-- Secured `messaging.getThread` so thread reads are limited to the current thread participants instead of trusting a raw `threadId`.
-- Hardened `messaging.send` so replies cannot be attached to unrelated threads and users cannot message themselves.
-- Fixed manager messaging UI in [src/app/(dashboard)/manager/messages/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/messages/page.tsx) so:
-  - reply routing targets the actual other participant
-  - thread previews show the correct counterpart instead of often showing the current user
-  - new message compose uses a selected-building resident picker instead of a raw user ID input
-- Fixed the resident maintenance request flow in [src/app/(dashboard)/resident/maintenance/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/resident/maintenance/page.tsx) so residents with exactly one unit can submit requests without being blocked by a hidden unit selector.
-- Fixed the units create dialog in [src/app/(dashboard)/manager/units/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/units/page.tsx) to expose the existing `storageSpaces` field in the UI instead of silently submitting the default value.
-
-Verification notes:
-- Changes were implemented without adding any paid services or paid-tier dependencies.
-- This session focused on code-level fixes only; no new infra, storage products, or external integrations were introduced.
-
-# updated this with codex agent - notification and form usability fixes
-
-Fixed the shared notification overlay and the most fragile modal form patterns that were causing clipped panels, hidden actions, and cramped fields across the manager and resident workspace.
-
-UI/system fixes:
-- Moved the notification dropdown in [src/components/layout/topbar.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/layout/topbar.tsx) into a portal-backed fixed overlay so it is no longer clipped under page content or layout containers.
-- Upgraded the shared dialog shell in [src/components/ui/dialog.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/dialog.tsx) with:
-  - a safer viewport-aware max height
-  - a flex column layout for long forms
-  - a stronger bordered header
-  - a persistent footer area that stays visible instead of visually falling out of the modal
-- Strengthened shared form controls in:
-  - [src/components/ui/input.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/input.tsx)
-  - [src/components/ui/textarea.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/textarea.tsx)
-  - [src/components/ui/select.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/components/ui/select.tsx)
-  so fields now read as active controls on white/light surfaces instead of fading into the background.
-
-Form/layout fixes:
-- Reworked the manager document upload, manager message compose, and manager announcement publish dialogs so they use a wider modal, stronger spacing, larger controls, and action buttons that stay visible.
-- Updated the manager messages reply area so the send action is a full labeled button (`Send reply`) instead of a tiny icon-only button that can disappear visually.
-- Shifted the split-form breakpoint from `lg` to `xl` on the modal-heavy pages so guidance sidebars no longer squeeze primary fields on common laptop widths. This was applied to:
-  - manager documents
-  - manager messages
-  - manager announcements
-  - manager maintenance
-  - manager visitors
-  - manager parcels
-  - manager financials
-  - manager units
-  - resident maintenance
-
-Verification notes:
-- `npx tsc --noEmit` passes.
-- `npm run lint` still passes with only the same three older warnings in `manager/rent/page.tsx` and `server/trpc/routers/users.ts`.
-- No paid-tier features or new external services were introduced; all fixes remain free-tier friendly.
-
-# updated this with codex agent - phase 2 verification and access fixes
-
-Added the first round of Phase 2 verification-driven fixes across redirects, CRUD affordances, user visibility, manager invite permissions, and manager building scoping.
-
-Phase 2 changes:
-- Introduced shared role helpers in [src/lib/auth/roles.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/lib/auth/roles.ts) so dashboard redirects and upgrade-only role comparisons use one source of truth.
-- Added lightweight regression coverage in:
-  - [src/lib/auth/roles.test.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/lib/auth/roles.test.ts)
-  - [src/server/auth/building-access.test.ts](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/server/auth/building-access.test.ts)
-- Fixed manager residents and rent pages so summary cards and counts stay truthful even when the table view is filtered.
-- Fixed messaging inbox unread state so thread indicators reflect unread messages anywhere in the thread instead of only the latest row.
-- Fixed parcel return handling so returned parcels no longer retain stale collection metadata.
-- Replaced dead super-admin CRUD controls by wiring real edit dialogs into:
-  - [src/app/(dashboard)/super-admin/organisations/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/super-admin/organisations/page.tsx)
-  - [src/app/(dashboard)/super-admin/buildings/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/super-admin/buildings/page.tsx)
-- Expanded the super-admin user directory to include active registered-but-unassigned users and label them clearly as `Unassigned`.
-- Added a manager-safe resident invite flow in [src/app/(dashboard)/manager/residents/page.tsx](/Users/sahil/Desktop/calude code vs/Project 1/strata-hub/src/app/(dashboard)/manager/residents/page.tsx) backed by `users.createManagerInvite`, limited to `OWNER`/`TENANT` invites for the currently selected building.
-- Tightened manager workspace scoping so non-super-admin manager sessions only load manager-capable building assignments, clear stale persisted building selections, and auto-select the single allowed building when appropriate.
-
-Verification notes:
-- `npm run lint` passes.
-- `npx tsc --noEmit` passes.
-- `npm test` passes with 10/10 tests.
+Read only the relevant doc:
+- `docs/context/routers.md` — tRPC procedure inputs/outputs and API routes
+- `docs/context/schema.md` — data model and field names
+- `docs/context/auth.md` — invite-only auth flow, redirects, proxy behavior
+- `docs/context/structure.md` — project layout and routing map
+- `docs/context/architecture.md` — app patterns like `skipToken` and building auth
+- `docs/context/deployment.md` — env vars, Vercel, production checklist
+- `docs/supabase-security.md` — security model, RLS posture, storage setup

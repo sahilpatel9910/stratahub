@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  buildingManagerProcedure,
   createTRPCRouter,
   managerProcedure,
   protectedProcedure,
@@ -46,7 +47,7 @@ export const documentsRouter = createTRPCRouter({
       });
     }),
 
-  create: managerProcedure
+  create: buildingManagerProcedure
     .input(
       z.object({
         buildingId: z.string(),
@@ -79,7 +80,7 @@ export const documentsRouter = createTRPCRouter({
       });
     }),
 
-  delete: managerProcedure
+  delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const document = await ctx.db.document.findUniqueOrThrow({
