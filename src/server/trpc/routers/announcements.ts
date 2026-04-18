@@ -5,6 +5,7 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const announcementsRouter = createTRPCRouter({
   listByBuilding: protectedProcedure
@@ -42,13 +43,45 @@ export const announcementsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
 
-      return ctx.db.announcement.create({
+      const announcement = await ctx.db.announcement.create({
         data: {
           ...input,
           authorId: ctx.user!.id,
           publishedAt: new Date(),
         },
       });
+
+      // Notify all active building residents (owners + tenants) — fire-and-forget
+      void Promise.all([
+        ctx.db.ownership.findMany({
+          where: { unit: { buildingId: input.buildingId }, isActive: true },
+          select: { userId: true },
+        }),
+        ctx.db.tenancy.findMany({
+          where: { unit: { buildingId: input.buildingId }, isActive: true },
+          select: { userId: true },
+        }),
+      ]).then(([ownerships, tenancies]) => {
+        const seen = new Set<string>();
+        const residents = [...ownerships, ...tenancies].filter(({ userId }) => {
+          if (seen.has(userId)) return false;
+          seen.add(userId);
+          return true;
+        });
+        if (residents.length === 0) return;
+        return ctx.db.notification.createMany({
+          data: residents.map(({ userId }) => ({
+            userId,
+            type: "ANNOUNCEMENT_PUBLISHED" as const,
+            title: `New announcement: ${input.title}`,
+            body: input.content.length > 120 ? `${input.content.slice(0, 117)}...` : input.content,
+            linkUrl: "/resident/announcements",
+            isRead: false,
+          })),
+        });
+      }).catch((err) => console.error("[notification] ANNOUNCEMENT_PUBLISHED failed:", err));
+
+      return announcement;
     }),
 
   delete: managerProcedure

@@ -5,6 +5,7 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 import { ROLE_RANK } from "@/lib/auth/roles";
 import { normalizeEmail } from "@/lib/auth/invitations";
 import { TRPCError } from "@trpc/server";
@@ -182,6 +183,18 @@ export const usersRouter = createTRPCRouter({
         inviteUrl,
         expiresAt,
       });
+
+      // If the invitee already has an account, send an in-app notification (fire-and-forget)
+      void ctx.db.user.findFirst({ where: { email }, select: { id: true } }).then((existing) => {
+        if (!existing) return;
+        return createNotification(ctx.db, {
+          userId: existing.id,
+          type: "INVITE_SENT",
+          title: "You have a new invitation",
+          body: `Join ${org?.name ?? "StrataHub"}${building?.name ? ` — ${building.name}` : ""}`,
+          linkUrl: `/invite/${invite.token}`,
+        });
+      }).catch((err) => console.error("[notification] INVITE_SENT failed:", err));
 
       return invite;
     }),
