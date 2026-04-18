@@ -81,7 +81,7 @@ model MaintenanceImage {
 
 ---
 
-### ⬜ Branch 4 — `feat/bond-tracking`
+### ✅ Branch 4 — `feat/bond-tracking`
 **Goal:** Track rental bonds — lodgement, reference numbers, and status.
 
 **Backend:**

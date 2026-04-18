@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -41,11 +41,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, BOND_LODGEMENT_AUTHORITIES, AUSTRALIAN_STATES } from "@/lib/constants";
 import { toast } from "sonner";
 
 type PaymentStatus = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "PARTIAL";
-type RentTab = "roll" | "payments" | "setup";
+type RentTab = "roll" | "payments" | "setup" | "bonds";
+type BondStatus = "PENDING" | "LODGED" | "PARTIALLY_RELEASED" | "FULLY_RELEASED" | "DISPUTED";
+type AustralianStateCode = "NSW" | "VIC" | "QLD" | "SA" | "WA" | "TAS" | "NT" | "ACT";
 type RentFrequency = "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -126,6 +128,23 @@ export default function RentPage() {
   const [setupMoveInDate, setSetupMoveInDate] = useState("");
   const [setupScheduleMonths, setSetupScheduleMonths] = useState("12");
 
+  // Bond dialog state
+  const [bondDialogOpen, setBondDialogOpen] = useState(false);
+  const [selectedBondTenancyId, setSelectedBondTenancyId] = useState<string | null>(null);
+  const [bondForm, setBondForm] = useState({
+    amountCents: "",
+    state: "NSW" as AustralianStateCode,
+    lodgementDate: "",
+    referenceNumber: "",
+    status: "PENDING" as BondStatus,
+    notes: "",
+  });
+
+  // Status update dialog
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [selectedBondId, setSelectedBondId] = useState<string | null>(null);
+  const [bondStatusForm, setBondStatusForm] = useState<{ status: BondStatus; notes: string }>({ status: "LODGED", notes: "" });
+
   const utils = trpc.useUtils();
 
   const rentRollQuery = trpc.rent.getRentRoll.useQuery(
@@ -138,6 +157,11 @@ export default function RentPage() {
     { placeholderData: (prev) => prev }
   );
   const pendingSetupQuery = trpc.rent.listPendingSetupByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
+  );
+
+  const bondsQuery = trpc.bond.listByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
@@ -163,6 +187,26 @@ export default function RentPage() {
       toast.success("Tenant setup completed");
     },
     onError: (err) => toast.error(err.message ?? "Failed to complete tenant setup"),
+  });
+
+  const upsertBondMutation = trpc.bond.upsert.useMutation({
+    onSuccess: () => {
+      utils.bond.listByBuilding.invalidate();
+      setBondDialogOpen(false);
+      setSelectedBondTenancyId(null);
+      toast.success("Bond record saved");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to save bond record"),
+  });
+
+  const updateBondStatusMutation = trpc.bond.updateStatus.useMutation({
+    onSuccess: () => {
+      utils.bond.listByBuilding.invalidate();
+      setStatusDialogOpen(false);
+      setSelectedBondId(null);
+      toast.success("Bond status updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update bond status"),
   });
 
   function openRecordDialog(payment: {
@@ -212,6 +256,59 @@ export default function RentPage() {
     setSelectedTenancy(null);
   }
 
+  function openBondDialog(tenancyId: string, existing?: {
+    amountCents: number;
+    state: AustralianStateCode;
+    lodgementDate: Date | null;
+    referenceNumber: string | null;
+    status: BondStatus;
+    notes: string | null;
+  }) {
+    setSelectedBondTenancyId(tenancyId);
+    setBondForm({
+      amountCents: existing ? (existing.amountCents / 100).toFixed(2) : "",
+      state: existing?.state ?? "NSW",
+      lodgementDate: existing?.lodgementDate
+        ? new Date(existing.lodgementDate).toISOString().split("T")[0]
+        : "",
+      referenceNumber: existing?.referenceNumber ?? "",
+      status: existing?.status ?? "PENDING",
+      notes: existing?.notes ?? "",
+    });
+    setBondDialogOpen(true);
+  }
+
+  function openStatusDialog(bondId: string, currentStatus: BondStatus) {
+    setSelectedBondId(bondId);
+    setBondStatusForm({ status: currentStatus, notes: "" });
+    setStatusDialogOpen(true);
+  }
+
+  function handleUpsertBond() {
+    if (!selectedBondTenancyId || !bondForm.amountCents || !bondForm.state) return;
+    const amountCents = Math.round(parseFloat(bondForm.amountCents) * 100);
+    if (isNaN(amountCents) || amountCents <= 0) return;
+    upsertBondMutation.mutate({
+      tenancyId: selectedBondTenancyId,
+      amountCents,
+      lodgementAuthority: BOND_LODGEMENT_AUTHORITIES[bondForm.state],
+      state: bondForm.state,
+      lodgementDate: bondForm.lodgementDate || undefined,
+      referenceNumber: bondForm.referenceNumber || undefined,
+      status: bondForm.status,
+      notes: bondForm.notes || undefined,
+    });
+  }
+
+  function handleUpdateBondStatus() {
+    if (!selectedBondId) return;
+    updateBondStatusMutation.mutate({
+      id: selectedBondId,
+      status: bondStatusForm.status,
+      notes: bondStatusForm.notes || undefined,
+    });
+  }
+
   function handleRecordPayment() {
     if (!selectedPayment) return;
     const amountCents = Math.round(parseFloat(formAmount) * 100);
@@ -246,6 +343,8 @@ export default function RentPage() {
   const rentRoll = rentRollQuery.data ?? [];
   const allPayments = paymentsQuery.data ?? [];
   const pendingSetups = pendingSetupQuery.data ?? [];
+  const bonds = bondsQuery.data ?? [];
+  const pendingBonds = bonds.filter((b) => b.status === "PENDING").length;
   const payments =
     paymentStatusFilter === "ALL"
       ? allPayments
@@ -280,6 +379,7 @@ export default function RentPage() {
               <RentSignal icon={AlertTriangle} label="Overdue tenancies" value={`${overdueCount}`} tone="text-red-600" />
               <RentSignal icon={Wallet} label="Pending invoices" value={`${pendingInvoiceCount}`} tone="text-amber-600" />
               <RentSignal icon={ClipboardCheck} label="Setup needed" value={`${pendingSetups.length}`} tone="text-sky-600" />
+              <RentSignal icon={ShieldCheck} label="Bonds pending lodgement" value={`${pendingBonds}`} tone="text-violet-600" />
             </div>
           </div>
         </div>
@@ -361,11 +461,12 @@ export default function RentPage() {
             </Card>
           </div>
 
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as RentTab)}>
             <TabsList className="bg-background/80">
               <TabsTrigger value="roll">Rent Roll</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="setup">Tenant Setup</TabsTrigger>
+              <TabsTrigger value="bonds">Bond Tracking</TabsTrigger>
             </TabsList>
 
             {/* RENT ROLL TAB */}
@@ -620,6 +721,153 @@ export default function RentPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* BOND TRACKING TAB */}
+            <TabsContent value="bonds" className="mt-4 space-y-4">
+              <div className="app-grid-panel flex items-center justify-between p-4">
+                <p className="text-sm text-muted-foreground">
+                  Track bond lodgement, reference numbers, and release status for each tenancy.
+                  Lodgement deadlines are calculated per state legislation.
+                </p>
+              </div>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Unit</TableHead>
+                        <TableHead>Tenant</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>State</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Deadline</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bondsQuery.isLoading ? (
+                        Array.from({ length: 4 }).map((_, i) => (
+                          <TableRow key={i}>
+                            {Array.from({ length: 8 }).map((_, j) => (
+                              <TableCell key={j}><Skeleton className="h-4 w-16" /></TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      ) : bonds.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                            No bond records found for this building.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        bonds.map((bond) => {
+                          const isOverdue = bond.status === "PENDING" && new Date(bond.lodgementDeadline) < new Date();
+                          return (
+                            <TableRow key={bond.id}>
+                              <TableCell className="font-semibold">
+                                {bond.tenancy.unit.unitNumber}
+                              </TableCell>
+                              <TableCell>
+                                {bond.tenancy.user.firstName} {bond.tenancy.user.lastName}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {formatCurrency(bond.amountCents)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{bond.state}</TableCell>
+                              <TableCell>{bondStatusBadge(bond.status)}</TableCell>
+                              <TableCell className={isOverdue ? "font-medium text-red-600" : "text-muted-foreground"}>
+                                {formatDate(bond.lodgementDeadline)}
+                                {isOverdue && " ⚠"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {bond.referenceNumber ?? "—"}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openBondDialog(bond.tenancyId, {
+                                      amountCents: bond.amountCents,
+                                      state: bond.state as AustralianStateCode,
+                                      lodgementDate: bond.lodgementDate,
+                                      referenceNumber: bond.referenceNumber,
+                                      status: bond.status as BondStatus,
+                                      notes: bond.notes,
+                                    })}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openStatusDialog(bond.id, bond.status as BondStatus)}
+                                  >
+                                    Status
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+
+              {/* Rent Roll — Lodge bond for tenancies without a bond record */}
+              {rentRoll.length > 0 && (() => {
+                const bondedTenancyKeys = new Set(bonds.map((b) => b.tenancy.unit.unitNumber));
+                const unbonded = rentRoll.filter((t) => !bondedTenancyKeys.has(t.unitNumber));
+                if (unbonded.length === 0) return null;
+                return (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Tenancies without a bond record ({unbonded.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Unit</TableHead>
+                            <TableHead>Tenant</TableHead>
+                            <TableHead>Rent</TableHead>
+                            <TableHead></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {unbonded.map((t) => (
+                            <TableRow key={t.unitNumber}>
+                              <TableCell className="font-semibold">{t.unitNumber}</TableCell>
+                              <TableCell>{t.tenantName}</TableCell>
+                              <TableCell className="text-muted-foreground">{formatCurrency(t.rentAmountCents)}</TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    // find tenancyId from rentRoll — need to look up via payments
+                                    const match = allPayments.find(
+                                      (p) => p.tenancy.unit.unitNumber === t.unitNumber
+                                    );
+                                    if (match) openBondDialog(match.tenancy.id);
+                                  }}
+                                >
+                                  Add Bond Record
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+            </TabsContent>
           </Tabs>
         </>
       )}
@@ -850,7 +1098,193 @@ export default function RentPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bond Upsert Dialog */}
+      <Dialog open={bondDialogOpen} onOpenChange={(open) => { if (!open) { setBondDialogOpen(false); setSelectedBondTenancyId(null); } }}>
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Bond Record</DialogTitle>
+            <DialogDescription className="px-6">
+              Record bond lodgement details for this tenancy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="bondAmount">Bond Amount (AUD) *</Label>
+                <Input
+                  id="bondAmount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  className="h-11 rounded-xl bg-background"
+                  placeholder="0.00"
+                  value={bondForm.amountCents}
+                  onChange={(e) => setBondForm((f) => ({ ...f, amountCents: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bondState">State *</Label>
+                <Select
+                  value={bondForm.state}
+                  onValueChange={(v) => v !== null && setBondForm((f) => ({ ...f, state: v as AustralianStateCode }))}
+                >
+                  <SelectTrigger id="bondState" className="h-11 rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUSTRALIAN_STATES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Lodgement Authority (auto-set by state)</Label>
+              <p className="rounded-xl border bg-muted/50 px-3 py-2 text-sm">
+                {BOND_LODGEMENT_AUTHORITIES[bondForm.state]}
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="bondStatus">Status</Label>
+                <Select
+                  value={bondForm.status}
+                  onValueChange={(v) => v !== null && setBondForm((f) => ({ ...f, status: v as BondStatus }))}
+                >
+                  <SelectTrigger id="bondStatus" className="h-11 rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="LODGED">Lodged</SelectItem>
+                    <SelectItem value="PARTIALLY_RELEASED">Partially Released</SelectItem>
+                    <SelectItem value="FULLY_RELEASED">Fully Released</SelectItem>
+                    <SelectItem value="DISPUTED">Disputed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bondLodgementDate">Lodgement Date</Label>
+                <Input
+                  id="bondLodgementDate"
+                  type="date"
+                  className="h-11 rounded-xl bg-background"
+                  value={bondForm.lodgementDate}
+                  onChange={(e) => setBondForm((f) => ({ ...f, lodgementDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bondRef">Reference Number</Label>
+              <Input
+                id="bondRef"
+                className="h-11 rounded-xl bg-background"
+                placeholder="Authority reference number"
+                value={bondForm.referenceNumber}
+                onChange={(e) => setBondForm((f) => ({ ...f, referenceNumber: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bondNotes">Notes</Label>
+              <Textarea
+                id="bondNotes"
+                className="min-h-20 rounded-xl bg-background"
+                placeholder="Any additional notes..."
+                value={bondForm.notes}
+                onChange={(e) => setBondForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" onClick={() => setBondDialogOpen(false)} disabled={upsertBondMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpsertBond}
+              disabled={!bondForm.amountCents || !bondForm.state || upsertBondMutation.isPending}
+            >
+              {upsertBondMutation.isPending ? "Saving..." : "Save Bond Record"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bond Status Update Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={(open) => { if (!open) { setStatusDialogOpen(false); setSelectedBondId(null); } }}>
+        <DialogContent className="max-w-sm p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Update Bond Status</DialogTitle>
+            <DialogDescription className="px-6">
+              Change the bond status and optionally add a note.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newBondStatus">New Status</Label>
+              <Select
+                value={bondStatusForm.status}
+                onValueChange={(v) => v !== null && setBondStatusForm((f) => ({ ...f, status: v as BondStatus }))}
+              >
+                <SelectTrigger id="newBondStatus" className="h-11 rounded-xl bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="LODGED">Lodged</SelectItem>
+                  <SelectItem value="PARTIALLY_RELEASED">Partially Released</SelectItem>
+                  <SelectItem value="FULLY_RELEASED">Fully Released</SelectItem>
+                  <SelectItem value="DISPUTED">Disputed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="statusNotes">Notes</Label>
+              <Textarea
+                id="statusNotes"
+                className="min-h-20 rounded-xl bg-background"
+                placeholder="e.g. Bond released after inspection on 15 Apr"
+                value={bondStatusForm.notes}
+                onChange={(e) => setBondStatusForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)} disabled={updateBondStatusMutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateBondStatus} disabled={updateBondStatusMutation.isPending}>
+              {updateBondStatusMutation.isPending ? "Updating..." : "Update Status"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function bondStatusBadge(status: string) {
+  const styles: Record<string, string> = {
+    PENDING:            "bg-yellow-100 text-yellow-800",
+    LODGED:             "bg-blue-100 text-blue-800",
+    PARTIALLY_RELEASED: "bg-violet-100 text-violet-800",
+    FULLY_RELEASED:     "bg-green-100 text-green-800",
+    DISPUTED:           "bg-red-100 text-red-800",
+  };
+  const labels: Record<string, string> = {
+    PENDING:            "Pending",
+    LODGED:             "Lodged",
+    PARTIALLY_RELEASED: "Partial Release",
+    FULLY_RELEASED:     "Released",
+    DISPUTED:           "Disputed",
+  };
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] ?? "bg-gray-100 text-gray-600"}`}>
+      {labels[status] ?? status}
+    </span>
   );
 }
 
