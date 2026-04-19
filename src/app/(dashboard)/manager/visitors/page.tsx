@@ -206,8 +206,8 @@ export default function VisitorsPage() {
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="visitorName">Visitor Name *</Label>
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <Label htmlFor="visitorName">Visitor Name <span className="text-destructive">*</span></Label>
                     <Input
                       id="visitorName"
                       className="h-11 rounded-xl bg-background"
@@ -216,7 +216,7 @@ export default function VisitorsPage() {
                       onChange={(e) => setFormName(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="visitorPhone">Phone</Label>
                     <Input
                       id="visitorPhone"
@@ -226,7 +226,7 @@ export default function VisitorsPage() {
                       onChange={(e) => setFormPhone(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="visitorCompany">Company</Label>
                     <Input
                       id="visitorCompany"
@@ -236,7 +236,7 @@ export default function VisitorsPage() {
                       onChange={(e) => setFormCompany(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="unitToVisit">Unit to Visit</Label>
                     <Input
                       id="unitToVisit"
@@ -246,7 +246,7 @@ export default function VisitorsPage() {
                       onChange={(e) => setFormUnit(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="vehiclePlate">Vehicle Plate</Label>
                     <Input
                       id="vehiclePlate"
@@ -256,7 +256,7 @@ export default function VisitorsPage() {
                       onChange={(e) => setFormVehiclePlate(e.target.value)}
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-2 flex flex-col gap-1.5">
                     <Label htmlFor="visitorNotes">Notes</Label>
                     <Textarea
                       id="visitorNotes"
@@ -275,8 +275,8 @@ export default function VisitorsPage() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Capture why the visitor is here and whether the visit was approved ahead of arrival.
                   </p>
-                  <div className="mt-4 space-y-4">
-                    <div className="space-y-2">
+                  <div className="mt-4 flex flex-col gap-5">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Purpose</Label>
                       <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)} itemToStringLabel={(v) => PURPOSES.find(([val]) => val === v)?.[1] ?? String(v)}>
                         <SelectTrigger className="h-11 w-full rounded-xl bg-background">
@@ -291,7 +291,7 @@ export default function VisitorsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Pre-Approved?</Label>
                       <Select
                         value={formPreApproved}

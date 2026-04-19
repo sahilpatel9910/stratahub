@@ -219,9 +219,9 @@ export default function SuperAdminBuildingsPage() {
                 Add a new building to an organisation
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Organisation *</Label>
+            <div className="flex flex-col gap-5 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
+                <Label>Organisation <span className="text-destructive">*</span></Label>
                 <Select value={formOrgId} onValueChange={(v) => { if (v) setFormOrgId(v); }} itemToStringLabel={(v) => orgs.find(o => o.id === v)?.name ?? String(v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select organisation" />
@@ -235,8 +235,8 @@ export default function SuperAdminBuildingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bName">Building Name *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bName">Building Name <span className="text-destructive">*</span></Label>
                 <Input
                   id="bName"
                   placeholder="e.g. Harbour View Apartments"
@@ -244,8 +244,8 @@ export default function SuperAdminBuildingsPage() {
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bAddress">Street Address *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bAddress">Street Address <span className="text-destructive">*</span></Label>
                 <Input
                   id="bAddress"
                   placeholder="e.g. 123 Main Street"
@@ -253,9 +253,9 @@ export default function SuperAdminBuildingsPage() {
                   onChange={(e) => setFormAddress(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bSuburb">Suburb *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bSuburb">Suburb <span className="text-destructive">*</span></Label>
                   <Input
                     id="bSuburb"
                     placeholder="e.g. Sydney"
@@ -263,8 +263,8 @@ export default function SuperAdminBuildingsPage() {
                     onChange={(e) => setFormSuburb(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bPostcode">Postcode *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bPostcode">Postcode <span className="text-destructive">*</span></Label>
                   <Input
                     id="bPostcode"
                     placeholder="2000"
@@ -274,8 +274,8 @@ export default function SuperAdminBuildingsPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>State *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label>State <span className="text-destructive">*</span></Label>
                 <Select
                   value={formState}
                   onValueChange={(v) => setFormState(v as AustralianStateValue)}
@@ -293,9 +293,9 @@ export default function SuperAdminBuildingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bFloors">Total Floors *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bFloors">Total Floors <span className="text-destructive">*</span></Label>
                   <Input
                     id="bFloors"
                     type="number"
@@ -305,8 +305,8 @@ export default function SuperAdminBuildingsPage() {
                     onChange={(e) => setFormFloors(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bUnits">Total Units *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bUnits">Total Units <span className="text-destructive">*</span></Label>
                   <Input
                     id="bUnits"
                     type="number"
@@ -317,8 +317,8 @@ export default function SuperAdminBuildingsPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bStrata">Strata Scheme No. (optional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bStrata">Strata Scheme No. <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="bStrata"
                   placeholder="e.g. SP 12345"
@@ -365,41 +365,41 @@ export default function SuperAdminBuildingsPage() {
                 Update building details
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            <div className="flex flex-col gap-5 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
                 <Label>Organisation</Label>
                 <Input
                   value={orgs.find((org) => org.id === formOrgId)?.name ?? "—"}
                   disabled
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editBName">Building Name *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editBName">Building Name <span className="text-destructive">*</span></Label>
                 <Input
                   id="editBName"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editBAddress">Street Address *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editBAddress">Street Address <span className="text-destructive">*</span></Label>
                 <Input
                   id="editBAddress"
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="editBSuburb">Suburb *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editBSuburb">Suburb <span className="text-destructive">*</span></Label>
                   <Input
                     id="editBSuburb"
                     value={formSuburb}
                     onChange={(e) => setFormSuburb(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editBPostcode">Postcode *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editBPostcode">Postcode <span className="text-destructive">*</span></Label>
                   <Input
                     id="editBPostcode"
                     maxLength={4}
@@ -408,8 +408,8 @@ export default function SuperAdminBuildingsPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>State *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label>State <span className="text-destructive">*</span></Label>
                 <Select
                   value={formState}
                   onValueChange={(v) => setFormState(v as AustralianStateValue)}
@@ -427,9 +427,9 @@ export default function SuperAdminBuildingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="editBFloors">Total Floors *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editBFloors">Total Floors <span className="text-destructive">*</span></Label>
                   <Input
                     id="editBFloors"
                     type="number"
@@ -438,8 +438,8 @@ export default function SuperAdminBuildingsPage() {
                     onChange={(e) => setFormFloors(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editBUnits">Total Units *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editBUnits">Total Units <span className="text-destructive">*</span></Label>
                   <Input
                     id="editBUnits"
                     type="number"
@@ -449,8 +449,8 @@ export default function SuperAdminBuildingsPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editBStrata">Strata Scheme No. (optional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editBStrata">Strata Scheme No. <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="editBStrata"
                   value={formStrataNo}

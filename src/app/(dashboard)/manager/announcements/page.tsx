@@ -168,9 +168,9 @@ export default function AnnouncementsPage() {
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="annTitle">Title *</Label>
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="annTitle">Title <span className="text-destructive">*</span></Label>
                     <Input
                       id="annTitle"
                       className="h-12 rounded-xl"
@@ -179,8 +179,8 @@ export default function AnnouncementsPage() {
                       onChange={(e) => setFormTitle(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="annContent">Message *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="annContent">Message <span className="text-destructive">*</span></Label>
                     <Textarea
                       id="annContent"
                       className="min-h-40 rounded-xl"
@@ -198,8 +198,8 @@ export default function AnnouncementsPage() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Choose how broadly the notice should be seen and when it should expire from the feed.
                   </p>
-                  <div className="mt-4 space-y-4">
-                    <div className="space-y-2">
+                  <div className="mt-4 flex flex-col gap-5">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Priority</Label>
                       <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? String(v)}>
                         <SelectTrigger className="h-12 w-full rounded-xl">
@@ -212,7 +212,7 @@ export default function AnnouncementsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Scope</Label>
                       <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? String(v)}>
                         <SelectTrigger className="h-12 w-full rounded-xl">
@@ -225,8 +225,8 @@ export default function AnnouncementsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="expiresAt">Expires (optional)</Label>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="expiresAt">Expires <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                       <Input
                         id="expiresAt"
                         className="h-12 rounded-xl"

@@ -818,9 +818,9 @@ export default function StrataPage() {
               Configure the strata plan details for this building
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="planNo">Strata Plan Number *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="planNo">Strata Plan Number <span className="text-destructive">*</span></Label>
               <Input
                 id="planNo"
                 placeholder="e.g. SP 12345"
@@ -828,8 +828,8 @@ export default function StrataPage() {
                 onChange={(e) => setFormPlanNo(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="mgName">Manager Name</Label>
                 <Input
                   id="mgName"
@@ -837,7 +837,7 @@ export default function StrataPage() {
                   onChange={(e) => setFormManagerName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="mgPhone">Manager Phone</Label>
                 <Input
                   id="mgPhone"
@@ -846,7 +846,7 @@ export default function StrataPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="mgEmail">Manager Email</Label>
               <Input
                 id="mgEmail"
@@ -855,8 +855,8 @@ export default function StrataPage() {
                 onChange={(e) => setFormManagerEmail(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="adminFund">Admin Fund Balance ($)</Label>
                 <Input
                   id="adminFund"
@@ -868,7 +868,7 @@ export default function StrataPage() {
                   onChange={(e) => setFormAdminFund(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="capWorks">Capital Works Balance ($)</Label>
                 <Input
                   id="capWorks"
@@ -881,8 +881,8 @@ export default function StrataPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="insNo">Insurance Policy No.</Label>
                 <Input
                   id="insNo"
@@ -890,7 +890,7 @@ export default function StrataPage() {
                   onChange={(e) => setFormInsuranceNo(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="insExpiry">Insurance Expiry</Label>
                 <Input
                   id="insExpiry"
@@ -900,7 +900,7 @@ export default function StrataPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="nextAgm">Next AGM Date</Label>
               <Input
                 id="nextAgm"
@@ -935,9 +935,9 @@ export default function StrataPage() {
             <DialogTitle>Add Individual Levy</DialogTitle>
             <DialogDescription>Create a levy for a specific unit</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Unit *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label>Unit <span className="text-destructive">*</span></Label>
               <Select onValueChange={(v) => setLevyUnitId(String(v ?? ""))} itemToStringLabel={(v) => { const u = (unitsQuery.data ?? []).find(u => u.id === v); return u ? `Unit ${u.unitNumber}` : String(v); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
@@ -949,8 +949,8 @@ export default function StrataPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Levy Type *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label>Levy Type <span className="text-destructive">*</span></Label>
               <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? String(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -960,8 +960,8 @@ export default function StrataPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lvAmount">Amount ($) *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lvAmount">Amount ($) <span className="text-destructive">*</span></Label>
               <Input
                 id="lvAmount"
                 type="number"
@@ -972,13 +972,13 @@ export default function StrataPage() {
                 onChange={(e) => setLevyAmount(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="lvQStart">Quarter Start *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lvQStart">Quarter Start <span className="text-destructive">*</span></Label>
                 <Input id="lvQStart" type="date" value={levyQuarterStart} onChange={(e) => setLevyQuarterStart(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lvDue">Due Date *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lvDue">Due Date <span className="text-destructive">*</span></Label>
                 <Input id="lvDue" type="date" value={levyDueDate} onChange={(e) => setLevyDueDate(e.target.value)} />
               </div>
             </div>
@@ -1004,9 +1004,9 @@ export default function StrataPage() {
               Creates levies for <strong>all units</strong> in this building at the specified amount
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Levy Type *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label>Levy Type <span className="text-destructive">*</span></Label>
               <Select defaultValue="ADMIN_FUND" onValueChange={(v) => v !== null && setBulkLevyType(v)} itemToStringLabel={(v) => ({ ADMIN_FUND: "Admin Fund", CAPITAL_WORKS: "Capital Works", SPECIAL_LEVY: "Special Levy" })[v] ?? String(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1016,8 +1016,8 @@ export default function StrataPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="blkAmount">Amount per Unit ($) *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="blkAmount">Amount per Unit ($) <span className="text-destructive">*</span></Label>
               <Input
                 id="blkAmount"
                 type="number"
@@ -1028,13 +1028,13 @@ export default function StrataPage() {
                 onChange={(e) => setBulkLevyAmount(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="blkQStart">Quarter Start *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="blkQStart">Quarter Start <span className="text-destructive">*</span></Label>
                 <Input id="blkQStart" type="date" value={bulkLevyQuarterStart} onChange={(e) => setBulkLevyQuarterStart(e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="blkDue">Due Date *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="blkDue">Due Date <span className="text-destructive">*</span></Label>
                 <Input id="blkDue" type="date" value={bulkLevyDueDate} onChange={(e) => setBulkLevyDueDate(e.target.value)} />
               </div>
             </div>
@@ -1065,9 +1065,9 @@ export default function StrataPage() {
               Record a strata committee or general meeting
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="mtTitle">Title *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="mtTitle">Title <span className="text-destructive">*</span></Label>
               <Input
                 id="mtTitle"
                 placeholder="e.g. Annual General Meeting"
@@ -1075,9 +1075,9 @@ export default function StrataPage() {
                 onChange={(e) => setFormMeetingTitle(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="mtDate">Date *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="mtDate">Date <span className="text-destructive">*</span></Label>
                 <Input
                   id="mtDate"
                   type="date"
@@ -1085,7 +1085,7 @@ export default function StrataPage() {
                   onChange={(e) => setFormMeetingDate(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="mtLocation">Location</Label>
                 <Input
                   id="mtLocation"
@@ -1095,7 +1095,7 @@ export default function StrataPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="mtNotes">Notes</Label>
               <Textarea
                 id="mtNotes"
@@ -1148,10 +1148,10 @@ export default function StrataPage() {
               {editingBylaw ? "Update this bylaw's details" : "Record a new bylaw for this strata plan"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bylawNo">Bylaw Number *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bylawNo">Bylaw Number <span className="text-destructive">*</span></Label>
                 <Input
                   id="bylawNo"
                   type="number"
@@ -1161,8 +1161,8 @@ export default function StrataPage() {
                   onChange={(e) => setFormBylawNumber(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bylawDate">Effective Date *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bylawDate">Effective Date <span className="text-destructive">*</span></Label>
                 <Input
                   id="bylawDate"
                   type="date"
@@ -1171,8 +1171,8 @@ export default function StrataPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="bylawTitle">Title *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bylawTitle">Title <span className="text-destructive">*</span></Label>
               <Input
                 id="bylawTitle"
                 placeholder="e.g. Noise restrictions"
@@ -1180,8 +1180,8 @@ export default function StrataPage() {
                 onChange={(e) => setFormBylawTitle(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="bylawContent">Content *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="bylawContent">Content <span className="text-destructive">*</span></Label>
               <Textarea
                 id="bylawContent"
                 rows={5}

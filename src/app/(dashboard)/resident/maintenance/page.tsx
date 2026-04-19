@@ -128,9 +128,9 @@ export default function ResidentMaintenancePage() {
               </DialogHeader>
               <div className="overflow-y-auto px-6 pb-6">
                 <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
-                  <div className="space-y-4">
+                  <div className="flex flex-col gap-5">
                     {allUnits.length > 1 && (
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-1.5">
                         <Label>Unit</Label>
                         <Select
                           value={unitId}
@@ -151,15 +151,15 @@ export default function ResidentMaintenancePage() {
                       </div>
                     )}
                     {allUnits.length === 1 && (
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-1.5">
                         <Label>Unit</Label>
                         <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-3 text-sm font-medium text-foreground">
                           Unit {allUnits[0]?.unitNumber}
                         </div>
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <Label>Title</Label>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Title <span className="text-destructive">*</span></Label>
                       <Input
                         className="h-11 rounded-xl bg-background"
                         value={title}
@@ -167,8 +167,8 @@ export default function ResidentMaintenancePage() {
                         placeholder="e.g. Leaking tap in bathroom"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Description <span className="text-destructive">*</span></Label>
                       <Textarea
                         className="min-h-32 rounded-xl bg-background"
                         value={description}
@@ -185,8 +185,8 @@ export default function ResidentMaintenancePage() {
                     <p className="mt-2 text-sm text-muted-foreground">
                       Set the type of issue and urgency level so the request reaches the right queue faster.
                     </p>
-                    <div className="mt-4 space-y-4">
-                      <div className="space-y-2">
+                    <div className="mt-4 flex flex-col gap-5">
+                      <div className="flex flex-col gap-1.5">
                         <Label>Category</Label>
                         <Select
                           value={category}
@@ -203,7 +203,7 @@ export default function ResidentMaintenancePage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-1.5">
                         <Label>Priority</Label>
                         <Select
                           value={priority}

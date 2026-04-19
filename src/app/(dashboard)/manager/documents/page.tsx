@@ -327,9 +327,9 @@ export default function DocumentsPage() {
               </div>
 
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(19rem,0.9fr)]">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                <Label htmlFor="docTitle">Title *</Label>
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
+                <Label htmlFor="docTitle">Title <span className="text-destructive">*</span></Label>
                 <Input
                   id="docTitle"
                   placeholder="e.g. Building Rules 2024"
@@ -338,7 +338,7 @@ export default function DocumentsPage() {
                   onChange={(e) => setFormTitle(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="docDesc">Description</Label>
                 <Textarea
                   id="docDesc"
@@ -358,7 +358,7 @@ export default function DocumentsPage() {
                     Choose how this file is grouped and whether residents can open it from their portal.
                   </p>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="space-y-2">
+                <div className="flex flex-col gap-1.5">
                   <Label>Category</Label>
                   <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
                     <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>
@@ -369,7 +369,7 @@ export default function DocumentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-1.5">
                   <Label>Visibility</Label>
                   <Select value={formIsPublic} onValueChange={(v) => { if (v) setFormIsPublic(v); }} itemToStringLabel={(v) => v === "true" ? "Public (residents)" : "Staff only"}>
                     <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>

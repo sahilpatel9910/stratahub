@@ -151,9 +151,9 @@ export default function ResidentMessagesPage() {
                 Send a message to your building manager or reception staff
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Recipient *</Label>
+            <div className="flex flex-col gap-5 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
+                <Label>Recipient <span className="text-destructive">*</span></Label>
                 <Select
                   value={formRecipientId}
                   onValueChange={(v) => v !== null && setFormRecipientId(v)}
@@ -194,8 +194,8 @@ export default function ResidentMessagesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject (optional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="subject">Subject <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="subject"
                   placeholder="What is this about?"
@@ -203,8 +203,8 @@ export default function ResidentMessagesPage() {
                   onChange={(e) => setFormSubject(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="composeContent">Message *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="composeContent">Message <span className="text-destructive">*</span></Label>
                 <Textarea
                   id="composeContent"
                   placeholder="Type your message..."

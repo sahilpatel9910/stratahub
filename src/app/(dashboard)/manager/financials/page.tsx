@@ -194,8 +194,8 @@ export default function FinancialsPage() {
             </DialogHeader>
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
-                <div className="space-y-4">
-                  <div className="space-y-2">
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
                     <Label>Type</Label>
                     <Select
                       value={formType}
@@ -214,8 +214,8 @@ export default function FinancialsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Category *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Category <span className="text-destructive">*</span></Label>
                     <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => v}>
                       <SelectTrigger className="h-11 w-full rounded-xl bg-background">
                         <SelectValue placeholder="Select category" />
@@ -227,8 +227,8 @@ export default function FinancialsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="finDesc">Description *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="finDesc">Description <span className="text-destructive">*</span></Label>
                     <Input
                       id="finDesc"
                       className="h-11 rounded-xl bg-background"
@@ -237,9 +237,9 @@ export default function FinancialsPage() {
                       onChange={(e) => setFormDescription(e.target.value)}
                     />
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="finAmount">Amount (AUD) *</Label>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="finAmount">Amount (AUD) <span className="text-destructive">*</span></Label>
                       <Input
                         id="finAmount"
                         type="number"
@@ -251,8 +251,8 @@ export default function FinancialsPage() {
                         onChange={(e) => setFormAmount(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="finDate">Date *</Label>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="finDate">Date <span className="text-destructive">*</span></Label>
                       <Input
                         id="finDate"
                         type="date"

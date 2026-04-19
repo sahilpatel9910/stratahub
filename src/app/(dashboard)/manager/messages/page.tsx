@@ -164,9 +164,9 @@ export default function MessagesPage() {
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Recipient *</Label>
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Recipient <span className="text-destructive">*</span></Label>
                     <Select
                       value={formRecipientId}
                       onValueChange={(value) => value !== null && setFormRecipientId(value)}
@@ -206,8 +206,8 @@ export default function MessagesPage() {
                       Choose a resident from the currently selected building.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject (optional)</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="subject">Subject <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                     <Input
                       id="subject"
                       className="h-12 rounded-xl"
@@ -216,8 +216,8 @@ export default function MessagesPage() {
                       onChange={(e) => setFormSubject(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="composeContent">Message *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="composeContent">Message <span className="text-destructive">*</span></Label>
                     <Textarea
                       id="composeContent"
                       className="min-h-40 rounded-xl"

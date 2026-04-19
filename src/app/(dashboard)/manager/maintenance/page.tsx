@@ -235,9 +235,9 @@ export default function MaintenancePage() {
             </DialogHeader>
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Unit *</Label>
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Unit <span className="text-destructive">*</span></Label>
                     <Select
                       value={formUnitId}
                       onValueChange={(v) => v !== null && setFormUnitId(v)}
@@ -260,8 +260,8 @@ export default function MaintenancePage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Title *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="title">Title <span className="text-destructive">*</span></Label>
                     <Input
                       id="title"
                       className="h-11 rounded-xl bg-background"
@@ -270,8 +270,8 @@ export default function MaintenancePage() {
                       onChange={(e) => setFormTitle(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
                     <Textarea
                       id="description"
                       className="min-h-28 rounded-xl bg-background"
@@ -287,8 +287,8 @@ export default function MaintenancePage() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     Categorise the issue properly so staff can prioritise urgent jobs and assign contractors faster.
                   </p>
-                  <div className="mt-4 space-y-4">
-                    <div className="space-y-2">
+                  <div className="mt-4 flex flex-col gap-5">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Category</Label>
                       <Select
                         value={formCategory}
@@ -305,7 +305,7 @@ export default function MaintenancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-1.5">
                       <Label>Priority</Label>
                       <Select
                         value={formPriority}

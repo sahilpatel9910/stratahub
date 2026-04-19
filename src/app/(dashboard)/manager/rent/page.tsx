@@ -881,9 +881,9 @@ export default function RentPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount Received (AUD) *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="amount">Amount Received (AUD) <span className="text-destructive">*</span></Label>
               <Input
                 id="amount"
                 type="number"
@@ -901,8 +901,8 @@ export default function RentPage() {
                 </p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="paidDate">Payment Date *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="paidDate">Payment Date <span className="text-destructive">*</span></Label>
               <Input
                 id="paidDate"
                 type="date"
@@ -911,7 +911,7 @@ export default function RentPage() {
                 onChange={(e) => setFormPaidDate(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="method">Payment Method</Label>
               <Input
                 id="method"
@@ -921,7 +921,7 @@ export default function RentPage() {
                 onChange={(e) => setFormMethod(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
@@ -978,9 +978,9 @@ export default function RentPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="setupLeaseStartDate">Lease Start Date *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="setupLeaseStartDate">Lease Start Date <span className="text-destructive">*</span></Label>
               <Input
                 id="setupLeaseStartDate"
                 type="date"
@@ -989,7 +989,7 @@ export default function RentPage() {
                 onChange={(e) => setSetupLeaseStartDate(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="setupLeaseEndDate">Lease End Date</Label>
               <Input
                 id="setupLeaseEndDate"
@@ -999,9 +999,9 @@ export default function RentPage() {
                 onChange={(e) => setSetupLeaseEndDate(e.target.value)}
               />
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="setupRentAmount">Rent Amount (AUD) *</Label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="setupRentAmount">Rent Amount (AUD) <span className="text-destructive">*</span></Label>
                 <Input
                   id="setupRentAmount"
                   type="number"
@@ -1013,8 +1013,8 @@ export default function RentPage() {
                   onChange={(e) => setSetupRentAmount(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Rent Frequency *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label>Rent Frequency <span className="text-destructive">*</span></Label>
                 <Select
                   value={setupRentFrequency}
                   onValueChange={(v) => setSetupRentFrequency(v as RentFrequency)}
@@ -1030,9 +1030,9 @@ export default function RentPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="setupBondAmount">Bond Amount (AUD) *</Label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="setupBondAmount">Bond Amount (AUD) <span className="text-destructive">*</span></Label>
                 <Input
                   id="setupBondAmount"
                   type="number"
@@ -1044,7 +1044,7 @@ export default function RentPage() {
                   onChange={(e) => setSetupBondAmount(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="setupMoveInDate">Move In Date</Label>
                 <Input
                   id="setupMoveInDate"
@@ -1055,7 +1055,7 @@ export default function RentPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="setupScheduleMonths">Initial Schedule (months)</Label>
               <Input
                 id="setupScheduleMonths"
@@ -1103,10 +1103,10 @@ export default function RentPage() {
               Record bond lodgement details for this tenancy.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="bondAmount">Bond Amount (AUD) *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bondAmount">Bond Amount (AUD) <span className="text-destructive">*</span></Label>
                 <Input
                   id="bondAmount"
                   type="number"
@@ -1118,8 +1118,8 @@ export default function RentPage() {
                   onChange={(e) => setBondForm((f) => ({ ...f, amountCents: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="bondState">State *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bondState">State <span className="text-destructive">*</span></Label>
                 <Select
                   value={bondForm.state}
                   onValueChange={(v) => v !== null && setBondForm((f) => ({ ...f, state: v as AustralianStateCode }))}
@@ -1141,8 +1141,8 @@ export default function RentPage() {
                 {BOND_LODGEMENT_AUTHORITIES[bondForm.state]}
               </p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="bondStatus">Status</Label>
                 <Select
                   value={bondForm.status}
@@ -1160,7 +1160,7 @@ export default function RentPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="bondLodgementDate">Lodgement Date</Label>
                 <Input
                   id="bondLodgementDate"
@@ -1171,7 +1171,7 @@ export default function RentPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="bondRef">Reference Number</Label>
               <Input
                 id="bondRef"
@@ -1181,7 +1181,7 @@ export default function RentPage() {
                 onChange={(e) => setBondForm((f) => ({ ...f, referenceNumber: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="bondNotes">Notes</Label>
               <Textarea
                 id="bondNotes"
@@ -1216,8 +1216,8 @@ export default function RentPage() {
               Change the bond status and optionally add a note.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
-            <div className="space-y-2">
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="newBondStatus">New Status</Label>
               <Select
                 value={bondStatusForm.status}
@@ -1235,7 +1235,7 @@ export default function RentPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="statusNotes">Notes</Label>
               <Textarea
                 id="statusNotes"

@@ -264,8 +264,8 @@ export default function UnitsPage() {
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="unitNumber">Unit Number *</Label>
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <Label htmlFor="unitNumber">Unit Number <span className="text-destructive">*</span></Label>
                     <Input
                       id="unitNumber"
                       className="h-11 rounded-xl bg-background"
@@ -274,7 +274,7 @@ export default function UnitsPage() {
                       onChange={(e) => setFormUnitNumber(e.target.value)}
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-2 flex flex-col gap-1.5">
                     <Label>Unit Type</Label>
                     <Select
                       value={formUnitType}
@@ -295,7 +295,7 @@ export default function UnitsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="bedrooms">Bedrooms</Label>
                     <Input
                       id="bedrooms"
@@ -307,7 +307,7 @@ export default function UnitsPage() {
                       onChange={(e) => setFormBedrooms(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="bathrooms">Bathrooms</Label>
                     <Input
                       id="bathrooms"
@@ -319,7 +319,7 @@ export default function UnitsPage() {
                       onChange={(e) => setFormBathrooms(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="size">Size (m²)</Label>
                     <Input
                       id="size"
@@ -332,7 +332,7 @@ export default function UnitsPage() {
                       onChange={(e) => setFormSize(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="parking">Parking Spaces</Label>
                     <Input
                       id="parking"
@@ -343,7 +343,7 @@ export default function UnitsPage() {
                       onChange={(e) => setFormParking(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="storage">Storage Spaces</Label>
                     <Input
                       id="storage"
@@ -362,8 +362,8 @@ export default function UnitsPage() {
                       Every new unit must start with an owner record. If the owner already has an account, they will be linked immediately. Otherwise, StrataHub sends them an owner invite for this unit.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerFirstName">Owner First Name *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ownerFirstName">Owner First Name <span className="text-destructive">*</span></Label>
                     <Input
                       id="ownerFirstName"
                       className="h-11 rounded-xl bg-background"
@@ -371,8 +371,8 @@ export default function UnitsPage() {
                       onChange={(e) => setOwnerFirstName(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerLastName">Owner Last Name *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ownerLastName">Owner Last Name <span className="text-destructive">*</span></Label>
                     <Input
                       id="ownerLastName"
                       className="h-11 rounded-xl bg-background"
@@ -380,8 +380,8 @@ export default function UnitsPage() {
                       onChange={(e) => setOwnerLastName(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerEmail">Owner Email *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ownerEmail">Owner Email <span className="text-destructive">*</span></Label>
                     <Input
                       id="ownerEmail"
                       type="email"
@@ -390,8 +390,8 @@ export default function UnitsPage() {
                       onChange={(e) => setOwnerEmail(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ownerPhone">Owner Phone *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="ownerPhone">Owner Phone <span className="text-destructive">*</span></Label>
                     <Input
                       id="ownerPhone"
                       className="h-11 rounded-xl bg-background"
@@ -646,7 +646,7 @@ export default function UnitsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 px-6 pb-6 pt-4 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label>Resident Type</Label>
               <Select
                 value={assignRole}
@@ -669,7 +669,7 @@ export default function UnitsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-1.5">
               <Label>Resident</Label>
               <Select
                 value={assignResidentUserId}
@@ -705,7 +705,7 @@ export default function UnitsPage() {
             </div>
 
             {assignRole === "OWNER" ? (
-              <div className="space-y-2 md:col-span-2">
+              <div className="flex flex-col gap-1.5 md:col-span-2">
                 <Label htmlFor="purchaseDate">Ownership Start</Label>
                 <Input
                   id="purchaseDate"
@@ -717,8 +717,8 @@ export default function UnitsPage() {
               </div>
             ) : (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="leaseStartDate">Lease Start *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="leaseStartDate">Lease Start <span className="text-destructive">*</span></Label>
                   <Input
                     id="leaseStartDate"
                     type="date"
@@ -727,7 +727,7 @@ export default function UnitsPage() {
                     onChange={(e) => setAssignLeaseStartDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-1.5">
                   <Label htmlFor="leaseEndDate">Lease End</Label>
                   <Input
                     id="leaseEndDate"
@@ -737,8 +737,8 @@ export default function UnitsPage() {
                     onChange={(e) => setAssignLeaseEndDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rentAmount">Rent Amount (AUD) *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="rentAmount">Rent Amount (AUD) <span className="text-destructive">*</span></Label>
                   <Input
                     id="rentAmount"
                     type="number"
@@ -749,8 +749,8 @@ export default function UnitsPage() {
                     onChange={(e) => setAssignRentAmount(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Rent Frequency *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Rent Frequency <span className="text-destructive">*</span></Label>
                   <Select
                     value={assignRentFrequency}
                     onValueChange={(value) => setAssignRentFrequency(value as RentFrequency)}
@@ -766,8 +766,8 @@ export default function UnitsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bondAmount">Bond Amount (AUD) *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="bondAmount">Bond Amount (AUD) <span className="text-destructive">*</span></Label>
                   <Input
                     id="bondAmount"
                     type="number"
@@ -778,7 +778,7 @@ export default function UnitsPage() {
                     onChange={(e) => setAssignBondAmount(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-1.5">
                   <Label htmlFor="moveInDate">Move-in Date</Label>
                   <Input
                     id="moveInDate"

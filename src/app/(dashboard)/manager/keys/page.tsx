@@ -225,9 +225,9 @@ export default function KeysPage() {
                 Register a new key or access credential for this building
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Key Type *</Label>
+            <div className="grid grid-cols-2 gap-3 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
+                <Label>Key Type <span className="text-destructive">*</span></Label>
                 <Select value={formKeyType} onValueChange={(v) => v !== null && setFormKeyType(v)} itemToStringLabel={(v) => KEY_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -241,8 +241,8 @@ export default function KeysPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="identifier">Identifier *</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="identifier">Identifier <span className="text-destructive">*</span></Label>
                 <Input
                   id="identifier"
                   placeholder="e.g. K-101-A, FOB-042"
@@ -250,8 +250,8 @@ export default function KeysPage() {
                   onChange={(e) => setFormIdentifier(e.target.value)}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Unit (optional)</Label>
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <Label>Unit <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Select
                   value={formUnitId}
                   onValueChange={(v) => v !== null && setFormUnitId(v)}
@@ -270,8 +270,8 @@ export default function KeysPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="issuedTo">Issued To (optional)</Label>
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <Label htmlFor="issuedTo">Issued To <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="issuedTo"
                   placeholder="Resident or staff name"
@@ -279,7 +279,7 @@ export default function KeysPage() {
                   onChange={(e) => setFormIssuedTo(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="issuedDate">Issued Date</Label>
                 <Input
                   id="issuedDate"
@@ -288,7 +288,7 @@ export default function KeysPage() {
                   onChange={(e) => setFormIssuedDate(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="rotationDue">Rotation Due</Label>
                 <Input
                   id="rotationDue"
@@ -297,7 +297,7 @@ export default function KeysPage() {
                   onChange={(e) => setFormRotationDue(e.target.value)}
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="col-span-2 flex flex-col gap-1.5">
                 <Label htmlFor="keyNotes">Notes</Label>
                 <Textarea
                   id="keyNotes"
@@ -590,9 +590,9 @@ export default function KeysPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="issueTo">Issue To *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="issueTo">Issue To <span className="text-destructive">*</span></Label>
               <Input
                 id="issueTo"
                 placeholder="Resident or staff name"

@@ -166,8 +166,8 @@ export default function OrganisationsPage() {
                 Add a new property management organisation
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            <div className="flex flex-col gap-5 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="orgName">Organisation Name</Label>
                 <Input
                   id="orgName"
@@ -176,8 +176,8 @@ export default function OrganisationsPage() {
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="abn">ABN (optional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="abn">ABN <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="abn"
                   placeholder="XX XXX XXX XXX"
@@ -185,7 +185,7 @@ export default function OrganisationsPage() {
                   onChange={(e) => setFormAbn(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="state">State</Label>
                 <Select
                   value={formState}
@@ -237,8 +237,8 @@ export default function OrganisationsPage() {
                 Update organisation details
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            <div className="flex flex-col gap-5 px-7 py-6">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="editOrgName">Organisation Name</Label>
                 <Input
                   id="editOrgName"
@@ -247,8 +247,8 @@ export default function OrganisationsPage() {
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editAbn">ABN (optional)</Label>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editAbn">ABN <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                 <Input
                   id="editAbn"
                   placeholder="XX XXX XXX XXX"
@@ -256,7 +256,7 @@ export default function OrganisationsPage() {
                   onChange={(e) => setFormAbn(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-1.5">
                 <Label htmlFor="editState">State</Label>
                 <Select
                   value={formState}

@@ -84,7 +84,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 border-b border-border/70 px-6 py-5", className)}
+      className={cn("flex flex-col gap-1 border-b border-border/70 px-7 pt-6 pb-5", className)}
       {...props}
     />
   )
@@ -102,7 +102,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "mt-auto flex shrink-0 flex-col-reverse gap-2 border-t border-border/70 bg-background/95 px-6 py-4 backdrop-blur-sm sm:flex-row sm:justify-end",
+        "mt-auto flex shrink-0 flex-col-reverse gap-2 border-t border-border/70 bg-muted/40 px-7 py-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -122,7 +122,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-base leading-none font-medium",
+        "font-heading text-[15px] font-semibold leading-none tracking-[-0.03em]",
         className
       )}
       {...props}
@@ -138,7 +138,7 @@ function DialogDescription({
     <DialogPrimitive.Description
       data-slot="dialog-description"
       className={cn(
-        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        "text-xs text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
         className
       )}
       {...props}

@@ -242,8 +242,8 @@ export default function ParcelsPage() {
             <div className="overflow-y-auto px-6 pb-6">
               <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="parcelUnit">Unit Number *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="parcelUnit">Unit Number <span className="text-destructive">*</span></Label>
                     <Input
                       id="parcelUnit"
                       className="h-11 rounded-xl bg-background"
@@ -252,8 +252,8 @@ export default function ParcelsPage() {
                       onChange={(e) => setFormUnitNumber(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="recipient">Recipient Name *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="recipient">Recipient Name <span className="text-destructive">*</span></Label>
                     <Input
                       id="recipient"
                       className="h-11 rounded-xl bg-background"
@@ -262,7 +262,7 @@ export default function ParcelsPage() {
                       onChange={(e) => setFormRecipient(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="carrier">Carrier</Label>
                     <Input
                       id="carrier"
@@ -272,7 +272,7 @@ export default function ParcelsPage() {
                       onChange={(e) => setFormCarrier(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="tracking">Tracking Number</Label>
                     <Input
                       id="tracking"
@@ -282,7 +282,7 @@ export default function ParcelsPage() {
                       onChange={(e) => setFormTracking(e.target.value)}
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-2 flex flex-col gap-1.5">
                     <Label htmlFor="storage">Storage Location</Label>
                     <Input
                       id="storage"
@@ -292,7 +292,7 @@ export default function ParcelsPage() {
                       onChange={(e) => setFormStorage(e.target.value)}
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-2 flex flex-col gap-1.5">
                     <Label htmlFor="parcelNotes">Notes</Label>
                     <Textarea
                       id="parcelNotes"
@@ -547,9 +547,9 @@ export default function ParcelsPage() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="collectedBy">Collected By *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="collectedBy">Collected By <span className="text-destructive">*</span></Label>
               <Input
                 id="collectedBy"
                 className="h-11 rounded-xl bg-background"

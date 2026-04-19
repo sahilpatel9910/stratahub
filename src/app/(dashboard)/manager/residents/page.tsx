@@ -346,9 +346,9 @@ export default function ResidentsPage() {
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.9fr)]">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="inviteEmail">Email *</Label>
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="inviteEmail">Email <span className="text-destructive">*</span></Label>
                   <Input
                     id="inviteEmail"
                     type="email"
@@ -358,8 +358,8 @@ export default function ResidentsPage() {
                     onChange={(e) => setInviteEmail(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Role *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Role <span className="text-destructive">*</span></Label>
                   <Select
                     value={inviteRole}
                     onValueChange={(value) => value !== null && setInviteRole(value as InviteRole)}
@@ -380,8 +380,8 @@ export default function ResidentsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Unit *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Unit <span className="text-destructive">*</span></Label>
                   <Select
                     value={inviteUnitId}
                     onValueChange={(value) => value !== null && setInviteUnitId(value)}

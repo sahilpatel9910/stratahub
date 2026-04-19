@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Building2, ChevronDown, Check } from "lucide-react";
 import { useBuildingContext } from "@/hooks/use-building-context";
 
@@ -19,8 +20,8 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
   const { selectedBuildingId, setSelectedBuilding, clearSelectedBuilding } =
     useBuildingContext();
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedBuildingId && !buildings.some((b) => b.id === selectedBuildingId)) {
@@ -36,18 +37,20 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
   }, [buildings, selectedBuildingId, setSelectedBuilding]);
 
   useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node) &&
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelStyle({ top: rect.bottom + 8, left: rect.left });
     }
-    if (open) document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+
+    if (!open) return;
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
   }, [open]);
 
   if (buildings.length === 0) return null;
@@ -75,48 +78,51 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div
-            ref={panelRef}
-            className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
-          >
-            {showOrgs
-              ? orgNames.map((org) => (
-                  <div key={org}>
-                    <div className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      {org}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+            <div
+              className="fixed z-[70] w-72 overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+              style={{ top: panelStyle?.top ?? 80, left: panelStyle?.left ?? 0 }}
+            >
+              {showOrgs
+                ? orgNames.map((org) => (
+                    <div key={org}>
+                      <div className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        {org}
+                      </div>
+                      {buildings
+                        .filter((b) => b.organisationName === org)
+                        .map((b) => (
+                          <BuildingOption
+                            key={b.id}
+                            building={b}
+                            selected={b.id === selectedBuildingId}
+                            onSelect={() => {
+                              setSelectedBuilding(b.id, b.name);
+                              setOpen(false);
+                            }}
+                          />
+                        ))}
                     </div>
-                    {buildings
-                      .filter((b) => b.organisationName === org)
-                      .map((b) => (
-                        <BuildingOption
-                          key={b.id}
-                          building={b}
-                          selected={b.id === selectedBuildingId}
-                          onSelect={() => {
-                            setSelectedBuilding(b.id, b.name);
-                            setOpen(false);
-                          }}
-                        />
-                      ))}
-                  </div>
-                ))
-              : buildings.map((b) => (
-                  <BuildingOption
-                    key={b.id}
-                    building={b}
-                    selected={b.id === selectedBuildingId}
-                    onSelect={() => {
-                      setSelectedBuilding(b.id, b.name);
-                      setOpen(false);
-                    }}
-                  />
-                ))}
-          </div>
-        </>
-      )}
+                  ))
+                : buildings.map((b) => (
+                    <BuildingOption
+                      key={b.id}
+                      building={b}
+                      selected={b.id === selectedBuildingId}
+                      onSelect={() => {
+                        setSelectedBuilding(b.id, b.name);
+                        setOpen(false);
+                      }}
+                    />
+                  ))}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }

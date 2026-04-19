@@ -114,7 +114,7 @@ export function Topbar({
   }
 
   return (
-    <header className="border-b border-border/70 bg-white/70 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-white/70 px-4 backdrop-blur-md md:px-6">
       <div className="flex min-h-16 items-center gap-3">
         <div className="flex items-center gap-3">
           <SidebarTrigger className="rounded-xl border border-white/70 bg-white/85 hover:bg-white" />

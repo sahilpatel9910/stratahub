@@ -618,9 +618,9 @@ export default function SuperAdminUsersPage() {
               Grant an existing user access to a building with a specific role
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>User *</Label>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label>User <span className="text-destructive">*</span></Label>
               <Select
                 value={assignUserId}
                 onValueChange={(v) => { if (v) setAssignUserId(v); }}
@@ -638,8 +638,8 @@ export default function SuperAdminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Organisation *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label>Organisation <span className="text-destructive">*</span></Label>
               <Select
                 value={assignOrgId}
                 onValueChange={(v) => {
@@ -662,8 +662,8 @@ export default function SuperAdminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Building *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label>Building <span className="text-destructive">*</span></Label>
               <Select
                 value={assignBuildingId}
                 onValueChange={(v) => { if (v) setAssignBuildingId(v); }}
@@ -682,8 +682,8 @@ export default function SuperAdminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Role *</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label>Role <span className="text-destructive">*</span></Label>
               <Select
                 value={assignRole}
                 onValueChange={(v) => { if (v) setAssignRole(v as AssignableBuildingRole); }}
@@ -742,7 +742,7 @@ export default function SuperAdminUsersPage() {
           </DialogHeader>
 
           {inviteLink ? (
-            <div className="space-y-4 py-4">
+            <div className="flex flex-col gap-5 px-7 py-6">
               <p className="text-sm text-muted-foreground">
                 Share this link with the user. It expires in 7 days.
               </p>
@@ -773,9 +773,9 @@ export default function SuperAdminUsersPage() {
             </div>
           ) : (
             <>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="inviteEmail">Email Address *</Label>
+              <div className="flex flex-col gap-5 px-7 py-6">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="inviteEmail">Email Address <span className="text-destructive">*</span></Label>
                   <Input
                     id="inviteEmail"
                     type="email"
@@ -784,8 +784,8 @@ export default function SuperAdminUsersPage() {
                     onChange={(e) => setInviteEmail(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Organisation *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Organisation <span className="text-destructive">*</span></Label>
                   <Select
                     value={inviteOrgId}
                     onValueChange={(v) => {
@@ -809,8 +809,8 @@ export default function SuperAdminUsersPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Building (optional)</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Building <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
                   <Select
                     value={inviteBuildingId}
                     onValueChange={(v) => {
@@ -848,8 +848,8 @@ export default function SuperAdminUsersPage() {
                   </p>
                 </div>
                 {roleRequiresUnit(inviteRole) && (
-                  <div className="space-y-2">
-                    <Label>Unit *</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Unit <span className="text-destructive">*</span></Label>
                     <Select
                       value={inviteUnitId}
                       onValueChange={(v) => { if (v) setInviteUnitId(v); }}
@@ -875,8 +875,8 @@ export default function SuperAdminUsersPage() {
                     </p>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label>Role *</Label>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Role <span className="text-destructive">*</span></Label>
                   <Select
                     value={inviteRole}
                     onValueChange={(v) => {
