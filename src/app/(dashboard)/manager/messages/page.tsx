@@ -157,13 +157,13 @@ export default function MessagesPage() {
             <Send className="mr-2 h-4 w-4" />
             New Message
           </DialogTrigger>
-          <DialogContent className="max-w-4xl p-0">
+          <DialogContent className="max-w-lg p-0">
             <DialogHeader>
               <DialogTitle className="px-0 pt-0">New Message</DialogTitle>
               <DialogDescription className="px-0">Send a direct message to a user</DialogDescription>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
+            <div className="flex-1 overflow-y-auto px-7 py-5">
+              <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-5">
                   <div className="flex flex-col gap-1.5">
                     <Label>Recipient <span className="text-destructive">*</span></Label>
@@ -228,7 +228,7 @@ export default function MessagesPage() {
                     />
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4 xl:sticky xl:top-0">
+                <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Delivery note
                   </p>

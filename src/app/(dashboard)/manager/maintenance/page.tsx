@@ -226,15 +226,15 @@ export default function MaintenancePage() {
             <Plus className="mr-2 h-4 w-4" />
             New Request
           </DialogTrigger>
-          <DialogContent className="max-w-2xl p-0">
+          <DialogContent className="max-w-lg p-0">
             <DialogHeader>
               <DialogTitle className="px-6 pt-6">New Maintenance Request</DialogTitle>
               <DialogDescription className="px-6">
                 Log a maintenance issue for a unit in this building
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
+            <div className="overflow-y-auto px-7 pb-6">
+              <div className="flex flex-col gap-5 py-6">
                 <div className="flex flex-col gap-5">
                   <div className="flex flex-col gap-1.5">
                     <Label>Unit <span className="text-destructive">*</span></Label>
@@ -326,7 +326,7 @@ export default function MaintenancePage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-6">
+            <DialogFooter className="px-7">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={createMutation.isPending}>
                 Cancel
               </Button>

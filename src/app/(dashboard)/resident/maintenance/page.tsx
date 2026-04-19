@@ -119,15 +119,15 @@ export default function ResidentMaintenancePage() {
               <Plus className="mr-2 h-4 w-4" />
               New Request
             </DialogTrigger>
-            <DialogContent className="max-w-2xl p-0">
+            <DialogContent className="max-w-lg p-0">
               <DialogHeader>
                 <DialogTitle className="px-6 pt-6">New Maintenance Request</DialogTitle>
                 <DialogDescription className="px-6">
                   Share the issue clearly so building management can route it to the right team.
                 </DialogDescription>
               </DialogHeader>
-              <div className="overflow-y-auto px-6 pb-6">
-                <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
+              <div className="overflow-y-auto px-7 pb-6">
+                <div className="flex flex-col gap-5 py-6">
                   <div className="flex flex-col gap-5">
                     {allUnits.length > 1 && (
                       <div className="flex flex-col gap-1.5">
@@ -224,7 +224,7 @@ export default function ResidentMaintenancePage() {
                   </div>
                 </div>
               </div>
-              <DialogFooter className="px-6">
+              <DialogFooter className="px-7">
                 <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createRequest.isPending}>
                   Cancel
                 </Button>

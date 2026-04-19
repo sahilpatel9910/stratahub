@@ -337,15 +337,15 @@ export default function ResidentsPage() {
           if (!open) resetInviteForm();
         }}
       >
-        <DialogContent className="max-w-3xl p-0">
+        <DialogContent className="max-w-lg p-0">
           <DialogHeader>
             <DialogTitle className="px-0 pt-0">Invite Resident</DialogTitle>
             <DialogDescription className="px-0">
               Send an invite for an owner or tenant in the selected building.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.9fr)]">
+          <div className="flex-1 overflow-y-auto px-7 py-5">
+            <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="inviteEmail">Email <span className="text-destructive">*</span></Label>

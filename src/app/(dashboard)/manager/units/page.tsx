@@ -254,15 +254,15 @@ export default function UnitsPage() {
             <Plus className="mr-2 h-4 w-4" />
             Add Unit
           </DialogTrigger>
-          <DialogContent className="max-w-2xl p-0">
+          <DialogContent className="max-w-lg p-0">
             <DialogHeader>
               <DialogTitle className="px-6 pt-6">Add Unit</DialogTitle>
               <DialogDescription className="px-6">
                 Create a new unit in this building
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-y-auto px-6 pb-6">
-              <div className="grid gap-5 py-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(19rem,0.9fr)]">
+            <div className="overflow-y-auto px-7 pb-6">
+              <div className="flex flex-col gap-5 py-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="col-span-2 flex flex-col gap-1.5">
                     <Label htmlFor="unitNumber">Unit Number <span className="text-destructive">*</span></Label>
@@ -410,7 +410,7 @@ export default function UnitsPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="px-6">
+            <DialogFooter className="px-7">
               <Button
                 variant="outline"
                 onClick={() => setDialogOpen(false)}

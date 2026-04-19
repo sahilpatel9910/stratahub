@@ -6,14 +6,6 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Lock, Shield, User, UserCog } from "lucide-react";
@@ -57,16 +49,16 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <section className="app-panel overflow-hidden p-6 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div>
             <p className="eyebrow-label text-primary/80">Manager Workspace</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
-              Account settings and access details
+              Account settings
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-              Manage your personal details, reset your password safely, and review the roles currently attached to your account.
+              Manage your personal details, reset your password, and review your active roles.
             </p>
           </div>
           <div className="app-grid-panel bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(233,243,247,0.9))] p-5">
@@ -81,146 +73,160 @@ export default function SettingsPage() {
       </section>
 
       {/* Profile */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Profile</CardTitle>
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <User className="h-4 w-4 text-primary" />
           </div>
-          <CardDescription>Update your name and contact number</CardDescription>
-        </CardHeader>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Profile</h2>
+            <p className="text-xs text-muted-foreground">Update your name and contact number</p>
+          </div>
+        </div>
         <form onSubmit={handleSave}>
-          <CardContent className="space-y-4">
+          <div className="flex flex-col gap-5 px-6 py-5">
             {isLoading ? (
               <>
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+                <Skeleton className="h-11 w-full rounded-xl" />
               </>
-            ) : (
-              me ? (
-                <>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First name</Label>
-                      <Input
-                        id="firstName"
-                        className="h-11 rounded-xl bg-background"
-                        value={profileValues.firstName}
-                        onChange={(e) =>
-                          setDraft((current) => ({
-                            firstName: e.target.value,
-                            lastName: current?.lastName ?? me.lastName,
-                            phone: current?.phone ?? me.phone ?? "",
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last name</Label>
-                      <Input
-                        id="lastName"
-                        className="h-11 rounded-xl bg-background"
-                        value={profileValues.lastName}
-                        onChange={(e) =>
-                          setDraft((current) => ({
-                            firstName: current?.firstName ?? me.firstName,
-                            lastName: e.target.value,
-                            phone: current?.phone ?? me.phone ?? "",
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+            ) : me ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="firstName">First name</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      value={me.email ?? ""}
-                      disabled
-                      className="h-11 rounded-xl bg-gray-50"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Email cannot be changed here. Contact your administrator.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
+                      id="firstName"
                       className="h-11 rounded-xl bg-background"
-                      placeholder="+61 4xx xxx xxx"
-                      value={profileValues.phone}
+                      value={profileValues.firstName}
+                      onChange={(e) =>
+                        setDraft((current) => ({
+                          firstName: e.target.value,
+                          lastName: current?.lastName ?? me.lastName,
+                          phone: current?.phone ?? me.phone ?? "",
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="lastName">Last name</Label>
+                    <Input
+                      id="lastName"
+                      className="h-11 rounded-xl bg-background"
+                      value={profileValues.lastName}
                       onChange={(e) =>
                         setDraft((current) => ({
                           firstName: current?.firstName ?? me.firstName,
-                          lastName: current?.lastName ?? me.lastName,
-                          phone: e.target.value,
+                          lastName: e.target.value,
+                          phone: current?.phone ?? me.phone ?? "",
                         }))
                       }
                     />
                   </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">Unable to load your profile.</p>
-              )
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={me.email ?? ""}
+                    disabled
+                    className="h-11 rounded-xl bg-muted/40"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Email cannot be changed here. Contact your administrator.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="phone">Phone <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="+61 4xx xxx xxx"
+                    value={profileValues.phone}
+                    onChange={(e) =>
+                      setDraft((current) => ({
+                        firstName: current?.firstName ?? me.firstName,
+                        lastName: current?.lastName ?? me.lastName,
+                        phone: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Unable to load your profile.</p>
             )}
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={isLoading || updateMe.isPending || !me}>
+          </div>
+          <div className="flex justify-end border-t border-border/40 px-6 py-4">
+            <Button
+              type="submit"
+              className="h-11 rounded-xl px-5"
+              disabled={isLoading || updateMe.isPending || !me}
+            >
               {updateMe.isPending ? "Saving..." : "Save Changes"}
             </Button>
-          </CardFooter>
+          </div>
         </form>
-      </Card>
+      </section>
 
       {/* Password */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Password</CardTitle>
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+            <Lock className="h-4 w-4 text-amber-600" />
           </div>
-          <CardDescription>Change your account password</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Password</h2>
+            <p className="text-xs text-muted-foreground">Change your account password</p>
+          </div>
+        </div>
+        <div className="px-6 py-5">
           <p className="text-sm text-muted-foreground">
-            We&apos;ll send a password reset link to <strong>{me?.email}</strong>.
+            We&apos;ll send a password reset link to <strong className="text-foreground">{me?.email}</strong>.
           </p>
-        </CardContent>
-        <CardFooter>
+        </div>
+        <div className="flex border-t border-border/40 px-6 py-4">
           <Button
             variant="outline"
+            className="h-11 rounded-xl px-5"
             onClick={() => router.push("/forgot-password")}
           >
             Send Reset Link
           </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </section>
 
       {/* Roles */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-base">Roles &amp; Access</CardTitle>
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+            <Shield className="h-4 w-4 text-emerald-600" />
           </div>
-          <CardDescription>Your current permissions in this system</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Roles &amp; Access</h2>
+            <p className="text-xs text-muted-foreground">Your current permissions in this system</p>
+          </div>
+        </div>
+        <div className="px-6 py-5">
           {isLoading ? (
-            <Skeleton className="h-6 w-40" />
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-32 rounded-full" />
+              <Skeleton className="h-8 w-28 rounded-full" />
+            </div>
           ) : me?.orgMemberships.length === 0 ? (
             <p className="text-sm text-muted-foreground">No roles assigned.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {me?.orgMemberships.map((m, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/35 px-3 py-1.5">
-                  <Badge variant="outline">
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-full border border-border/70 bg-white/75 px-3 py-1.5"
+                >
+                  <Badge variant="outline" className="text-xs">
                     {ROLE_LABELS[m.role] ?? m.role}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
@@ -230,8 +236,8 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }
