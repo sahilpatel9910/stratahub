@@ -93,7 +93,7 @@ export function ResidentSidebar() {
                   <MessageSquare className="h-4 w-4" />
                   <span>Messages</span>
                   {!!unreadCount && unreadCount > 0 && (
-                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1.5 text-[10px] font-semibold text-white">
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}

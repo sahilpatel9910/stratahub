@@ -25,6 +25,7 @@ interface TopbarProps {
   showBuildingSwitcher?: boolean;
   searchPlaceholder?: string;
   greetingName?: string | null;
+  userInitials?: string | null;
 }
 
 export function Topbar({
@@ -32,6 +33,7 @@ export function Topbar({
   showBuildingSwitcher = true,
   searchPlaceholder = "Search residents, units, parcels...",
   greetingName,
+  userInitials,
 }: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ top: number; right: number } | null>(null);
@@ -112,8 +114,8 @@ export function Topbar({
   }
 
   return (
-    <header className="border-b border-border/70 bg-white/70 px-4 py-3 backdrop-blur-md md:px-6">
-      <div className="flex min-h-14 items-center gap-3">
+    <header className="border-b border-border/70 bg-white/70 px-4 backdrop-blur-md md:px-6">
+      <div className="flex min-h-16 items-center gap-3">
         <div className="flex items-center gap-3">
           <SidebarTrigger className="rounded-xl border border-white/70 bg-white/85 hover:bg-white" />
           <Separator orientation="vertical" className="hidden h-6 bg-border md:block" />
@@ -232,6 +234,17 @@ export function Topbar({
             </>
           )}
         </div>
+
+        {userInitials && (
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))",
+            }}
+          >
+            {userInitials}
+          </div>
+        )}
       </div>
 
       {canShowBuildingSwitcher && (

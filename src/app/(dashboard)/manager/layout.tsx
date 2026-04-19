@@ -104,6 +104,11 @@ export default async function ManagerLayout({
           buildings={buildings}
           showBuildingSwitcher={isSuperAdmin || buildings.length > 1}
           greetingName={dbUser?.firstName ?? authUser.user_metadata?.first_name ?? null}
+          userInitials={
+            dbUser
+              ? `${dbUser.firstName[0]}${dbUser.lastName[0]}`.toUpperCase()
+              : null
+          }
         />
         <main className="app-main">{children}</main>
       </div>

@@ -68,6 +68,11 @@ export default async function ResidentLayout({
           buildings={ownedBuildings}
           showBuildingSwitcher={showBuildingSwitcher}
           searchPlaceholder="Search announcements, documents, and updates..."
+          userInitials={
+            dbUser
+              ? `${dbUser.firstName[0]}${dbUser.lastName[0]}`.toUpperCase()
+              : null
+          }
         />
         <main className="app-main">{children}</main>
       </div>

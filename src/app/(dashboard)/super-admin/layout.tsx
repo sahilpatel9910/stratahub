@@ -55,7 +55,14 @@ export default async function SuperAdminLayout({
     <div className="app-shell flex h-screen w-full">
       <AppSidebar isSuperAdmin />
       <div className="workspace-backdrop flex flex-1 flex-col overflow-hidden">
-        <Topbar buildings={buildings} />
+        <Topbar
+          buildings={buildings}
+          userInitials={
+            dbUser
+              ? `${dbUser.firstName[0]}${dbUser.lastName[0]}`.toUpperCase()
+              : null
+          }
+        />
         <main className="app-main">{children}</main>
       </div>
     </div>

@@ -1,14 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Building2, ChevronDown, Check } from "lucide-react";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface Building {
   id: string;
@@ -24,116 +18,130 @@ interface BuildingSwitcherProps {
 export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
   const { selectedBuildingId, setSelectedBuilding, clearSelectedBuilding } =
     useBuildingContext();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Unique org names in order
-  const orgNames = Array.from(
-    new Set(buildings.map((b) => b.organisationName))
-  );
-
-  // Org of the currently selected building
-  const selectedBuildingOrg = selectedBuildingId
-    ? (buildings.find((b) => b.id === selectedBuildingId)?.organisationName ?? null)
-    : null;
-
-  const [selectedOrgState, setSelectedOrgState] = useState<string>(
-    selectedBuildingOrg ?? (orgNames.length === 1 ? orgNames[0] : "")
-  );
-  const selectedOrg = selectedBuildingOrg ?? selectedOrgState;
-
-  // Buildings visible in the building dropdown
-  const orgBuildings = selectedOrg
-    ? buildings.filter((b) => b.organisationName === selectedOrg)
-    : buildings;
-
-  // Correct stale persisted building selections when the current user
-  // does not have access to that building anymore.
   useEffect(() => {
     if (selectedBuildingId && !buildings.some((b) => b.id === selectedBuildingId)) {
       clearSelectedBuilding();
     }
   }, [buildings, clearSelectedBuilding, selectedBuildingId]);
 
-  // Auto-select when there is exactly one available building.
   useEffect(() => {
     if (buildings.length === 1) {
-      const onlyBuilding = buildings[0];
-      if (selectedBuildingId !== onlyBuilding.id) {
-        setSelectedBuilding(onlyBuilding.id, onlyBuilding.name);
+      const b = buildings[0];
+      if (selectedBuildingId !== b.id) setSelectedBuilding(b.id, b.name);
+    }
+  }, [buildings, selectedBuildingId, setSelectedBuilding]);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node) &&
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
       }
-      return;
     }
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
 
-    if (orgBuildings.length === 1 && !selectedBuildingId) {
-      setSelectedBuilding(orgBuildings[0].id, orgBuildings[0].name);
-    }
-  }, [buildings, orgBuildings, selectedBuildingId, setSelectedBuilding]);
+  if (buildings.length === 0) return null;
 
-  function handleOrgChange(orgName: string | null) {
-    if (!orgName) return;
-    setSelectedOrgState(orgName);
-    // Clear building if it belonged to the previous org
-    const currentOrg = selectedBuildingId
-      ? buildings.find((b) => b.id === selectedBuildingId)?.organisationName
-      : null;
-    if (currentOrg && currentOrg !== orgName) {
-      clearSelectedBuilding();
-    }
-  }
-
-  function handleBuildingChange(buildingId: string | null) {
-    if (!buildingId) return;
-    const building = buildings.find((b) => b.id === buildingId);
-    if (building) setSelectedBuilding(building.id, building.name);
-  }
-
-  if (buildings.length === 0) {
-    return null;
-  }
+  const selectedBuilding = buildings.find((b) => b.id === selectedBuildingId);
+  const orgNames = Array.from(new Set(buildings.map((b) => b.organisationName)));
+  const showOrgs = orgNames.length > 1;
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      {/* Organisation selector */}
-      <Select
-        value={selectedOrg}
-        onValueChange={handleOrgChange}
-        itemToStringLabel={(v) => String(v ?? "")}
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-xl border border-white/70 bg-white/85 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white"
       >
-        <SelectTrigger className="h-11 w-full rounded-xl border-white/70 bg-white/85 px-3 shadow-none sm:w-44">
-          <SelectValue placeholder="Select org" />
-        </SelectTrigger>
-        <SelectContent>
-          {orgNames.map((name) => (
-            <SelectItem key={name} value={name} label={name}>
-              {name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <span className="max-w-[180px] truncate">
+          {selectedBuilding?.name ?? "Select building"}
+        </span>
+        {selectedBuilding && (
+          <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
+            · {selectedBuilding.organisationName}
+          </span>
+        )}
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      </button>
 
-      {/* Building selector — filtered by selected org */}
-      <Select
-        value={selectedBuildingId ?? ""}
-        onValueChange={handleBuildingChange}
-        itemToStringLabel={(v) => {
-          const s = String(v ?? "");
-          const b = buildings.find((b) => b.id === s);
-          return b ? b.name : s;
-        }}
-      >
-        <SelectTrigger className="h-11 w-full rounded-xl border-white/70 bg-white/85 px-3 shadow-none sm:w-56">
-          <SelectValue placeholder="Select building" />
-        </SelectTrigger>
-        <SelectContent>
-          {orgBuildings.map((b) => (
-            <SelectItem key={b.id} value={b.id} label={b.name}>
-              <div>
-                <p className="font-medium text-sm">{b.name}</p>
-                <p className="text-xs text-muted-foreground">{b.suburb}</p>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            ref={panelRef}
+            className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+          >
+            {showOrgs
+              ? orgNames.map((org) => (
+                  <div key={org}>
+                    <div className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      {org}
+                    </div>
+                    {buildings
+                      .filter((b) => b.organisationName === org)
+                      .map((b) => (
+                        <BuildingOption
+                          key={b.id}
+                          building={b}
+                          selected={b.id === selectedBuildingId}
+                          onSelect={() => {
+                            setSelectedBuilding(b.id, b.name);
+                            setOpen(false);
+                          }}
+                        />
+                      ))}
+                  </div>
+                ))
+              : buildings.map((b) => (
+                  <BuildingOption
+                    key={b.id}
+                    building={b}
+                    selected={b.id === selectedBuildingId}
+                    onSelect={() => {
+                      setSelectedBuilding(b.id, b.name);
+                      setOpen(false);
+                    }}
+                  />
+                ))}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function BuildingOption({
+  building,
+  selected,
+  onSelect,
+}: {
+  building: Building;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${selected ? "bg-muted/40" : ""}`}
+    >
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm font-medium ${selected ? "text-foreground" : "text-foreground/80"}`}>
+          {building.name}
+        </p>
+        <p className="text-xs text-muted-foreground">{building.suburb}</p>
+      </div>
+      {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+    </button>
   );
 }
