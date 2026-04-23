@@ -155,6 +155,7 @@ enum NotificationType {
   ANNOUNCEMENT_PUBLISHED
   PARCEL_RECEIVED
   INVITE_SENT
+  MESSAGE_RECEIVED
 }
 
 enum BookingStatus {

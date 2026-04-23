@@ -50,35 +50,39 @@ export const announcementsRouter = createTRPCRouter({
         },
       });
 
-      // Notify all active building residents (owners + tenants) — fire-and-forget
-      void Promise.all([
-        ctx.db.ownership.findMany({
-          where: { unit: { buildingId: input.buildingId }, isActive: true },
-          select: { userId: true },
-        }),
-        ctx.db.tenancy.findMany({
-          where: { unit: { buildingId: input.buildingId }, isActive: true },
-          select: { userId: true },
-        }),
-      ]).then(([ownerships, tenancies]) => {
+      // Notify all active building residents (owners + tenants)
+      try {
+        const [ownerships, tenancies] = await Promise.all([
+          ctx.db.ownership.findMany({
+            where: { unit: { buildingId: input.buildingId }, isActive: true },
+            select: { userId: true },
+          }),
+          ctx.db.tenancy.findMany({
+            where: { unit: { buildingId: input.buildingId }, isActive: true },
+            select: { userId: true },
+          }),
+        ]);
         const seen = new Set<string>();
         const residents = [...ownerships, ...tenancies].filter(({ userId }) => {
           if (seen.has(userId)) return false;
           seen.add(userId);
           return true;
         });
-        if (residents.length === 0) return;
-        return ctx.db.notification.createMany({
-          data: residents.map(({ userId }) => ({
-            userId,
-            type: "ANNOUNCEMENT_PUBLISHED" as const,
-            title: `New announcement: ${input.title}`,
-            body: input.content.length > 120 ? `${input.content.slice(0, 117)}...` : input.content,
-            linkUrl: "/resident/announcements",
-            isRead: false,
-          })),
-        });
-      }).catch((err) => console.error("[notification] ANNOUNCEMENT_PUBLISHED failed:", err));
+        if (residents.length > 0) {
+          await ctx.db.notification.createMany({
+            data: residents.map(({ userId }) => ({
+              userId,
+              type: "ANNOUNCEMENT_PUBLISHED" as const,
+              title: `New announcement: ${input.title}`,
+              body: input.content.length > 120 ? `${input.content.slice(0, 117)}...` : input.content,
+              linkUrl: "/resident/announcements",
+              isRead: false,
+            })),
+          });
+        }
+      } catch (err) {
+        console.error("[notification] ANNOUNCEMENT_PUBLISHED failed:", err);
+      }
 
       return announcement;
     }),

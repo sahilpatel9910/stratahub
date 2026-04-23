@@ -11,6 +11,7 @@ import {
   Megaphone,
   Package,
   UserPlus,
+  MessageSquare,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { NotificationType } from "@/generated/prisma/client";
@@ -31,6 +32,8 @@ function NotificationIcon({ type }: { type: NotificationType }) {
       return <Package className={cls} />;
     case "INVITE_SENT":
       return <UserPlus className={cls} />;
+    case "MESSAGE_RECEIVED":
+      return <MessageSquare className={cls} />;
     default:
       return <Bell className={cls} />;
   }
@@ -48,6 +51,7 @@ const FILTER_PILLS: { label: string; value: FilterValue }[] = [
   { label: "Announcements", value: "ANNOUNCEMENT_PUBLISHED" },
   { label: "Parcels", value: "PARCEL_RECEIVED" },
   { label: "Invites", value: "INVITE_SENT" },
+  { label: "Messages", value: "MESSAGE_RECEIVED" },
 ];
 
 // ─── Skeleton rows ────────────────────────────────────────────────────────────
