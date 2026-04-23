@@ -17,6 +17,7 @@ import { usersRouter } from "./routers/users";
 import { notificationsRouter } from "./routers/notifications";
 import { residentRouter } from "./routers/resident";
 import { bondRouter } from "./routers/bond";
+import { commonAreasRouter } from "./routers/common-areas";
 
 export const appRouter = createTRPCRouter({
   organisations: organisationsRouter,
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   notifications: notificationsRouter,
   resident: residentRouter,
   bond: bondRouter,
+  commonAreas: commonAreasRouter,
 });
 
 export type AppRouter = typeof appRouter;

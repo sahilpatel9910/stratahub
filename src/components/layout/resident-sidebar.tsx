@@ -10,6 +10,7 @@ import {
   Megaphone,
   MessageSquare,
   LogOut,
+  DoorOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ const residentNavItems = [
   { title: "My Home", href: "/resident", icon: Home },
   { title: "My Levies", href: "/resident/levies", icon: DollarSign },
   { title: "Maintenance", href: "/resident/maintenance", icon: Wrench },
+  { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
   { title: "Announcements", href: "/resident/announcements", icon: Megaphone },
 ];

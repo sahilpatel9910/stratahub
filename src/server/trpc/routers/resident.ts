@@ -215,4 +215,45 @@ export const residentRouter = createTRPCRouter({
       orderBy: { createdAt: "desc" },
     });
   }),
+
+  // Active common areas for this resident's building
+  getMyCommonAreas: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    const ownership = await ctx.db.ownership.findFirst({
+      where: { userId: ctx.user!.id, isActive: true },
+      include: { unit: { select: { buildingId: true } } },
+    });
+    const tenancy = !ownership
+      ? await ctx.db.tenancy.findFirst({
+          where: { userId: ctx.user!.id, isActive: true },
+          include: { unit: { select: { buildingId: true } } },
+        })
+      : null;
+    const assignment = !ownership && !tenancy
+      ? await ctx.db.buildingAssignment.findFirst({
+          where: { userId: ctx.user!.id, isActive: true },
+          select: { buildingId: true },
+        })
+      : null;
+
+    const buildingId =
+      ownership?.unit.buildingId ?? tenancy?.unit.buildingId ?? assignment?.buildingId;
+    if (!buildingId) return [];
+
+    return ctx.db.commonArea.findMany({
+      where: { buildingId, isActive: true },
+      orderBy: { name: "asc" },
+    });
+  }),
+
+  // This resident's own bookings (most recent 50)
+  getMyBookings: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    return ctx.db.commonAreaBooking.findMany({
+      where: { userId: ctx.user!.id },
+      include: {
+        commonArea: { select: { name: true, floor: true } },
+      },
+      orderBy: { startTime: "desc" },
+      take: 50,
+    });
+  }),
 });

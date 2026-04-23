@@ -16,6 +16,7 @@ import {
   MessageSquare,
   BarChart3,
   Landmark,
+  DoorOpen,
   Settings,
   Shield,
   LogOut,
@@ -48,6 +49,7 @@ const managerNavItems = [
   { title: "Documents", href: "/manager/documents", icon: FileText },
   { title: "Messages", href: "/manager/messages", icon: MessageSquare },
   { title: "Strata", href: "/manager/strata", icon: Landmark },
+  { title: "Common Areas", href: "/manager/common-areas", icon: DoorOpen },
   { title: "Financials", href: "/manager/financials", icon: DollarSign },
   { title: "Analytics", href: "/manager/analytics", icon: BarChart3 },
 ];
