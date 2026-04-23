@@ -105,7 +105,7 @@ export default function ManagerNotificationsPage() {
       limit: 20,
     },
     {
-      getNextPageParam: (last) => last.nextCursor ?? undefined,
+      getNextPageParam: (last) => last.nextCursor,
     }
   );
 
@@ -127,11 +127,9 @@ export default function ManagerNotificationsPage() {
 
   const allItems = data?.pages.flatMap((page) => page.items) ?? [];
 
-  function handleRowClick(id: string, linkUrl: string | null) {
-    markRead.mutate({ id });
-    if (linkUrl) {
-      router.push(linkUrl);
-    }
+  function handleRowClick(id: string, isRead: boolean, linkUrl: string | null) {
+    if (!isRead) markRead.mutate({ id });
+    if (linkUrl) router.push(linkUrl);
   }
 
   return (
@@ -186,7 +184,7 @@ export default function ManagerNotificationsPage() {
           allItems.map((n) => (
             <button
               key={n.id}
-              onClick={() => handleRowClick(n.id, n.linkUrl)}
+              onClick={() => handleRowClick(n.id, n.isRead, n.linkUrl)}
               className={`flex w-full items-start gap-3 border-b border-border/40 px-6 py-4 text-left transition-colors last:border-b-0 hover:bg-muted/30 ${
                 !n.isRead ? "bg-primary/5" : ""
               }`}

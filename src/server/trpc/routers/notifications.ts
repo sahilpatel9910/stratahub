@@ -55,6 +55,6 @@ export const notificationsRouter = createTRPCRouter({
         const poppedItem = results.pop()!;
         return { items: results, nextCursor: poppedItem.id };
       }
-      return { items: results, nextCursor: null };
+      return { items: results, nextCursor: undefined };
     }),
 });

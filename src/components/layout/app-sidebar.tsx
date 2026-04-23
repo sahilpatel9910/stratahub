@@ -20,7 +20,9 @@ import {
   Settings,
   Shield,
   LogOut,
+  Bell,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc/client";
 import {
   Sidebar,
   SidebarContent,
@@ -48,6 +50,7 @@ const managerNavItems = [
   { title: "Announcements", href: "/manager/announcements", icon: Megaphone },
   { title: "Documents", href: "/manager/documents", icon: FileText },
   { title: "Messages", href: "/manager/messages", icon: MessageSquare },
+  { title: "Notifications", href: "/manager/notifications", icon: Bell },
   { title: "Strata", href: "/manager/strata", icon: Landmark },
   { title: "Common Areas", href: "/manager/common-areas", icon: DoorOpen },
   { title: "Financials", href: "/manager/financials", icon: DollarSign },
@@ -77,6 +80,10 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(
+    undefined,
+    { refetchInterval: 30_000 }
+  );
 
   const isAdmin = isSuperAdmin;
   const propertyNavItems = isReceptionOnly ? receptionNavItems : managerNavItems;
@@ -136,18 +143,27 @@ export function AppSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {propertyNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={pathname === item.href}
-                    className="sidebar-nav-button"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {propertyNavItems.map((item) => {
+                const isNotifications = item.href === "/manager/notifications";
+                const badge = isNotifications && unreadCount && unreadCount > 0 ? unreadCount : null;
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      render={<Link href={item.href} />}
+                      isActive={pathname === item.href}
+                      className="sidebar-nav-button"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className="flex-1">{item.title}</span>
+                      {badge !== null && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
