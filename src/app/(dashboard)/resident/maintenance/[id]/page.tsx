@@ -1,53 +1,16 @@
 "use client";
 
 import { use } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS as PRIORITY_LABELS_CONST,
+  CATEGORY_LABELS,
+} from "@/lib/constants";
 
-// ─── Label / colour maps ──────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<string, string> = {
-  SUBMITTED: "Submitted",
-  ACKNOWLEDGED: "Acknowledged",
-  IN_PROGRESS: "In Progress",
-  AWAITING_PARTS: "Awaiting Parts",
-  SCHEDULED: "Scheduled",
-  COMPLETED: "Completed",
-  CLOSED: "Closed",
-  CANCELLED: "Cancelled",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  SUBMITTED: "bg-gray-100 text-gray-800",
-  ACKNOWLEDGED: "bg-blue-100 text-blue-800",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-  AWAITING_PARTS: "bg-orange-100 text-orange-800",
-  SCHEDULED: "bg-purple-100 text-purple-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CLOSED: "bg-gray-100 text-gray-600",
-  CANCELLED: "bg-red-100 text-red-800",
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  LOW: "Low",
-  MEDIUM: "Medium",
-  HIGH: "High",
-  URGENT: "Urgent",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  PLUMBING: "Plumbing",
-  ELECTRICAL: "Electrical",
-  HVAC: "HVAC",
-  STRUCTURAL: "Structural",
-  APPLIANCE: "Appliance",
-  PEST_CONTROL: "Pest Control",
-  CLEANING: "Cleaning",
-  SECURITY: "Security",
-  LIFT: "Lift",
-  COMMON_AREA: "Common Area",
-  OTHER: "Other",
-};
+const PRIORITY_LABELS: Record<string, string> = PRIORITY_LABELS_CONST;
 
 // ─── Timeline steps (canonical order) ────────────────────────────────────────
 
@@ -71,7 +34,7 @@ function getStepIndex(status: string): number {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <p className="eyebrow-label">
       {children}
     </p>
   );
@@ -112,9 +75,7 @@ function StatusTimeline({ status }: { status: string }) {
                   {i > 0 && (
                     <div
                       className={`flex-1 h-px transition-colors ${
-                        isFilled || (!isTerminal && i <= currentIdx)
-                          ? "bg-primary"
-                          : "bg-border"
+                        isFilled ? "bg-primary" : "bg-border"
                       }`}
                     />
                   )}
@@ -211,7 +172,6 @@ export default function ResidentMaintenanceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
 
   const { data: req, isLoading, isError } = trpc.maintenance.getById.useQuery({ id });
 
@@ -220,8 +180,8 @@ export default function ResidentMaintenanceDetailPage({
       {/* ── Header panel ───────────────────────────────────────────────────── */}
       <section className="app-panel overflow-hidden p-6 md:p-8">
         {/* Back link */}
-        <button
-          onClick={() => router.push("/resident/maintenance")}
+        <Link
+          href="/resident/maintenance"
           className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <svg
@@ -238,7 +198,7 @@ export default function ResidentMaintenanceDetailPage({
             />
           </svg>
           My Requests
-        </button>
+        </Link>
 
         <p className="eyebrow-label text-primary/80">Resident Workspace</p>
 
@@ -260,12 +220,18 @@ export default function ResidentMaintenanceDetailPage({
       )}
 
       {/* ── Error / not found state ────────────────────────────────────────── */}
-      {isError && !isLoading && (
+      {isError && (
         <section className="app-panel overflow-hidden p-6 md:p-8">
           <p className="text-sm text-muted-foreground">
             Could not load this maintenance request. It may not exist or you may
             not have permission to view it.
           </p>
+          <Link
+            href="/resident/maintenance"
+            className="mt-3 inline-flex text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            ← Back to requests
+          </Link>
         </section>
       )}
 

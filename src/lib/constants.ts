@@ -43,12 +43,37 @@ export const MAINTENANCE_CATEGORY_LABELS = {
   OTHER: "Other",
 } as const;
 
+/** Alias used by maintenance pages (typed as Record for dynamic key access) */
+export const CATEGORY_LABELS: Record<string, string> = MAINTENANCE_CATEGORY_LABELS;
+
 export const PRIORITY_LABELS = {
   LOW: "Low",
   MEDIUM: "Medium",
   HIGH: "High",
   URGENT: "Urgent",
 } as const;
+
+export const STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: "Submitted",
+  ACKNOWLEDGED: "Acknowledged",
+  IN_PROGRESS: "In Progress",
+  AWAITING_PARTS: "Awaiting Parts",
+  SCHEDULED: "Scheduled",
+  COMPLETED: "Completed",
+  CLOSED: "Closed",
+  CANCELLED: "Cancelled",
+};
+
+export const STATUS_COLORS: Record<string, string> = {
+  SUBMITTED: "bg-gray-100 text-gray-800",
+  ACKNOWLEDGED: "bg-blue-100 text-blue-800",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
+  AWAITING_PARTS: "bg-orange-100 text-orange-800",
+  SCHEDULED: "bg-purple-100 text-purple-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  CLOSED: "bg-gray-100 text-gray-600",
+  CANCELLED: "bg-red-100 text-red-800",
+};
 
 export const BOND_LODGEMENT_AUTHORITIES = {
   NSW: "NSW Fair Trading - Rental Bond Board",

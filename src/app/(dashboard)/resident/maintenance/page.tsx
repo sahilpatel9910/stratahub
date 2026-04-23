@@ -20,39 +20,14 @@ import {
 } from "@/components/ui/table";
 import { AlertCircle, Clock3, Image as ImageIcon, Plus, Upload, Wrench, X } from "lucide-react";
 import { skipToken } from "@tanstack/react-query";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS as PRIORITY_LABELS_CONST,
+  CATEGORY_LABELS,
+} from "@/lib/constants";
 
-const STATUS_LABELS: Record<string, string> = {
-  SUBMITTED: "Submitted",
-  ACKNOWLEDGED: "Acknowledged",
-  IN_PROGRESS: "In Progress",
-  AWAITING_PARTS: "Awaiting Parts",
-  SCHEDULED: "Scheduled",
-  COMPLETED: "Completed",
-  CLOSED: "Closed",
-  CANCELLED: "Cancelled",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  SUBMITTED: "bg-gray-100 text-gray-800",
-  ACKNOWLEDGED: "bg-blue-100 text-blue-800",
-  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
-  AWAITING_PARTS: "bg-orange-100 text-orange-800",
-  SCHEDULED: "bg-purple-100 text-purple-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CLOSED: "bg-gray-100 text-gray-600",
-  CANCELLED: "bg-red-100 text-red-800",
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  LOW: "Low", MEDIUM: "Medium", HIGH: "High", URGENT: "Urgent",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  PLUMBING: "Plumbing", ELECTRICAL: "Electrical", HVAC: "HVAC",
-  STRUCTURAL: "Structural", APPLIANCE: "Appliance", PEST_CONTROL: "Pest Control",
-  CLEANING: "Cleaning", SECURITY: "Security", LIFT: "Lift",
-  COMMON_AREA: "Common Area", OTHER: "Other",
-};
+const PRIORITY_LABELS: Record<string, string> = PRIORITY_LABELS_CONST;
 
 export default function ResidentMaintenancePage() {
   const [createOpen, setCreateOpen] = useState(false);
