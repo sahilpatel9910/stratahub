@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NotificationType } from "@/generated/prisma/client";
 import { createTRPCRouter, protectedProcedure } from "@/server/trpc/trpc";
 
 export const notificationsRouter = createTRPCRouter({
@@ -33,4 +34,27 @@ export const notificationsRouter = createTRPCRouter({
       data: { isRead: true },
     });
   }),
+
+  listPaginated: protectedProcedure
+    .input(
+      z.object({
+        type: z.nativeEnum(NotificationType).optional(),
+        cursor: z.string().optional(),
+        limit: z.number().int().positive().max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { type, cursor, limit } = input;
+      const results = await ctx.db.notification.findMany({
+        where: { userId: ctx.user!.id, ...(type && { type }) },
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      });
+      if (results.length > limit) {
+        const poppedItem = results.pop()!;
+        return { items: results, nextCursor: poppedItem.id };
+      }
+      return { items: results, nextCursor: null };
+    }),
 });
