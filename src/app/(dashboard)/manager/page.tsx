@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { skipToken } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -62,21 +63,25 @@ export default function ManagerDashboard() {
                 label="Open maintenance"
                 value={stats?.openMaintenanceCount}
                 loading={statsQuery.isLoading && hasBuilding}
+                href="/manager/maintenance"
               />
               <CompactMetric
                 label="Overdue rent"
                 value={stats?.overdueRentCount}
                 loading={statsQuery.isLoading && hasBuilding}
+                href="/manager/rent"
               />
               <CompactMetric
                 label="Pending parcels"
                 value={stats?.pendingParcelCount}
                 loading={statsQuery.isLoading && hasBuilding}
+                href="/manager/parcels"
               />
               <CompactMetric
                 label="Keys to rotate"
                 value={stats?.keysToRotate}
                 loading={statsQuery.isLoading && hasBuilding}
+                href="/manager/keys"
               />
             </div>
           </div>
@@ -127,6 +132,7 @@ export default function ManagerDashboard() {
           description="Registered in the selected building"
           icon={Building2}
           loading={statsQuery.isLoading && hasBuilding}
+          href="/manager/units"
         />
         <StatPanel
           title="Residents"
@@ -134,6 +140,7 @@ export default function ManagerDashboard() {
           description="Owners and tenants currently active"
           icon={Users}
           loading={statsQuery.isLoading && hasBuilding}
+          href="/manager/residents"
         />
         <StatPanel
           title="Rent Collected"
@@ -141,6 +148,7 @@ export default function ManagerDashboard() {
           description="Collections recorded this month"
           icon={DollarSign}
           loading={statsQuery.isLoading && hasBuilding}
+          href="/manager/rent"
         />
         <StatPanel
           title="Occupancy Rate"
@@ -148,6 +156,7 @@ export default function ManagerDashboard() {
           description={stats ? `${stats.occupiedUnits} occupied of ${stats.totalUnits}` : "Occupied versus total units"}
           icon={TrendingUp}
           loading={statsQuery.isLoading && hasBuilding}
+          href="/manager/units"
         />
       </div>
 
@@ -179,21 +188,25 @@ export default function ManagerDashboard() {
               title="Maintenance"
               detail={stats?.openMaintenanceCount !== undefined ? `${stats.openMaintenanceCount} open requests` : "No data yet"}
               icon={Wrench}
+              href="/manager/maintenance"
             />
             <ActionRow
               title="Rent"
               detail={stats?.overdueRentCount !== undefined ? `${stats.overdueRentCount} overdue payments` : "No data yet"}
               icon={AlertTriangle}
+              href="/manager/rent"
             />
             <ActionRow
               title="Parcels"
               detail={stats?.pendingParcelCount !== undefined ? `${stats.pendingParcelCount} awaiting pickup` : "No data yet"}
               icon={Package}
+              href="/manager/parcels"
             />
             <ActionRow
               title="Access"
               detail={stats?.keysToRotate !== undefined ? `${stats.keysToRotate} keys to review` : "No data yet"}
               icon={Key}
+              href="/manager/keys"
             />
           </div>
         </section>
@@ -224,9 +237,10 @@ export default function ManagerDashboard() {
             ) : (
               <div className="space-y-3">
                 {recentAnnouncements.map((announcement) => (
-                  <div
+                  <Link
                     key={announcement.id}
-                    className="rounded-2xl border border-border/70 bg-white/70 px-4 py-4"
+                    href="/manager/announcements"
+                    className="block rounded-2xl border border-border/70 bg-white/70 px-4 py-4 transition-colors hover:bg-white/90"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -237,7 +251,7 @@ export default function ManagerDashboard() {
                       </div>
                       <Megaphone className="h-4 w-4 shrink-0 text-primary" />
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -271,9 +285,10 @@ export default function ManagerDashboard() {
           ) : (
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-white/70">
               {recentMaintenance.map((request, index) => (
-                <div
+                <Link
                   key={request.id}
-                  className={`flex items-center justify-between gap-4 px-4 py-4 ${index !== recentMaintenance.length - 1 ? "border-b border-border/70" : ""}`}
+                  href="/manager/maintenance"
+                  className={`flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/30 ${index !== recentMaintenance.length - 1 ? "border-b border-border/70" : ""}`}
                 >
                   <div className="min-w-0">
                     <p className="font-medium text-foreground">{request.title}</p>
@@ -290,7 +305,7 @@ export default function ManagerDashboard() {
                       })}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -304,13 +319,15 @@ function CompactMetric({
   label,
   value,
   loading,
+  href,
 }: {
   label: string;
   value: number | undefined;
   loading: boolean;
+  href: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/72 px-4 py-4 backdrop-blur-sm">
+    <Link href={href} className="rounded-2xl border border-white/70 bg-white/72 px-4 py-4 backdrop-blur-sm transition-colors hover:bg-white/90">
       <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       {loading ? (
         <Skeleton className="mt-3 h-7 w-14" />
@@ -319,7 +336,7 @@ function CompactMetric({
           {value ?? "—"}
         </p>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -351,15 +368,17 @@ function StatPanel({
   description,
   icon: Icon,
   loading,
+  href,
 }: {
   title: string;
   value: string | null;
   description: string;
   icon: React.ElementType;
   loading: boolean;
+  href: string;
 }) {
   return (
-    <div className="app-grid-panel p-5">
+    <Link href={href} className="app-grid-panel block p-5 transition-opacity hover:opacity-80">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -381,7 +400,7 @@ function StatPanel({
           <Icon className="h-5 w-5" />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -389,13 +408,15 @@ function ActionRow({
   title,
   detail,
   icon: Icon,
+  href,
 }: {
   title: string;
   detail: string;
   icon: React.ElementType;
+  href: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-white/72 px-4 py-4 transition-colors hover:bg-white">
+    <Link href={href} className="flex items-center justify-between rounded-2xl border border-border/70 bg-white/72 px-4 py-4 transition-colors hover:bg-white">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/55 text-accent-foreground">
           <Icon className="h-4 w-4" />
@@ -406,7 +427,7 @@ function ActionRow({
         </div>
       </div>
       <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-    </div>
+    </Link>
   );
 }
 
