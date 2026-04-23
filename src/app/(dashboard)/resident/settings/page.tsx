@@ -12,9 +12,14 @@ import { toast } from "sonner";
 
 export default function ResidentSettingsPage() {
   const router = useRouter();
+  const utils = trpc.useUtils();
   const { data: me, isLoading } = trpc.users.getMe.useQuery();
   const updateMe = trpc.users.updateMe.useMutation({
-    onSuccess: () => toast.success("Profile updated"),
+    onSuccess: () => {
+      setDraft(null);
+      void utils.users.getMe.invalidate();
+      toast.success("Profile updated");
+    },
     onError: (e) => toast.error(e.message),
   });
   const [draft, setDraft] = useState<{
@@ -170,11 +175,12 @@ export default function ResidentSettingsPage() {
         <div className="px-6 py-5">
           <p className="text-sm text-muted-foreground">
             We&apos;ll send a password reset link to{" "}
-            <strong className="text-foreground">{me?.email}</strong>.
+            <strong className="text-foreground">{me?.email ?? "your email address"}</strong>.
           </p>
         </div>
         <div className="flex border-t border-border/40 px-6 py-4">
           <Button
+            type="button"
             variant="outline"
             className="h-11 rounded-xl px-5"
             onClick={() => router.push("/forgot-password")}
