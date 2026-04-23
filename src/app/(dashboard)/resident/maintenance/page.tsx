@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -328,6 +328,8 @@ function ResidentMaintenanceDetail({
   const [comment, setComment] = useState("");
   const utils = trpc.useUtils();
 
+  useEffect(() => { setComment(""); }, [requestId]);
+
   const detailQuery = trpc.maintenance.getById.useQuery(
     requestId ? { id: requestId } : skipToken
   );
@@ -353,7 +355,7 @@ function ResidentMaintenanceDetail({
       setComment("");
       void utils.maintenance.getById.invalidate({ id: requestId! });
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(e.message ?? "Failed to send comment"),
   });
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -543,10 +545,14 @@ function ResidentMaintenanceDetail({
 
               {/* Add comment */}
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <label
+                  htmlFor="new-comment"
+                  className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                >
                   Add a comment
-                </p>
+                </label>
                 <Textarea
+                  id="new-comment"
                   className="min-h-20 rounded-xl bg-background"
                   placeholder="Ask a question or provide more detail…"
                   value={comment}
@@ -558,12 +564,13 @@ function ResidentMaintenanceDetail({
                     size="sm"
                     className="rounded-xl"
                     disabled={!comment.trim() || addComment.isPending}
-                    onClick={() =>
+                    onClick={() => {
+                      if (!requestId) return;
                       addComment.mutate({
-                        maintenanceRequestId: requestId!,
+                        maintenanceRequestId: requestId,
                         content: comment.trim(),
-                      })
-                    }
+                      });
+                    }}
                   >
                     {addComment.isPending ? "Sending…" : "Send"}
                   </Button>
