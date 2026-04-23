@@ -161,7 +161,7 @@ export const maintenanceRouter = createTRPCRouter({
           where: {
             buildingId: unit.buildingId,
             isActive: true,
-            role: { in: ["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"] },
+            role: { in: ["BUILDING_MANAGER", "RECEPTION"] },
           },
           select: { userId: true },
         });
