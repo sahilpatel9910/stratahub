@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "tsx --test",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:demo": "tsx seed/demo.ts",
+    "db:seed:wipe": "tsx seed/wipe.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
