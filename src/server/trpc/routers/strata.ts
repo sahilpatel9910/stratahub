@@ -216,7 +216,7 @@ export const strataRouter = createTRPCRouter({
       if (unitWithOwners) {
         for (const ownership of unitWithOwners.ownerships) {
           const { user } = ownership;
-          void createNotification(ctx.db, {
+          await createNotification(ctx.db, {
             userId: user.id,
             type: "LEVY_CREATED",
             title: `New levy raised: ${input.levyType.replace(/_/g, " ")}`,
@@ -304,7 +304,7 @@ export const strataRouter = createTRPCRouter({
         }))
       );
       if (notifications.length > 0) {
-        void ctx.db.notification.createMany({ data: notifications }).catch((err) =>
+        await ctx.db.notification.createMany({ data: notifications }).catch((err) =>
           console.error("[notification] bulk createMany failed:", err)
         );
       }

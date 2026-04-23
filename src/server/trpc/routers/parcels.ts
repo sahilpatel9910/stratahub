@@ -48,34 +48,40 @@ export const parcelsRouter = createTRPCRouter({
         data: { ...input, loggedById: ctx.user!.id, status: "RECEIVED" },
       });
 
-      // Notify matching unit residents (fire-and-forget)
-      void ctx.db.unit.findFirst({
-        where: { buildingId: input.buildingId, unitNumber: input.unitNumber },
-        include: {
-          ownerships: { where: { isActive: true }, select: { userId: true } },
-          tenancies:  { where: { isActive: true }, select: { userId: true } },
-        },
-      }).then((unit) => {
-        if (!unit) return;
-        const seen = new Set<string>();
-        const residents = [...unit.ownerships, ...unit.tenancies].filter(({ userId }) => {
-          if (seen.has(userId)) return false;
-          seen.add(userId);
-          return true;
+      // Notify matching unit residents
+      try {
+        const unit = await ctx.db.unit.findFirst({
+          where: { buildingId: input.buildingId, unitNumber: input.unitNumber },
+          include: {
+            ownerships: { where: { isActive: true }, select: { userId: true } },
+            tenancies:  { where: { isActive: true }, select: { userId: true } },
+          },
         });
-        for (const { userId } of residents) {
-          void createNotification(ctx.db, {
-            userId,
-            type: "PARCEL_RECEIVED",
-            title: "A parcel has arrived for you",
-            body: [
-              input.carrier ? `From: ${input.carrier}` : null,
-              input.storageLocation ? `Location: ${input.storageLocation}` : null,
-            ].filter(Boolean).join(" · ") || "Contact reception to collect",
-            linkUrl: "/resident",
+        if (unit) {
+          const seen = new Set<string>();
+          const residents = [...unit.ownerships, ...unit.tenancies].filter(({ userId }) => {
+            if (seen.has(userId)) return false;
+            seen.add(userId);
+            return true;
           });
+          await Promise.all(
+            residents.map(({ userId }) =>
+              createNotification(ctx.db, {
+                userId,
+                type: "PARCEL_RECEIVED",
+                title: "A parcel has arrived for you",
+                body: [
+                  input.carrier ? `From: ${input.carrier}` : null,
+                  input.storageLocation ? `Location: ${input.storageLocation}` : null,
+                ].filter(Boolean).join(" · ") || "Contact reception to collect",
+                linkUrl: "/resident",
+              })
+            )
+          );
         }
-      }).catch((err) => console.error("[notification] PARCEL_RECEIVED failed:", err));
+      } catch (err) {
+        console.error("[notification] PARCEL_RECEIVED failed:", err);
+      }
 
       return parcel;
     }),
