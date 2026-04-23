@@ -236,14 +236,20 @@ export function Topbar({
         </div>
 
         {userInitials && (
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+          <button
+            type="button"
+            aria-label="Account settings"
+            onClick={() => {
+              const base = pathname.startsWith("/resident") ? "/resident" : "/manager";
+              router.push(`${base}/settings`);
+            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80"
             style={{
               background: "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))",
             }}
           >
             {userInitials}
-          </div>
+          </button>
         )}
       </div>
 

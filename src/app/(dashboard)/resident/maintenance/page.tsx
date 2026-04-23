@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -325,7 +325,10 @@ function ResidentMaintenanceDetail({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [comment, setComment] = useState("");
   const utils = trpc.useUtils();
+
+  useEffect(() => { setComment(""); }, [requestId]);
 
   const detailQuery = trpc.maintenance.getById.useQuery(
     requestId ? { id: requestId } : skipToken
@@ -345,6 +348,14 @@ function ResidentMaintenanceDetail({
       toast.success("Photo removed");
     },
     onError: (err) => toast.error(err.message ?? "Failed to remove photo"),
+  });
+
+  const addComment = trpc.maintenance.addComment.useMutation({
+    onSuccess: () => {
+      setComment("");
+      void utils.maintenance.getById.invalidate({ id: requestId! });
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to send comment"),
   });
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -531,6 +542,40 @@ function ResidentMaintenanceDetail({
                   </div>
                 </div>
               )}
+
+              {/* Add comment */}
+              <div>
+                <label
+                  htmlFor="new-comment"
+                  className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  Add a comment
+                </label>
+                <Textarea
+                  id="new-comment"
+                  className="min-h-20 rounded-xl bg-background"
+                  placeholder="Ask a question or provide more detail…"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={3}
+                />
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={!comment.trim() || addComment.isPending}
+                    onClick={() => {
+                      if (!requestId) return;
+                      addComment.mutate({
+                        maintenanceRequestId: requestId,
+                        content: comment.trim(),
+                      });
+                    }}
+                  >
+                    {addComment.isPending ? "Sending…" : "Send"}
+                  </Button>
+                </div>
+              </div>
             </>
           ) : null}
         </div>

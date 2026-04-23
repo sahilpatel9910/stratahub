@@ -11,6 +11,7 @@ import {
   MessageSquare,
   LogOut,
   DoorOpen,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const residentNavItems = [
   { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
   { title: "Announcements", href: "/resident/announcements", icon: Megaphone },
+  { title: "Settings", href: "/resident/settings", icon: Settings },
 ];
 
 export function ResidentSidebar() {
