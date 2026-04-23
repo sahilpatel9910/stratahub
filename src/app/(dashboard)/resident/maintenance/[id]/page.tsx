@@ -1,11 +1,13 @@
 "use client";
 
-import { use, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon, Upload, X } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -180,7 +182,20 @@ export default function ResidentMaintenanceDetailPage({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [comment, setComment] = useState("");
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    setComment("");
+  }, [id]);
+
+  const addComment = trpc.maintenance.addComment.useMutation({
+    onSuccess: () => {
+      setComment("");
+      void utils.maintenance.getById.invalidate({ id });
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to send comment"),
+  });
 
   const addImageMutation = trpc.maintenance.addImage.useMutation({
     onSuccess: () => {
@@ -357,6 +372,80 @@ export default function ResidentMaintenanceDetailPage({
 
           {/* Status timeline panel */}
           <StatusTimeline status={req.status} />
+
+          {/* Comments panel */}
+          <section className="app-panel overflow-hidden p-6 md:p-8">
+            <SectionLabel>Updates ({req.comments.length})</SectionLabel>
+
+            <div className="mt-4 space-y-3">
+              {req.comments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No updates yet.</p>
+              ) : (
+                req.comments.map((c) => {
+                  const initials =
+                    `${c.user.firstName?.[0] ?? ""}${c.user.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+                  return (
+                    <div
+                      key={c.id}
+                      className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div
+                          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))",
+                          }}
+                        >
+                          {initials}
+                        </div>
+                        <p className="text-xs font-medium text-foreground flex-1">
+                          {c.user.firstName} {c.user.lastName}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{c.content}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add comment form */}
+            <div className="mt-5 border-t border-border/50 pt-5">
+              <label
+                htmlFor="new-comment"
+                className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+              >
+                Add a comment
+              </label>
+              <Textarea
+                id="new-comment"
+                className="min-h-20 rounded-xl bg-background"
+                placeholder="Ask a question or provide more detail…"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+              />
+              <div className="mt-2 flex justify-end">
+                <Button
+                  size="sm"
+                  className="rounded-xl"
+                  disabled={!comment.trim() || addComment.isPending}
+                  onClick={() => {
+                    addComment.mutate({
+                      maintenanceRequestId: id,
+                      content: comment.trim(),
+                    });
+                  }}
+                >
+                  {addComment.isPending ? "Sending…" : "Send"}
+                </Button>
+              </div>
+            </div>
+          </section>
 
           {/* Photos panel */}
           <section className="app-panel overflow-hidden p-6 md:p-8">
