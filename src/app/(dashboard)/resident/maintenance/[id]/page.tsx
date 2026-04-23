@@ -182,6 +182,7 @@ export default function ResidentMaintenanceDetailPage({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; previewUrl: string } | null>(null);
   const [comment, setComment] = useState("");
   const utils = trpc.useUtils();
 
@@ -213,18 +214,33 @@ export default function ResidentMaintenanceDetailPage({
     onError: (err) => toast.error(err.message ?? "Failed to remove photo"),
   });
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
+      e.target.value = "";
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Image must be under 10 MB");
+      e.target.value = "";
       return;
     }
+
+    setPendingFile({ file, previewUrl: URL.createObjectURL(file) });
+    e.target.value = "";
+  }
+
+  function cancelPendingFile() {
+    if (pendingFile) URL.revokeObjectURL(pendingFile.previewUrl);
+    setPendingFile(null);
+  }
+
+  async function confirmUpload() {
+    if (!pendingFile) return;
+    const { file } = pendingFile;
 
     setUploading(true);
     try {
@@ -254,11 +270,11 @@ export default function ResidentMaintenanceDetailPage({
         maintenanceRequestId: id,
         storagePath: path,
       });
+      cancelPendingFile();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   }
 
@@ -464,20 +480,64 @@ export default function ResidentMaintenanceDetailPage({
                   size="sm"
                   className="h-8 rounded-lg text-xs"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading || addImageMutation.isPending}
+                  disabled={uploading || addImageMutation.isPending || !!pendingFile}
                 >
                   <Upload className="mr-1.5 h-3 w-3" />
-                  {uploading ? "Uploading..." : "Add Photo"}
+                  Add Photo
                 </Button>
               </div>
             </div>
 
+            {/* Pending file preview */}
+            {pendingFile && (
+              <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Ready to upload
+                </p>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={pendingFile.previewUrl}
+                    alt="Preview"
+                    className="h-20 w-20 shrink-0 rounded-lg object-cover border border-border/60"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{pendingFile.file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(pendingFile.file.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-8 rounded-lg text-xs"
+                        disabled={uploading || addImageMutation.isPending}
+                        onClick={confirmUpload}
+                      >
+                        {uploading ? "Uploading…" : "Upload"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg text-xs"
+                        disabled={uploading}
+                        onClick={cancelPendingFile}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4">
               {req.images.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/70 py-10 text-center text-sm text-muted-foreground">
-                  <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
-                  No photos attached. Add one to help describe the issue.
-                </div>
+                !pendingFile && (
+                  <div className="rounded-xl border border-dashed border-border/70 py-10 text-center text-sm text-muted-foreground">
+                    <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                    No photos attached. Add one to help describe the issue.
+                  </div>
+                )
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {req.images.map((img) => (
