@@ -1,8 +1,11 @@
 "use client";
 
-import { use } from "react";
+import { use, useRef, useState } from "react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { ImageIcon, Upload, X } from "lucide-react";
 import {
   STATUS_LABELS,
   STATUS_COLORS,
@@ -175,6 +178,75 @@ export default function ResidentMaintenanceDetailPage({
 
   const { data: req, isLoading, isError } = trpc.maintenance.getById.useQuery({ id });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const utils = trpc.useUtils();
+
+  const addImageMutation = trpc.maintenance.addImage.useMutation({
+    onSuccess: () => {
+      void utils.maintenance.getById.invalidate({ id });
+      toast.success("Photo added");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to add photo"),
+  });
+
+  const deleteImageMutation = trpc.maintenance.deleteImage.useMutation({
+    onSuccess: () => {
+      void utils.maintenance.getById.invalidate({ id });
+      toast.success("Photo removed");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to remove photo"),
+  });
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const urlRes = await fetch("/api/storage/maintenance-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          maintenanceRequestId: id,
+        }),
+      });
+      if (!urlRes.ok) {
+        const err = await urlRes.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to get upload URL");
+      }
+      const { signedUrl, path } = await urlRes.json() as { signedUrl: string; path: string };
+
+      const uploadRes = await fetch(signedUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+
+      await addImageMutation.mutateAsync({
+        maintenanceRequestId: id,
+        storagePath: path,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       {/* ── Header panel ───────────────────────────────────────────────────── */}
@@ -285,6 +357,75 @@ export default function ResidentMaintenanceDetailPage({
 
           {/* Status timeline panel */}
           <StatusTimeline status={req.status} />
+
+          {/* Photos panel */}
+          <section className="app-panel overflow-hidden p-6 md:p-8">
+            <div className="flex items-center justify-between">
+              <SectionLabel>Photos ({req.images.length})</SectionLabel>
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-lg text-xs"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || addImageMutation.isPending}
+                >
+                  <Upload className="mr-1.5 h-3 w-3" />
+                  {uploading ? "Uploading..." : "Add Photo"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {req.images.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/70 py-10 text-center text-sm text-muted-foreground">
+                  <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                  No photos attached. Add one to help describe the issue.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {req.images.map((img) => (
+                    <div
+                      key={img.id}
+                      className="group relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted/30"
+                    >
+                      {img.displayUrl ? (
+                        <img
+                          src={img.displayUrl}
+                          alt={img.caption ?? "Maintenance photo"}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                          <ImageIcon className="h-8 w-8 opacity-30" />
+                        </div>
+                      )}
+                      <button
+                        className="absolute right-1.5 top-1.5 hidden group-hover:flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow"
+                        onClick={() => deleteImageMutation.mutate({ id: img.id })}
+                        disabled={deleteImageMutation.isPending}
+                        aria-label="Remove photo"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                      {img.caption && (
+                        <p className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 text-[10px] text-white truncate">
+                          {img.caption}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
         </>
       )}
     </div>
