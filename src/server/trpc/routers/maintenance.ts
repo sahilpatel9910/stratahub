@@ -155,25 +155,30 @@ export const maintenanceRouter = createTRPCRouter({
         },
       });
 
-      // Notify all building managers + reception (fire-and-forget)
-      void ctx.db.buildingAssignment.findMany({
-        where: {
-          buildingId: unit.buildingId,
-          isActive: true,
-          role: { in: ["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"] },
-        },
-        select: { userId: true },
-      }).then((managers) => {
-        for (const { userId } of managers) {
-          void createNotification(ctx.db, {
-            userId,
-            type: "MAINTENANCE_CREATED",
-            title: `New maintenance request: ${input.title}`,
-            body: `Unit ${request.unit.unitNumber} — ${input.category.replace(/_/g, " ")}`,
-            linkUrl: "/manager/maintenance",
-          });
-        }
-      }).catch((err) => console.error("[notification] MAINTENANCE_CREATED failed:", err));
+      // Notify all building managers + reception
+      try {
+        const managers = await ctx.db.buildingAssignment.findMany({
+          where: {
+            buildingId: unit.buildingId,
+            isActive: true,
+            role: { in: ["SUPER_ADMIN", "BUILDING_MANAGER", "RECEPTION"] },
+          },
+          select: { userId: true },
+        });
+        await Promise.all(
+          managers.map(({ userId }) =>
+            createNotification(ctx.db, {
+              userId,
+              type: "MAINTENANCE_CREATED",
+              title: `New maintenance request: ${input.title}`,
+              body: `Unit ${request.unit.unitNumber} — ${input.category.replace(/_/g, " ")}`,
+              linkUrl: "/manager/maintenance",
+            })
+          )
+        );
+      } catch (err) {
+        console.error("[notification] MAINTENANCE_CREATED failed:", err);
+      }
 
       return request;
     }),
@@ -207,11 +212,11 @@ export const maintenanceRouter = createTRPCRouter({
         },
       });
 
-      // Notify resident of meaningful status changes (fire-and-forget)
+      // Notify resident of meaningful status changes
       const notifyStatuses = ["ACKNOWLEDGED", "IN_PROGRESS", "SCHEDULED", "COMPLETED", "CANCELLED"];
       if (notifyStatuses.includes(input.status)) {
         const { requestedBy, unit } = updated;
-        void createNotification(ctx.db, {
+        await createNotification(ctx.db, {
           userId: requestedBy.id,
           type: "MAINTENANCE_STATUS_UPDATED",
           title: `Maintenance update: ${updated.title}`,
