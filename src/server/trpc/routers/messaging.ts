@@ -4,6 +4,7 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const messagingRouter = createTRPCRouter({
   listThreads: protectedProcedure.query(async ({ ctx }) => {
@@ -108,7 +109,7 @@ export const messagingRouter = createTRPCRouter({
             : existingThread.senderId;
       }
 
-      return ctx.db.message.create({
+      const message = await ctx.db.message.create({
         data: {
           senderId: ctx.user!.id,
           recipientId,
@@ -117,6 +118,17 @@ export const messagingRouter = createTRPCRouter({
           threadId,
         },
       });
+
+      const sender = ctx.user!;
+      await createNotification(ctx.db, {
+        userId: recipientId,
+        type: "MESSAGE_RECEIVED",
+        title: `New message from ${sender.firstName} ${sender.lastName}`,
+        body: input.content.length > 100 ? `${input.content.slice(0, 97)}...` : input.content,
+        linkUrl: undefined,
+      });
+
+      return message;
     }),
 
   markRead: protectedProcedure
