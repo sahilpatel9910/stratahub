@@ -53,14 +53,8 @@ async function main() {
   }
   console.log(`\n  ✓ ${deleted} Supabase auth accounts deleted`);
 
-  // ── 2. Prisma users (cascade removes all related records) ─────────────────
-  console.log("\n→ Deleting Prisma user records…");
-  const { count: userCount } = await db.user.deleteMany({
-    where: { email: { endsWith: DEMO_SUFFIX } },
-  });
-  console.log(`  ✓ ${userCount} users deleted (assignments, bookings, ownerships, tenancies cascade-removed)`);
-
-  // ── 3. Demo organisation (cascade removes buildings, units, floors, etc.) ──
+  // ── 2. Demo organisation first (cascade removes buildings → announcements,
+  //        maintenance, parcels, visitor entries, etc. that reference users) ──
   console.log("\n→ Deleting demo organisation…");
   const org = await db.organisation.findFirst({ where: { name: DEMO_ORG_NAME } });
   if (org) {
@@ -69,6 +63,13 @@ async function main() {
   } else {
     console.log(`  ℹ️  Demo organisation not found — nothing to delete`);
   }
+
+  // ── 3. Prisma users — safe now that all referencing records are gone ───────
+  console.log("\n→ Deleting Prisma user records…");
+  const { count: userCount } = await db.user.deleteMany({
+    where: { email: { endsWith: DEMO_SUFFIX } },
+  });
+  console.log(`  ✓ ${userCount} users deleted (assignments, bookings, ownerships, tenancies cascade-removed)`);
 
   console.log("\n✅  Wipe complete. Run npm run seed:demo to re-seed.\n");
 }

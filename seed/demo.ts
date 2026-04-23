@@ -471,7 +471,16 @@ async function main() {
     }
     console.log(` ✓`);
 
-    // ── Tenants (units 10–19) ────────────────────────────────────────────────
+    // ── Tenants ───────────────────────────────────────────────────────────────
+    //
+    // Unit layout:
+    //   unitIds[0–4]   → owner-occupied   (Ownership only, no tenant)
+    //   unitIds[5–9]   → investor-owned   (Ownership + Tenancy on same unit)
+    //   unitIds[10–14] → tenant-only      (Tenancy only, no owner in system)
+    //   unitIds[15+]   → vacant
+    //
+    // Tenants 0–4 share the unit with owners 5–9 (investor scenario).
+    // Tenants 5–9 occupy units 10–14 (no associated owner).
     console.log(`  → Creating ${bDef.tenants.length} tenants…`);
     const tenantUsers = [];
     for (let i = 0; i < bDef.tenants.length; i++) {
@@ -494,7 +503,7 @@ async function main() {
         });
       }
 
-      const unitId       = unitIds[10 + i]!;
+      const unitId       = unitIds[5 + i]!;  // 0–4: shared with owner; 5–9: tenant-only unit
       const leaseStart   = pastDate(Math.floor(Math.random() * 365) + 30);
       const leaseEnd     = futureDate(Math.floor(Math.random() * 365) + 180);
       const rentCents    = pick([180_000, 220_000, 250_000, 280_000, 320_000]);
