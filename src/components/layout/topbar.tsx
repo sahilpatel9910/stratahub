@@ -49,10 +49,7 @@ export function Topbar({
   const canShowBuildingSwitcher =
     showBuildingSwitcher && !isSuperAdminPage && buildings.length > 0;
 
-  const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(
-    undefined,
-    { refetchInterval: 30_000 }
-  );
+  const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(undefined);
   const { data: notifications = [] } = trpc.notifications.listRecent.useQuery(
     { limit: 15 },
     { enabled: bellOpen }
