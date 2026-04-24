@@ -109,6 +109,7 @@ export default async function ManagerLayout({
               ? `${dbUser.firstName[0]}${dbUser.lastName[0]}`.toUpperCase()
               : null
           }
+          avatarUrl={dbUser?.avatarUrl ?? null}
         />
         <main className="app-main">{children}</main>
       </div>
