@@ -742,6 +742,7 @@ model StrataLevy {
   dueDate      DateTime
   paidDate     DateTime?
   status       PaymentStatus @default(PENDING)
+  stripeSessionId String?
   createdAt    DateTime      @default(now())
 
   strataInfo StrataInfo @relation(fields: [strataInfoId], references: [id], onDelete: Cascade)
