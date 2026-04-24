@@ -3,9 +3,11 @@ import {
   buildingManagerProcedure,
   createTRPCRouter,
   managerProcedure,
+  ownerProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { sendLevyNoticeEmail } from "@/lib/email/send";
+import { stripe } from "@/lib/stripe/client";
 import { createNotification } from "@/server/trpc/lib/create-notification";
 import {
   assertBuildingManagementAccess,
@@ -446,5 +448,97 @@ export const strataRouter = createTRPCRouter({
       await assertBuildingManagementAccess(ctx.db, ctx.user!, bylaw.strataInfo.buildingId);
 
       return ctx.db.strataBylaw.delete({ where: { id: input.id } });
+    }),
+
+  createCheckoutSession: ownerProcedure
+    .input(z.object({ levyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // 1. Load levy and resolve its building via strataInfo
+      const levy = await ctx.db.strataLevy.findUnique({
+        where: { id: input.levyId },
+        include: {
+          strataInfo: {
+            include: {
+              building: { select: { name: true } },
+            },
+          },
+        },
+      });
+
+      if (!levy) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Levy not found." });
+      }
+
+      // 2. Verify caller owns a unit for this levy
+      const ownership = await ctx.db.ownership.findFirst({
+        where: {
+          userId: ctx.user!.id,
+          unitId: levy.unitId,
+          isActive: true,
+        },
+      });
+
+      if (!ownership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You do not own this unit.",
+        });
+      }
+
+      // 3. Only PENDING or OVERDUE levies can be paid
+      if (levy.status !== "PENDING" && levy.status !== "OVERDUE") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only PENDING or OVERDUE levies can be paid.",
+        });
+      }
+
+      // 4. Resolve unit number for the line item name
+      const unit = await ctx.db.unit.findUnique({
+        where: { id: levy.unitId },
+        select: { unitNumber: true },
+      });
+
+      const levyLabels: Record<string, string> = {
+        ADMIN_FUND: "Admin Fund",
+        CAPITAL_WORKS: "Capital Works",
+        SPECIAL_LEVY: "Special Levy",
+      };
+      const levyLabel = levyLabels[levy.levyType] ?? levy.levyType;
+      const buildingName = levy.strataInfo.building.name;
+      const unitNumber = unit?.unitNumber ?? levy.unitId;
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+      // 5. Create Stripe Checkout Session
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "aud",
+              unit_amount: levy.amountCents,
+              product_data: {
+                name: `${levyLabel} — Unit ${unitNumber}, ${buildingName}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          levyId: levy.id,
+          userId: ctx.user!.id,
+        },
+        success_url: `${appUrl}/resident/levies?payment=success`,
+        cancel_url: `${appUrl}/resident/levies?payment=cancelled`,
+      });
+
+      // 6. Save session ID to levy for webhook lookup
+      await ctx.db.strataLevy.update({
+        where: { id: levy.id },
+        data: { stripeSessionId: session.id },
+      });
+
+      return { url: session.url! };
     }),
 });
