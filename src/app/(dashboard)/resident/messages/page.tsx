@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
+import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { toast } from "sonner";
 
 function formatTime(d: Date | string) {
@@ -53,6 +54,7 @@ export default function ResidentMessagesPage() {
 
   const utils = trpc.useUtils();
   const { data: me } = trpc.users.getMe.useQuery();
+  useRealtimeMessages(me?.id);
 
   // Get resident's building to scope the staff recipient list
   const buildingQuery = trpc.resident.getMyBuilding.useQuery();
