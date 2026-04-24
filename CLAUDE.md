@@ -109,9 +109,8 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role` —
 - ✅ **Branch 8** — Resident maintenance detail page (`/resident/maintenance/[id]`) — status timeline, photos (two-step upload), comments thread; label maps consolidated into `src/lib/constants.ts`
 - ✅ **Branch 9** — Manager notifications centre (`/manager/notifications`) — type filter pills, cursor pagination, mark read/all read, unread badge in sidebar
 - ✅ **Branch 10** — Real-time messages (Supabase postgres_changes on messages table), avatar upload to Supabase Storage (manager settings), per-type notification preference toggles (DB-backed, both manager + resident settings pages)
+- ✅ **Branch 11** — Stripe levy payments (Stripe Checkout test mode, webhook marks PAID, Resend receipt email, resident levies Pay Now button)
 
 ## ⬜ Next Priorities
-
-1. Resident levy payments — Stripe integration for online payments with receipt emails
 2. Real-time messages — ✅ Done in Branch 10
 3. Manager settings page — ✅ Done in Branch 10
