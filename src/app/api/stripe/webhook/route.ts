@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe/client";
+import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/server/db/client";
 import { sendPaymentReceiptEmail } from "@/lib/email/send";
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!

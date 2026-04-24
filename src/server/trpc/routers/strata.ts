@@ -7,7 +7,7 @@ import {
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { sendLevyNoticeEmail } from "@/lib/email/send";
-import { stripe } from "@/lib/stripe/client";
+import { getStripe } from "@/lib/stripe/client";
 import { createNotification } from "@/server/trpc/lib/create-notification";
 import {
   assertBuildingManagementAccess,
@@ -511,7 +511,7 @@ export const strataRouter = createTRPCRouter({
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
       // 5. Create Stripe Checkout Session
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         mode: "payment",
         line_items: [
           {
