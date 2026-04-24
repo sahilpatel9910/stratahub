@@ -14,6 +14,13 @@ export async function createNotification(
   params: CreateNotificationParams
 ): Promise<void> {
   try {
+    const pref = await db.notificationPreference.findUnique({
+      where: { userId_type: { userId: params.userId, type: params.type } },
+    });
+
+    // Missing row = default enabled (opt-out model)
+    if (pref?.enabled === false) return;
+
     await db.notification.create({ data: params });
   } catch (err) {
     console.error("[notification] createNotification failed:", err);
