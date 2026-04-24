@@ -209,8 +209,9 @@ model User {
   documents           Document[]             @relation("uploadedBy")
   keyLogs             KeyLog[]               @relation("performedBy")
   maintenanceComments MaintenanceComment[]
-  notifications       Notification[]
-  commonAreaBookings  CommonAreaBooking[]
+  notifications               Notification[]
+  notificationPreferences     NotificationPreference[]
+  commonAreaBookings          CommonAreaBooking[]
 
   @@map("users")
 }
@@ -817,4 +818,18 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  enabled   Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("notification_preferences")
 }

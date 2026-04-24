@@ -99,6 +99,7 @@ export const usersRouter = createTRPCRouter({
       where: { id: ctx.user!.id },
       select: {
         id: true,
+        supabaseAuthId: true,
         firstName: true,
         lastName: true,
         email: true,

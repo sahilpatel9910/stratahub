@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { toast } from "sonner";
 
 function formatTime(d: Date | string) {
@@ -55,6 +56,7 @@ export default function MessagesPage() {
 
   const utils = trpc.useUtils();
   const { data: me } = trpc.users.getMe.useQuery();
+  useRealtimeMessages(me?.id);
 
   const threadsQuery = trpc.messaging.listThreads.useQuery();
   const threadQuery = trpc.messaging.getThread.useQuery(

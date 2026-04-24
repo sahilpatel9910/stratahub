@@ -7,12 +7,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lock, User } from "lucide-react";
+import { Bell, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { NotificationType } from "@/generated/prisma/client";
+
+const NOTIFICATION_LABELS: { type: NotificationType; label: string; description: string }[] = [
+  { type: "MESSAGE_RECEIVED",           label: "New message received",      description: "When building management sends you a message" },
+  { type: "MAINTENANCE_STATUS_UPDATED", label: "Maintenance status updated", description: "When your maintenance request changes status" },
+  { type: "ANNOUNCEMENT_PUBLISHED",     label: "Announcements",             description: "When a new announcement is posted for your building" },
+  { type: "PARCEL_RECEIVED",            label: "Parcel received",           description: "When a parcel arrives for you at reception" },
+  { type: "LEVY_CREATED",               label: "Levy created",              description: "When a new strata levy is issued to your unit" },
+];
 
 export default function ResidentSettingsPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const [pendingTypes, setPendingTypes] = useState<Set<string>>(new Set());
+  const prefsQuery = trpc.notificationPreferences.list.useQuery();
+  const updatePref = trpc.notificationPreferences.update.useMutation({
+    onMutate: ({ type }) => setPendingTypes((prev) => new Set(prev).add(type)),
+    onSettled: (_, __, { type }) =>
+      setPendingTypes((prev) => {
+        const next = new Set(prev);
+        next.delete(type);
+        return next;
+      }),
+    onSuccess: () => void utils.notificationPreferences.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
   const { data: me, isLoading } = trpc.users.getMe.useQuery();
   const updateMe = trpc.users.updateMe.useMutation({
     onSuccess: () => {
@@ -187,6 +210,40 @@ export default function ResidentSettingsPage() {
           >
             Send reset link
           </Button>
+        </div>
+      </section>
+
+      {/* Notification Preferences */}
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+            <Bell className="h-4 w-4 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Notification preferences</h2>
+            <p className="text-xs text-muted-foreground">Choose which notifications you receive</p>
+          </div>
+        </div>
+        <div className="divide-y divide-border/40">
+          {NOTIFICATION_LABELS.map(({ type, label, description }) => {
+            const pref = prefsQuery.data?.find((p) => p.type === type);
+            const enabled = pref?.enabled ?? true;
+            return (
+              <div key={type} className="flex items-center justify-between px-6 py-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={(value) =>
+                    updatePref.mutate({ type, enabled: value })
+                  }
+                  disabled={pendingTypes.has(type)}
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>

@@ -80,10 +80,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(
-    undefined,
-    { refetchInterval: 30_000 }
-  );
+  const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(undefined);
 
   const isAdmin = isSuperAdmin;
   const propertyNavItems = isReceptionOnly ? receptionNavItems : managerNavItems;

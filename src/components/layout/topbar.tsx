@@ -26,6 +26,7 @@ interface TopbarProps {
   searchPlaceholder?: string;
   greetingName?: string | null;
   userInitials?: string | null;
+  avatarUrl?: string | null;
 }
 
 export function Topbar({
@@ -34,6 +35,7 @@ export function Topbar({
   searchPlaceholder = "Search residents, units, parcels...",
   greetingName,
   userInitials,
+  avatarUrl,
 }: TopbarProps) {
   const [bellOpen, setBellOpen] = useState(false);
   const [panelStyle, setPanelStyle] = useState<{ top: number; right: number } | null>(null);
@@ -47,10 +49,7 @@ export function Topbar({
   const canShowBuildingSwitcher =
     showBuildingSwitcher && !isSuperAdminPage && buildings.length > 0;
 
-  const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(
-    undefined,
-    { refetchInterval: 30_000 }
-  );
+  const { data: unreadCount = 0 } = trpc.notifications.unreadCount.useQuery(undefined);
   const { data: notifications = [] } = trpc.notifications.listRecent.useQuery(
     { limit: 15 },
     { enabled: bellOpen }
@@ -243,12 +242,18 @@ export function Topbar({
               const base = pathname.startsWith("/resident") ? "/resident" : "/manager";
               router.push(`${base}/settings`);
             }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white transition-opacity hover:opacity-80"
-            style={{
-              background: "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))",
-            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-semibold text-white transition-opacity hover:opacity-80"
+            style={
+              avatarUrl
+                ? undefined
+                : { background: "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))" }
+            }
           >
-            {userInitials}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Your avatar" className="h-full w-full object-cover" />
+            ) : (
+              userInitials
+            )}
           </button>
         )}
       </div>

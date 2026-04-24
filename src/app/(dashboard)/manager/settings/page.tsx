@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Lock, Shield, User, UserCog } from "lucide-react";
+import { Bell, Camera, Lock, Shield, Trash2, User, UserCog } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { Switch } from "@/components/ui/switch";
+import { NotificationType } from "@/generated/prisma/client";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
@@ -19,11 +22,26 @@ const ROLE_LABELS: Record<string, string> = {
   TENANT: "Tenant",
 };
 
+const NOTIFICATION_LABELS: { type: NotificationType; label: string; description: string }[] = [
+  { type: "MESSAGE_RECEIVED",           label: "New message received",       description: "When a resident or staff member sends you a message" },
+  { type: "MAINTENANCE_STATUS_UPDATED", label: "Maintenance status updated",  description: "When a maintenance request changes status" },
+  { type: "MAINTENANCE_CREATED",        label: "New maintenance request",     description: "When a resident submits a new maintenance request" },
+  { type: "ANNOUNCEMENT_PUBLISHED",     label: "Announcement published",      description: "When a new announcement is posted to your building" },
+  { type: "PARCEL_RECEIVED",            label: "Parcel received",             description: "When a parcel is logged at reception" },
+  { type: "LEVY_CREATED",               label: "Levy created",                description: "When a new strata levy is issued" },
+  { type: "INVITE_SENT",                label: "Invite sent",                 description: "When an invitation is sent to a new user" },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
   const { data: me, isLoading } = trpc.users.getMe.useQuery();
+  const utils = trpc.useUtils();
   const updateMe = trpc.users.updateMe.useMutation({
-    onSuccess: () => toast.success("Profile updated"),
+    onSuccess: () => {
+      setDraft(null);
+      void utils.users.getMe.invalidate();
+      toast.success("Profile updated");
+    },
     onError: (e) => toast.error(e.message),
   });
   const [draft, setDraft] = useState<{
@@ -31,6 +49,86 @@ export default function SettingsPage() {
     lastName: string;
     phone: string;
   } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const [pendingTypes, setPendingTypes] = useState<Set<string>>(new Set());
+  const prefsQuery = trpc.notificationPreferences.list.useQuery();
+  const updatePref = trpc.notificationPreferences.update.useMutation({
+    onMutate: ({ type }) => setPendingTypes((prev) => new Set(prev).add(type)),
+    onSettled: (_, __, { type }) =>
+      setPendingTypes((prev) => {
+        const next = new Set(prev);
+        next.delete(type);
+        return next;
+      }),
+    onSuccess: () => void utils.notificationPreferences.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const setAvatarUrl = trpc.avatar.setUrl.useMutation({
+    onSuccess: () => {
+      void utils.users.getMe.invalidate();
+      toast.success("Avatar updated");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !me) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${me.supabaseAuthId}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      setAvatarUrl.mutate({ url: publicUrl });
+    } catch (err) {
+      toast.error("Upload failed");
+      console.error(err);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleAvatarRemove() {
+    if (!me) return;
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      await supabase.storage.from("avatars").remove([
+        `${me.supabaseAuthId}.jpg`,
+        `${me.supabaseAuthId}.jpeg`,
+        `${me.supabaseAuthId}.png`,
+        `${me.supabaseAuthId}.webp`,
+      ]);
+      setAvatarUrl.mutate({ url: null });
+    } catch (err) {
+      toast.error("Remove failed");
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const profileValues = {
     firstName: draft?.firstName ?? me?.firstName ?? "",
@@ -69,6 +167,76 @@ export default function SettingsPage() {
               <SettingsSignal icon={Lock} label="Password reset" value="Available" tone="text-amber-600" />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Avatar */}
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <Camera className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Profile photo</h2>
+            <p className="text-xs text-muted-foreground">JPG, PNG or WebP — max 2 MB</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-5 px-6 py-5">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={
+              me?.avatarUrl
+                ? undefined
+                : { background: "linear-gradient(135deg, oklch(0.58 0.11 195), oklch(0.39 0.06 245))" }
+            }
+          >
+            {me?.avatarUrl ? (
+              <img src={me.avatarUrl} alt="Your avatar" className="h-full w-full object-cover" />
+            ) : (
+              <span>
+                {me ? `${me.firstName[0]}${me.lastName[0]}`.toUpperCase() : "?"}
+              </span>
+            )}
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              </div>
+            )}
+          </button>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 rounded-xl px-4 text-sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              <Camera className="mr-2 h-3.5 w-3.5" />
+              {me?.avatarUrl ? "Change photo" : "Upload photo"}
+            </Button>
+            {me?.avatarUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 rounded-xl px-4 text-sm text-destructive hover:text-destructive"
+                onClick={handleAvatarRemove}
+                disabled={uploading}
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                Remove photo
+              </Button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarUpload}
+          />
         </div>
       </section>
 
@@ -236,6 +404,40 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Notification Preferences */}
+      <section className="app-panel overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-border/40 px-6 py-5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+            <Bell className="h-4 w-4 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Notification preferences</h2>
+            <p className="text-xs text-muted-foreground">Choose which notifications you receive</p>
+          </div>
+        </div>
+        <div className="divide-y divide-border/40">
+          {NOTIFICATION_LABELS.map(({ type, label, description }) => {
+            const pref = prefsQuery.data?.find((p) => p.type === type);
+            const enabled = pref?.enabled ?? true;
+            return (
+              <div key={type} className="flex items-center justify-between px-6 py-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+                <Switch
+                  checked={enabled}
+                  onCheckedChange={(value) =>
+                    updatePref.mutate({ type, enabled: value })
+                  }
+                  disabled={pendingTypes.has(type)}
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>
