@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCurrency } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, Receipt, Wallet } from "lucide-react";
+import { CreditCard, Receipt, Wallet, Loader2 } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending",
@@ -41,6 +44,33 @@ const LEVY_TYPE_LABELS: Record<string, string> = {
 
 export default function ResidentLeviesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (toastShownRef.current) return;
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      toastShownRef.current = true;
+      toast.success("Payment successful! Your levy has been marked as paid.");
+      router.replace("/resident/levies");
+    } else if (payment === "cancelled") {
+      toastShownRef.current = true;
+      toast.info("Payment cancelled.");
+      router.replace("/resident/levies");
+    }
+  }, [searchParams, router]);
+
+  const checkoutMutation = trpc.strata.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to start payment. Please try again.");
+    },
+  });
 
   const { data: levies = [], isLoading } = trpc.resident.getMyLevies.useQuery(
     statusFilter !== "ALL" ? { status: statusFilter as "PENDING" | "PAID" | "OVERDUE" | "PARTIAL" | "WAIVED" } : {}
@@ -145,6 +175,7 @@ export default function ResidentLeviesPage() {
                 <TableHead className="px-4 py-3">Due Date</TableHead>
                 <TableHead className="px-4 py-3 text-right">Amount</TableHead>
                 <TableHead className="px-4 py-3">Status</TableHead>
+                <TableHead className="px-4 py-3">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -167,6 +198,22 @@ export default function ResidentLeviesPage() {
                     <Badge className={STATUS_COLORS[levy.status] ?? ""}>
                       {STATUS_LABELS[levy.status] ?? levy.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    {(levy.status === "PENDING" || levy.status === "OVERDUE") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-lg text-xs font-medium"
+                        disabled={checkoutMutation.isPending}
+                        onClick={() => checkoutMutation.mutate({ levyId: levy.id })}
+                      >
+                        {checkoutMutation.isPending && checkoutMutation.variables?.levyId === levy.id ? (
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        ) : null}
+                        Pay Now
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
