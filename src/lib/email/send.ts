@@ -165,3 +165,59 @@ export async function sendWelcomeInviteEmail(
     console.error("[email] sendWelcomeInviteEmail failed:", err);
   }
 }
+
+// ── Payment Receipt ───────────────────────────────────────────
+
+export interface PaymentReceiptData {
+  recipientName: string;
+  buildingName: string;
+  unitNumber: string;
+  levyType: string;
+  amountCents: number;
+  paidDate: Date;
+  stripeSessionId: string;
+}
+
+export async function sendPaymentReceiptEmail(
+  to: string,
+  data: PaymentReceiptData
+): Promise<void> {
+  const levyLabels: Record<string, string> = {
+    ADMIN_FUND: "Admin Fund",
+    CAPITAL_WORKS: "Capital Works",
+    SPECIAL_LEVY: "Special Levy",
+  };
+  const label = levyLabels[data.levyType] ?? data.levyType;
+  const amount = formatCurrency(data.amountCents);
+  const paid = data.paidDate.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `Payment Receipt — ${label} for Unit ${data.unitNumber}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+          <h2 style="color:#1e3a5f">StrataHub — Payment Receipt</h2>
+          <p>Dear ${esc(data.recipientName)},</p>
+          <p>Your strata levy payment for <strong>${esc(data.buildingName)}</strong> has been received. Thank you!</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Unit</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(data.unitNumber)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Levy Type</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(label)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Amount Paid</td><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600;color:#16a34a">${amount}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Date Paid</td><td style="padding:8px;border:1px solid #e2e8f0">${paid}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Reference</td><td style="padding:8px;border:1px solid #e2e8f0;font-size:12px;color:#64748b">${esc(data.stripeSessionId)}</td></tr>
+          </table>
+          <p>You can view your levy history in the StrataHub resident portal.</p>
+          <p style="color:#64748b;font-size:12px;margin-top:32px">StrataHub — Australian Property Management</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[email] sendPaymentReceiptEmail failed:", err);
+  }
+}
