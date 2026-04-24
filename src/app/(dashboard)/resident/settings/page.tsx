@@ -23,8 +23,16 @@ const NOTIFICATION_LABELS: { type: NotificationType; label: string; description:
 export default function ResidentSettingsPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const [pendingTypes, setPendingTypes] = useState<Set<string>>(new Set());
   const prefsQuery = trpc.notificationPreferences.list.useQuery();
   const updatePref = trpc.notificationPreferences.update.useMutation({
+    onMutate: ({ type }) => setPendingTypes((prev) => new Set(prev).add(type)),
+    onSettled: (_, __, { type }) =>
+      setPendingTypes((prev) => {
+        const next = new Set(prev);
+        next.delete(type);
+        return next;
+      }),
     onSuccess: () => void utils.notificationPreferences.list.invalidate(),
     onError: (e) => toast.error(e.message),
   });
@@ -231,7 +239,7 @@ export default function ResidentSettingsPage() {
                   onCheckedChange={(value) =>
                     updatePref.mutate({ type, enabled: value })
                   }
-                  disabled={updatePref.isPending}
+                  disabled={pendingTypes.has(type)}
                 />
               </div>
             );

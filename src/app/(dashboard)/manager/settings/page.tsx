@@ -37,7 +37,11 @@ export default function SettingsPage() {
   const { data: me, isLoading } = trpc.users.getMe.useQuery();
   const utils = trpc.useUtils();
   const updateMe = trpc.users.updateMe.useMutation({
-    onSuccess: () => toast.success("Profile updated"),
+    onSuccess: () => {
+      setDraft(null);
+      void utils.users.getMe.invalidate();
+      toast.success("Profile updated");
+    },
     onError: (e) => toast.error(e.message),
   });
   const [draft, setDraft] = useState<{
@@ -49,8 +53,16 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
+  const [pendingTypes, setPendingTypes] = useState<Set<string>>(new Set());
   const prefsQuery = trpc.notificationPreferences.list.useQuery();
   const updatePref = trpc.notificationPreferences.update.useMutation({
+    onMutate: ({ type }) => setPendingTypes((prev) => new Set(prev).add(type)),
+    onSettled: (_, __, { type }) =>
+      setPendingTypes((prev) => {
+        const next = new Set(prev);
+        next.delete(type);
+        return next;
+      }),
     onSuccess: () => void utils.notificationPreferences.list.invalidate(),
     onError: (e) => toast.error(e.message),
   });
@@ -421,7 +433,7 @@ export default function SettingsPage() {
                   onCheckedChange={(value) =>
                     updatePref.mutate({ type, enabled: value })
                   }
-                  disabled={updatePref.isPending}
+                  disabled={pendingTypes.has(type)}
                 />
               </div>
             );
