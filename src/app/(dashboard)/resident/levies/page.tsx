@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCurrency } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -45,24 +45,6 @@ const LEVY_TYPE_LABELS: Record<string, string> = {
 export default function ResidentLeviesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const toastShownRef = useRef(false);
-
-  useEffect(() => {
-    if (toastShownRef.current) return;
-    const payment = searchParams.get("payment");
-    if (payment === "success") {
-      toastShownRef.current = true;
-      toast.success("Payment successful! Your levy has been marked as paid.");
-      router.replace("/resident/levies");
-    } else if (payment === "cancelled") {
-      toastShownRef.current = true;
-      toast.info("Payment cancelled.");
-      router.replace("/resident/levies");
-    }
-  }, [searchParams, router]);
-
   const checkoutMutation = trpc.strata.createCheckoutSession.useMutation({
     onSuccess: (data) => {
       window.location.href = data.url;
@@ -84,6 +66,9 @@ export default function ResidentLeviesPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <Suspense fallback={null}>
+        <PaymentToastHandler />
+      </Suspense>
       <section className="app-panel overflow-hidden p-6 md:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -224,6 +209,28 @@ export default function ResidentLeviesPage() {
       </Card>
     </div>
   );
+}
+
+function PaymentToastHandler() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (toastShownRef.current) return;
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      toastShownRef.current = true;
+      toast.success("Payment successful! Your levy has been marked as paid.");
+      router.replace("/resident/levies");
+    } else if (payment === "cancelled") {
+      toastShownRef.current = true;
+      toast.info("Payment cancelled.");
+      router.replace("/resident/levies");
+    }
+  }, [searchParams, router]);
+
+  return null;
 }
 
 function ResidentMetricCard({

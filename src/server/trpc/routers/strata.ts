@@ -469,20 +469,37 @@ export const strataRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Levy not found." });
       }
 
-      // 2. Verify caller owns a unit for this levy
-      const ownership = await ctx.db.ownership.findFirst({
-        where: {
-          userId: ctx.user!.id,
-          unitId: levy.unitId,
-          isActive: true,
-        },
+      // 2. Verify caller owns the unit (admins bypass this check)
+      const callerMemberships = await ctx.db.organisationMembership.findMany({
+        where: { userId: ctx.user!.id, isActive: true },
+        select: { role: true },
       });
+      const callerAssignments = await ctx.db.buildingAssignment.findMany({
+        where: { userId: ctx.user!.id, isActive: true },
+        select: { role: true },
+      });
+      const allRoles = [
+        ...callerMemberships.map((m) => m.role),
+        ...callerAssignments.map((a) => a.role),
+      ];
+      const isAdmin = allRoles.some(
+        (r) => r === "SUPER_ADMIN" || r === "BUILDING_MANAGER"
+      );
 
-      if (!ownership) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You do not own this unit.",
+      if (!isAdmin) {
+        const ownership = await ctx.db.ownership.findFirst({
+          where: {
+            userId: ctx.user!.id,
+            unitId: levy.unitId,
+            isActive: true,
+          },
         });
+        if (!ownership) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You do not own this unit.",
+          });
+        }
       }
 
       // 3. Only PENDING or OVERDUE levies can be paid
@@ -539,6 +556,12 @@ export const strataRouter = createTRPCRouter({
         data: { stripeSessionId: session.id },
       });
 
-      return { url: session.url! };
+      if (!session.url) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Stripe did not return a checkout URL.",
+        });
+      }
+      return { url: session.url };
     }),
 });

@@ -747,6 +747,7 @@ model StrataLevy {
 
   strataInfo StrataInfo @relation(fields: [strataInfoId], references: [id], onDelete: Cascade)
 
+  @@index([stripeSessionId])
   @@map("strata_levies")
 }
 
