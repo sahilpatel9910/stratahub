@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/server/db/client";
-import { sendPaymentReceiptEmail } from "@/lib/email/send";
+import { sendPaymentReceiptEmail, sendCustomBillEmail } from "@/lib/email/send";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text();
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
+    // ── Levy payment ─────────────────────────────────────────
     const levy = await db.strataLevy.findFirst({
       where: { stripeSessionId: session.id },
       include: {
@@ -43,50 +44,72 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    if (!levy) {
-      // Unknown session — return 200 so Stripe doesn't retry
-      return NextResponse.json({ received: true });
-    }
+    if (levy) {
+      if (levy.status !== "PAID") {
+        const paidDate = new Date();
+        await db.strataLevy.update({
+          where: { id: levy.id },
+          data: { status: "PAID", paidDate },
+        });
 
-    // Idempotency guard: skip if already PAID
-    if (levy.status === "PAID") {
-      return NextResponse.json({ received: true });
-    }
-
-    const paidDate = new Date();
-
-    await db.strataLevy.update({
-      where: { id: levy.id },
-      data: { status: "PAID", paidDate },
-    });
-
-    // Send receipt email to the levy owner
-    const unit = await db.unit.findUnique({
-      where: { id: levy.unitId },
-      select: {
-        unitNumber: true,
-        ownerships: {
-          where: { isActive: true },
-          include: {
-            user: { select: { email: true, firstName: true, lastName: true } },
+        const unit = await db.unit.findUnique({
+          where: { id: levy.unitId },
+          select: {
+            unitNumber: true,
+            ownerships: {
+              where: { isActive: true },
+              include: {
+                user: { select: { email: true, firstName: true, lastName: true } },
+              },
+            },
           },
-        },
+        });
+
+        if (unit) {
+          for (const ownership of unit.ownerships) {
+            const { user } = ownership;
+            void sendPaymentReceiptEmail(user.email, {
+              recipientName: `${user.firstName} ${user.lastName}`,
+              buildingName: levy.strataInfo.building.name,
+              unitNumber: unit.unitNumber,
+              levyType: levy.levyType,
+              amountCents: levy.amountCents,
+              paidDate,
+              stripeSessionId: session.id,
+            });
+          }
+        }
+      }
+      return NextResponse.json({ received: true });
+    }
+
+    // ── Custom bill payment ───────────────────────────────────
+    const bill = await db.customBill.findFirst({
+      where: { stripeSessionId: session.id },
+      include: {
+        building: { select: { name: true } },
+        unit: { select: { unitNumber: true } },
+        recipient: { select: { email: true, firstName: true, lastName: true } },
       },
     });
 
-    if (unit) {
-      for (const ownership of unit.ownerships) {
-        const { user } = ownership;
-        void sendPaymentReceiptEmail(user.email, {
-          recipientName: `${user.firstName} ${user.lastName}`,
-          buildingName: levy.strataInfo.building.name,
-          unitNumber: unit.unitNumber,
-          levyType: levy.levyType,
-          amountCents: levy.amountCents,
-          paidDate,
-          stripeSessionId: session.id,
-        });
-      }
+    if (bill && bill.status !== "PAID") {
+      const paidDate = new Date();
+      await db.customBill.update({
+        where: { id: bill.id },
+        data: { status: "PAID", paidDate },
+      });
+
+      void sendCustomBillEmail(bill.recipient.email, {
+        recipientName: `${bill.recipient.firstName} ${bill.recipient.lastName}`,
+        buildingName: bill.building.name,
+        unitNumber: bill.unit.unitNumber,
+        title: bill.title,
+        category: bill.category,
+        amountCents: bill.amountCents,
+        dueDate: bill.dueDate,
+        paymentMode: "ONLINE",
+      });
     }
   }
 
