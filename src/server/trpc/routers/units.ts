@@ -466,4 +466,32 @@ export const unitsRouter = createTRPCRouter({
 
       return ctx.db.unit.delete({ where: { id: input.id } });
     }),
+
+  getResidents: managerProcedure
+    .input(z.object({ unitId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const unit = await ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.unitId },
+        select: { buildingId: true },
+      });
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, unit.buildingId);
+
+      return ctx.db.unit.findUniqueOrThrow({
+        where: { id: input.unitId },
+        select: {
+          ownerships: {
+            where: { isActive: true },
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true } },
+            },
+          },
+          tenancies: {
+            where: { isActive: true },
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true } },
+            },
+          },
+        },
+      });
+    }),
 });

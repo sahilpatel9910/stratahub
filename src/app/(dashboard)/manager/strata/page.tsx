@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
 import { formatCurrency } from "@/lib/constants";
+import { CustomBillsTab } from "./custom-bills-tab";
 import { toast } from "sonner";
 
 const LEVY_TYPE_LABELS: Record<string, string> = {
@@ -109,6 +110,12 @@ export default function StrataPage() {
   const [bulkLevyDueDate, setBulkLevyDueDate] = useState("");
 
   const utils = trpc.useUtils();
+
+  const { data: me } = trpc.users.getMe.useQuery();
+  const isBuildingManager =
+    me?.orgMemberships?.some(
+      (m) => m.role === "SUPER_ADMIN" || m.role === "BUILDING_MANAGER"
+    ) ?? false;
 
   const query = trpc.strata.getByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken
@@ -417,6 +424,7 @@ export default function StrataPage() {
             <TabsTrigger value="meetings">Meetings</TabsTrigger>
             <TabsTrigger value="levies">Levies</TabsTrigger>
             <TabsTrigger value="bylaws">Bylaws</TabsTrigger>
+            <TabsTrigger value="bills">Custom Bills</TabsTrigger>
           </TabsList>
 
           {/* Info Tab */}
@@ -721,6 +729,20 @@ export default function StrataPage() {
                 </div>
               );
             })()}
+          </TabsContent>
+
+          {/* Custom Bills Tab */}
+          <TabsContent value="bills" className="mt-0">
+            {selectedBuildingId ? (
+              <CustomBillsTab
+                buildingId={selectedBuildingId}
+                isBuildingManager={isBuildingManager}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Select a building to view custom bills.
+              </p>
+            )}
           </TabsContent>
 
           {/* Bylaws Tab */}
