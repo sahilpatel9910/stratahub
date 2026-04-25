@@ -221,3 +221,72 @@ export async function sendPaymentReceiptEmail(
     console.error("[email] sendPaymentReceiptEmail failed:", err);
   }
 }
+
+// ── Custom Bill Notice ────────────────────────────────────────
+
+export interface CustomBillNoticeData {
+  recipientName: string;
+  buildingName: string;
+  unitNumber: string;
+  title: string;
+  category: string;
+  amountCents: number;
+  dueDate: Date;
+  paymentMode: "ONLINE" | "MANUAL";
+}
+
+export async function sendCustomBillEmail(
+  to: string,
+  data: CustomBillNoticeData
+): Promise<void> {
+  const amount = formatCurrency(data.amountCents);
+  const due = data.dueDate.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const categoryLabels: Record<string, string> = {
+    WATER_USAGE: "Water Usage",
+    PARKING_FINE: "Parking Fine",
+    DAMAGE: "Damage",
+    CLEANING: "Cleaning",
+    MAINTENANCE_CHARGEBACK: "Maintenance Chargeback",
+    MOVE_IN_FEE: "Move-in Fee",
+    MOVE_OUT_FEE: "Move-out Fee",
+    KEY_REPLACEMENT: "Key Replacement",
+    DOCUMENT_FEE: "Document Fee",
+    ADMIN_FEE: "Admin Fee",
+    OTHER: "Other",
+  };
+  const categoryLabel = categoryLabels[data.category] ?? data.category;
+  const paymentNote =
+    data.paymentMode === "ONLINE"
+      ? "You can pay this bill online via the StrataHub resident portal."
+      : "Please arrange payment directly with your building manager.";
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `New Bill: ${esc(data.title)} — Unit ${data.unitNumber}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+          <h2 style="color:#1e3a5f">StrataHub — Custom Bill</h2>
+          <p>Dear ${esc(data.recipientName)},</p>
+          <p>A new bill has been raised for your unit at <strong>${esc(data.buildingName)}</strong>.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Unit</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(data.unitNumber)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Bill</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(data.title)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Category</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(categoryLabel)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Amount</td><td style="padding:8px;border:1px solid #e2e8f0">${amount}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Due Date</td><td style="padding:8px;border:1px solid #e2e8f0">${due}</td></tr>
+          </table>
+          <p>${paymentNote}</p>
+          <p style="color:#64748b;font-size:12px;margin-top:32px">StrataHub — Australian Property Management</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[email] sendCustomBillEmail failed:", err);
+  }
+}
