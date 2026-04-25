@@ -113,3 +113,31 @@ export function formatCurrency(cents: number): string {
     currency: "AUD",
   }).format(cents / 100);
 }
+
+export const CUSTOM_BILL_CATEGORY_LABELS: Record<string, string> = {
+  WATER_USAGE: "Water Usage",
+  PARKING_FINE: "Parking Fine",
+  DAMAGE: "Damage",
+  CLEANING: "Cleaning",
+  MAINTENANCE_CHARGEBACK: "Maintenance Chargeback",
+  MOVE_IN_FEE: "Move-in Fee",
+  MOVE_OUT_FEE: "Move-out Fee",
+  KEY_REPLACEMENT: "Key Replacement",
+  DOCUMENT_FEE: "Document Fee",
+  ADMIN_FEE: "Admin Fee",
+  OTHER: "Other",
+};
+
+export const CUSTOM_BILL_CATEGORY_COLORS: Record<string, string> = {
+  WATER_USAGE: "bg-blue-100 text-blue-800",
+  PARKING_FINE: "bg-red-100 text-red-800",
+  DAMAGE: "bg-orange-100 text-orange-800",
+  CLEANING: "bg-green-100 text-green-800",
+  MAINTENANCE_CHARGEBACK: "bg-yellow-100 text-yellow-800",
+  MOVE_IN_FEE: "bg-purple-100 text-purple-800",
+  MOVE_OUT_FEE: "bg-purple-100 text-purple-800",
+  KEY_REPLACEMENT: "bg-indigo-100 text-indigo-800",
+  DOCUMENT_FEE: "bg-slate-100 text-slate-800",
+  ADMIN_FEE: "bg-slate-100 text-slate-800",
+  OTHER: "bg-gray-100 text-gray-800",
+};
