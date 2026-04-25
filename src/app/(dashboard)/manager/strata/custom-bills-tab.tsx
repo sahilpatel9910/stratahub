@@ -360,7 +360,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
             <DialogTitle>New Custom Bill</DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
+          <div className="flex flex-col gap-[18px] px-7 py-5">
             <div className="grid gap-1.5">
               <Label>Unit *</Label>
               <Select
@@ -373,27 +373,48 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                 }}
                 itemToStringLabel={(v) => {
                   const u = (unitsData ?? []).find((u) => u.id === v);
-                  return u ? `Unit ${u.unitNumber}` : String(v);
+                  if (!u) return String(v);
+                  const owner = u.ownerships?.[0]?.user;
+                  const tenant = u.tenancies?.[0]?.user;
+                  const name = owner
+                    ? `${owner.firstName} ${owner.lastName}`
+                    : tenant
+                    ? `${tenant.firstName} ${tenant.lastName}`
+                    : null;
+                  return name ? `Unit ${u.unitNumber} — ${name}` : `Unit ${u.unitNumber}`;
                 }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(unitsData ?? []).map(
-                    (u: { id: string; unitNumber: string }) => (
-                      <SelectItem key={u.id} value={u.id} label={`Unit ${u.unitNumber}`}>
-                        Unit {u.unitNumber}
+                  {(unitsData ?? []).map((u) => {
+                    const owner = u.ownerships?.[0]?.user;
+                    const tenant = u.tenancies?.[0]?.user;
+                    const residentName = owner
+                      ? `${owner.firstName} ${owner.lastName}`
+                      : tenant
+                      ? `${tenant.firstName} ${tenant.lastName}`
+                      : null;
+                    const label = residentName
+                      ? `Unit ${u.unitNumber} — ${residentName}`
+                      : `Unit ${u.unitNumber}`;
+                    return (
+                      <SelectItem key={u.id} value={u.id} label={label}>
+                        <span>Unit {u.unitNumber}</span>
+                        {residentName && (
+                          <span className="ml-1.5 text-muted-foreground">— {residentName}</span>
+                        )}
                       </SelectItem>
-                    )
-                  )}
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-1.5">
               <Label>Bill recipient *</Label>
-              <div className="flex gap-2">
+              <div className="flex h-11 gap-2">
                 {(["OWNER", "TENANT"] as const).map((type) => (
                   <button
                     key={type}
@@ -401,7 +422,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                       setFormRecipientType(type);
                       setFormRecipientId("");
                     }}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`flex-1 rounded-[10px] border text-sm font-medium transition-colors ${
                       formRecipientType === type
                         ? "border-foreground bg-muted font-semibold"
                         : "border-border text-muted-foreground hover:border-foreground/40"
@@ -515,12 +536,12 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
               </div>
               <div className="grid gap-1.5">
                 <Label>Payment Mode *</Label>
-                <div className="flex gap-2">
+                <div className="flex h-11 gap-2">
                   {(["ONLINE", "MANUAL"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setFormPaymentMode(mode)}
-                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      className={`flex-1 rounded-[10px] border text-sm font-medium transition-colors ${
                         formPaymentMode === mode
                           ? "border-foreground bg-muted font-semibold"
                           : "border-border text-muted-foreground hover:border-foreground/40"
