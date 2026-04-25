@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { trpc } from "@/lib/trpc/client";
-import { formatCurrency } from "@/lib/constants";
+import {
+  formatCurrency,
+  CUSTOM_BILL_CATEGORY_LABELS,
+  CUSTOM_BILL_CATEGORY_COLORS,
+} from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +57,18 @@ export default function ResidentLeviesPage() {
       toast.error(err.message ?? "Failed to start payment. Please try again.");
     },
   });
+
+  const customBillCheckoutMutation = trpc.customBills.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to start payment. Please try again.");
+    },
+  });
+
+  const { data: customBills = [], isLoading: billsLoading } =
+    trpc.customBills.getMyBills.useQuery({});
 
   const { data: levies = [], isLoading } = trpc.resident.getMyLevies.useQuery(
     statusFilter !== "ALL" ? { status: statusFilter as "PENDING" | "PAID" | "OVERDUE" | "PARTIAL" | "WAIVED" } : {}
@@ -205,6 +221,99 @@ export default function ResidentLeviesPage() {
             </TableBody>
           </Table>
         )}
+        </CardContent>
+      </Card>
+
+      {/* Custom Bills */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-[-0.03em] text-foreground">Custom bills</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Individual charges raised by building management
+          </p>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {billsLoading ? (
+            <div className="space-y-3 px-6 py-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 rounded-xl" />
+              ))}
+            </div>
+          ) : customBills.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              No custom bills on your account.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="px-4 py-3">Bill</TableHead>
+                  <TableHead className="px-4 py-3">Category</TableHead>
+                  <TableHead className="px-4 py-3 text-right">Amount</TableHead>
+                  <TableHead className="px-4 py-3">Due Date</TableHead>
+                  <TableHead className="px-4 py-3">Status</TableHead>
+                  <TableHead className="px-4 py-3">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customBills.map((bill) => (
+                  <TableRow key={bill.id}>
+                    <TableCell className="px-4 py-3">
+                      <div className="font-medium">{bill.title}</div>
+                      {bill.description && (
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {bill.description}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <Badge className={CUSTOM_BILL_CATEGORY_COLORS[bill.category] ?? ""}>
+                        {CUSTOM_BILL_CATEGORY_LABELS[bill.category] ?? bill.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-right font-medium">
+                      {formatCurrency(bill.amountCents)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-muted-foreground">
+                      {new Date(bill.dueDate).toLocaleDateString("en-AU", { timeZone: "UTC" })}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <Badge className={STATUS_COLORS[bill.status] ?? ""}>
+                        {STATUS_LABELS[bill.status] ?? bill.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      {(bill.status === "PENDING" || bill.status === "OVERDUE") &&
+                        bill.paymentMode === "ONLINE" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-lg text-xs font-medium"
+                            disabled={customBillCheckoutMutation.isPending}
+                            onClick={() =>
+                              customBillCheckoutMutation.mutate({ billId: bill.id })
+                            }
+                          >
+                            {customBillCheckoutMutation.isPending &&
+                            customBillCheckoutMutation.variables?.billId === bill.id ? (
+                              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                            ) : null}
+                            Pay Now
+                          </Button>
+                        )}
+                      {(bill.status === "PENDING" || bill.status === "OVERDUE") &&
+                        bill.paymentMode === "MANUAL" && (
+                          <span className="text-xs text-muted-foreground">Pay at reception</span>
+                        )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
