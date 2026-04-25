@@ -353,7 +353,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
             <DialogTitle>New Custom Bill</DialogTitle>
           </DialogHeader>
 
-          <div className="flex flex-col gap-[18px] px-7 py-5">
+          <div className="flex flex-col gap-[18px] overflow-y-auto px-7 py-5">
             <div className="grid gap-1.5">
               <Label>Unit *</Label>
               <Select
