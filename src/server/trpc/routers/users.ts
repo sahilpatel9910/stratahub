@@ -110,6 +110,10 @@ export const usersRouter = createTRPCRouter({
           where: { isActive: true },
           select: { role: true, organisation: { select: { name: true } } },
         },
+        buildingAssignments: {
+          where: { isActive: true },
+          select: { role: true, building: { select: { name: true } } },
+        },
       },
     });
   }),

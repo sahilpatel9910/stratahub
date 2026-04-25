@@ -113,9 +113,11 @@ export default function StrataPage() {
 
   const { data: me } = trpc.users.getMe.useQuery();
   const isBuildingManager =
-    me?.orgMemberships?.some(
+    (me?.orgMemberships?.some(
       (m) => m.role === "SUPER_ADMIN" || m.role === "BUILDING_MANAGER"
-    ) ?? false;
+    ) ||
+      me?.buildingAssignments?.some((a) => a.role === "BUILDING_MANAGER")) ??
+    false;
 
   const query = trpc.strata.getByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken

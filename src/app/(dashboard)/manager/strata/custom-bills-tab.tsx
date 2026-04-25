@@ -58,6 +58,7 @@ function formatDate(d: Date | string | null | undefined) {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 }
 
@@ -69,6 +70,7 @@ interface Props {
 export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const [formUnitId, setFormUnitId] = useState("");
   const [formRecipientType, setFormRecipientType] = useState<"OWNER" | "TENANT">("OWNER");
@@ -144,7 +146,15 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
   }
 
   function handleCreate() {
-    if (!formUnitId || !formRecipientId || !formTitle || !formCategory || !formAmount || !formDueDate) {
+    if (
+      !formUnitId ||
+      !formRecipientId ||
+      formRecipientId === "_none" ||
+      !formTitle ||
+      !formCategory ||
+      !formAmount ||
+      !formDueDate
+    ) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -270,6 +280,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                             size="sm"
                             variant="ghost"
                             className="h-7 gap-1 px-2 text-xs text-orange-600 hover:text-orange-700"
+                            disabled={updateStatusMutation.isPending}
                             onClick={() =>
                               updateStatusMutation.mutate({ id: bill.id, status: "OVERDUE" })
                             }
@@ -282,6 +293,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                             size="sm"
                             variant="ghost"
                             className="h-7 gap-1 px-2 text-xs text-green-700 hover:text-green-800"
+                            disabled={updateStatusMutation.isPending}
                             onClick={() =>
                               updateStatusMutation.mutate({ id: bill.id, status: "PAID" })
                             }
@@ -291,14 +303,40 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                           </Button>
                         )}
                         {isBuildingManager && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 text-destructive hover:text-destructive"
-                            onClick={() => deleteMutation.mutate({ id: bill.id })}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          deleteConfirmId === bill.id ? (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                                disabled={deleteMutation.isPending}
+                                onClick={() => {
+                                  deleteMutation.mutate({ id: bill.id });
+                                  setDeleteConfirmId(null);
+                                }}
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2 text-xs text-muted-foreground"
+                                onClick={() => setDeleteConfirmId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-destructive hover:text-destructive"
+                              aria-label={`Delete bill: ${bill.title}`}
+                              onClick={() => setDeleteConfirmId(bill.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>
@@ -375,41 +413,40 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
               </div>
             </div>
 
-            {formUnitId && (
-              <div className="grid gap-1.5">
-                <Label>{formRecipientType === "OWNER" ? "Owner" : "Tenant"} *</Label>
-                <Select
-                  value={formRecipientId}
-                  onValueChange={(v) => v !== null && setFormRecipientId(v)}
-                  itemToStringLabel={(v) => {
-                    const r = recipientOptions.find((r) => r.user.id === v);
-                    return r ? `${r.user.firstName} ${r.user.lastName}` : String(v);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select person" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {recipientOptions.length === 0 ? (
-                      <SelectItem value="_none" disabled label="No active residents">
-                        No active{" "}
-                        {formRecipientType === "OWNER" ? "owners" : "tenants"} for this unit
+            <div className="grid gap-1.5">
+              <Label>{formRecipientType === "OWNER" ? "Owner" : "Tenant"} *</Label>
+              <Select
+                value={formRecipientId}
+                disabled={!formUnitId}
+                onValueChange={(v) => v !== null && setFormRecipientId(v)}
+                itemToStringLabel={(v) => {
+                  const r = recipientOptions.find((r) => r.user.id === v);
+                  return r ? `${r.user.firstName} ${r.user.lastName}` : String(v);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formUnitId ? "Select person" : "Select a unit first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {recipientOptions.length === 0 ? (
+                    <SelectItem value="_none" disabled label="No active residents">
+                      No active{" "}
+                      {formRecipientType === "OWNER" ? "owners" : "tenants"} for this unit
+                    </SelectItem>
+                  ) : (
+                    recipientOptions.map((r) => (
+                      <SelectItem
+                        key={r.user.id}
+                        value={r.user.id}
+                        label={`${r.user.firstName} ${r.user.lastName}`}
+                      >
+                        {r.user.firstName} {r.user.lastName}
                       </SelectItem>
-                    ) : (
-                      recipientOptions.map((r) => (
-                        <SelectItem
-                          key={r.user.id}
-                          value={r.user.id}
-                          label={`${r.user.firstName} ${r.user.lastName}`}
-                        >
-                          {r.user.firstName} {r.user.lastName}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="grid gap-1.5">
               <Label>Title *</Label>
