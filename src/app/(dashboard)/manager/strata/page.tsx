@@ -731,20 +731,6 @@ export default function StrataPage() {
             })()}
           </TabsContent>
 
-          {/* Custom Bills Tab */}
-          <TabsContent value="bills" className="mt-0">
-            {selectedBuildingId ? (
-              <CustomBillsTab
-                buildingId={selectedBuildingId}
-                isBuildingManager={isBuildingManager}
-              />
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Select a building to view custom bills.
-              </p>
-            )}
-          </TabsContent>
-
           {/* Bylaws Tab */}
           <TabsContent value="bylaws" className="mt-4">
             <div className="space-y-4">
@@ -827,6 +813,19 @@ export default function StrataPage() {
                 </div>
               )}
             </div>
+          </TabsContent>
+          {/* Custom Bills Tab */}
+          <TabsContent value="bills" className="mt-0">
+            {selectedBuildingId ? (
+              <CustomBillsTab
+                buildingId={selectedBuildingId}
+                isBuildingManager={isBuildingManager}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Select a building to view custom bills.
+              </p>
+            )}
           </TabsContent>
         </Tabs>
       )}

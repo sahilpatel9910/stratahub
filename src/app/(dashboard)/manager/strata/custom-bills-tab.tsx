@@ -259,18 +259,24 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3">
-                      <span
-                        className={`text-xs font-medium ${
-                          bill.paymentMode === "ONLINE"
-                            ? "text-green-700"
-                            : "text-muted-foreground"
-                        }`}
-                      >
+                      <Badge variant="outline" className="text-xs">
                         {bill.paymentMode === "ONLINE" ? "Online" : "Manual"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
+                        {bill.status === "PENDING" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 px-2 text-xs text-orange-600 hover:text-orange-700"
+                            onClick={() =>
+                              updateStatusMutation.mutate({ id: bill.id, status: "OVERDUE" })
+                            }
+                          >
+                            Mark Overdue
+                          </Button>
+                        )}
                         {bill.status !== "PAID" && (
                           <Button
                             size="sm"
