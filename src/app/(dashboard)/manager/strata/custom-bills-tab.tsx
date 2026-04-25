@@ -387,7 +387,7 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="min-w-[320px]">
                   {(unitsData ?? []).map((u) => {
                     const owner = u.ownerships?.[0]?.user;
                     const tenant = u.tenancies?.[0]?.user;
