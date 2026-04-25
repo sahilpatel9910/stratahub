@@ -143,6 +143,30 @@ enum LevyType {
   SPECIAL_LEVY
 }
 
+enum BillRecipientType {
+  OWNER
+  TENANT
+}
+
+enum BillPaymentMode {
+  ONLINE
+  MANUAL
+}
+
+enum CustomBillCategory {
+  WATER_USAGE
+  PARKING_FINE
+  DAMAGE
+  CLEANING
+  MAINTENANCE_CHARGEBACK
+  MOVE_IN_FEE
+  MOVE_OUT_FEE
+  KEY_REPLACEMENT
+  DOCUMENT_FEE
+  ADMIN_FEE
+  OTHER
+}
+
 enum FinancialType {
   INCOME
   EXPENSE
@@ -156,6 +180,7 @@ enum NotificationType {
   PARCEL_RECEIVED
   INVITE_SENT
   MESSAGE_RECEIVED
+  CUSTOM_BILL_CREATED
 }
 
 enum BookingStatus {
@@ -212,6 +237,8 @@ model User {
   notifications               Notification[]
   notificationPreferences     NotificationPreference[]
   commonAreaBookings          CommonAreaBooking[]
+  customBillsReceived         CustomBill[] @relation("CustomBillRecipient")
+  customBillsCreated          CustomBill[] @relation("CustomBillCreator")
 
   @@map("users")
 }
@@ -306,6 +333,7 @@ model Building {
   visitors      VisitorEntry[]
   parcels       Parcel[]
   keyRecords    KeyRecord[]
+  customBills   CustomBill[]
 
   @@map("buildings")
 }
@@ -348,6 +376,7 @@ model Unit {
   keyRecords      KeyRecord[]
   parkingSpots    ParkingSpot[]
   storageUnits    StorageUnit[]
+  customBills     CustomBill[]
 
   @@unique([buildingId, unitNumber])
   @@map("units")
@@ -799,6 +828,36 @@ model FinancialRecord {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@map("financial_records")
+}
+
+model CustomBill {
+  id              String             @id @default(cuid())
+  buildingId      String
+  unitId          String
+  recipientType   BillRecipientType
+  recipientId     String
+  title           String
+  description     String?
+  category        CustomBillCategory
+  amountCents     Int
+  dueDate         DateTime
+  status          PaymentStatus      @default(PENDING)
+  paymentMode     BillPaymentMode
+  paidDate        DateTime?
+  stripeSessionId String?
+  createdById     String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  building  Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  unit      Unit     @relation(fields: [unitId], references: [id])
+  recipient User     @relation("CustomBillRecipient", fields: [recipientId], references: [id])
+  createdBy User     @relation("CustomBillCreator", fields: [createdById], references: [id])
+
+  @@index([stripeSessionId])
+  @@index([buildingId])
+  @@index([unitId, recipientId])
+  @@map("custom_bills")
 }
 
 // ============================================================
