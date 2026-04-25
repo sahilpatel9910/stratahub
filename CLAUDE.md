@@ -110,7 +110,6 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role` —
 - ✅ **Branch 9** — Manager notifications centre (`/manager/notifications`) — type filter pills, cursor pagination, mark read/all read, unread badge in sidebar
 - ✅ **Branch 10** — Real-time messages (Supabase postgres_changes on messages table), avatar upload to Supabase Storage (manager settings), per-type notification preference toggles (DB-backed, both manager + resident settings pages)
 - ✅ **Branch 11** — Stripe levy payments (Stripe Checkout test mode, webhook marks PAID, Resend receipt email, resident levies Pay Now button)
+- ✅ **Branch 12** — Custom billing: managers/reception raise ad-hoc bills against individual owners or tenants; ONLINE (Stripe Checkout) or MANUAL payment mode; `CUSTOM_BILL_CREATED` in-app notification + Resend email on creation; manager Custom Bills tab on `/manager/strata` (5th tab) with filter pills, full table, Mark Overdue/Mark Paid/Delete actions; resident Custom Bills section on `/resident/levies` with Pay Now (online) or "Pay at reception" (manual); webhook extended to mark custom bills PAID.
 
 ## ⬜ Next Priorities
-2. Real-time messages — ✅ Done in Branch 10
-3. Manager settings page — ✅ Done in Branch 10
