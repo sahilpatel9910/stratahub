@@ -95,16 +95,9 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
     buildingId ? { buildingId } : skipToken
   );
 
-  const { data: unitResidents } = trpc.units.getResidents.useQuery(
-    formUnitId ? { unitId: formUnitId } : skipToken
-  );
-
-  const owners = (unitResidents?.ownerships ?? []) as Array<{
-    user: { id: string; firstName: string; lastName: string };
-  }>;
-  const tenants = (unitResidents?.tenancies ?? []) as Array<{
-    user: { id: string; firstName: string; lastName: string };
-  }>;
+  const selectedUnit = (unitsData ?? []).find((u) => u.id === formUnitId);
+  const owners = selectedUnit?.ownerships ?? [];
+  const tenants = selectedUnit?.tenancies ?? [];
   const recipientOptions = formRecipientType === "OWNER" ? owners : tenants;
 
   const createMutation = trpc.customBills.create.useMutation({
@@ -450,10 +443,9 @@ export function CustomBillsTab({ buildingId, isBuildingManager }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   {recipientOptions.length === 0 ? (
-                    <SelectItem value="_none" disabled label="No active residents">
-                      No active{" "}
-                      {formRecipientType === "OWNER" ? "owners" : "tenants"} for this unit
-                    </SelectItem>
+                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                      No active {formRecipientType === "OWNER" ? "owners" : "tenants"} for this unit
+                    </div>
                   ) : (
                     recipientOptions.map((r) => (
                       <SelectItem
