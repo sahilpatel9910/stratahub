@@ -65,6 +65,16 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role` —
 
 **Building auth gotcha:** Never trust a caller-supplied `buildingId`. Always resolve the building from the record being accessed (e.g. look up the unit's buildingId, then check the caller has access to that building).
 
+**Notification gotcha:** Always create notifications via `createNotification()` in `src/server/trpc/lib/create-notification.ts` — never `db.notification.createMany` directly. The helper checks `NotificationPreference` first; bypassing it silently ignores user opt-outs.
+
+**Stripe webhook gotcha:** `/api/stripe/` must remain in `isPublicAuthPath()` (`src/lib/auth/redirects.ts`). The auth middleware 307-redirects unauthenticated POSTs, which breaks webhook delivery silently (Stripe retries, all fail).
+
+**Stripe checkout gotcha:** Both `strata.createCheckoutSession` and `customBills.createCheckoutSession` reuse an existing `open` Stripe session if `stripeSessionId` is already set on the record. Don't remove this check — without it, double-clicking Pay Now overwrites the session ID and the webhook can't find the record.
+
+**Custom bill access gotcha:** `customBills.create` uses `assertBuildingOperationsAccess` (not Management) so RECEPTION staff can raise bills. The procedure guard is `managerProcedure` but the building-level check must also allow RECEPTION.
+
+**Email gotcha:** `sendCustomBillEmail` is the creation notice (new bill raised). `sendCustomBillReceiptEmail` is the payment confirmation. They are different functions — the webhook must call the receipt one, not the creation one.
+
 ### Prisma 7
 
 - Import from `@/generated/prisma/client` — **not** `@prisma/client`.

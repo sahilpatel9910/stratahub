@@ -1,4 +1,4 @@
-# StrataHub
+ # StrataHub
 
 StrataHub is an Australian strata and apartment management SaaS built with Next.js, Supabase, Prisma, and tRPC. It supports property managers, residents, and super-admin users across multiple organisations and buildings.
 
