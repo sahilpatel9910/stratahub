@@ -5,6 +5,7 @@ import {
   protectedProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingAccess, assertBuildingManagementAccess } from "@/server/auth/building-access";
+import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const announcementsRouter = createTRPCRouter({
   listByBuilding: protectedProcedure
@@ -69,16 +70,17 @@ export const announcementsRouter = createTRPCRouter({
           return true;
         });
         if (residents.length > 0) {
-          await ctx.db.notification.createMany({
-            data: residents.map(({ userId }) => ({
-              userId,
-              type: "ANNOUNCEMENT_PUBLISHED" as const,
-              title: `New announcement: ${input.title}`,
-              body: input.content.length > 120 ? `${input.content.slice(0, 117)}...` : input.content,
-              linkUrl: "/resident/announcements",
-              isRead: false,
-            })),
-          });
+          await Promise.all(
+            residents.map(({ userId }) =>
+              createNotification(ctx.db, {
+                userId,
+                type: "ANNOUNCEMENT_PUBLISHED",
+                title: `New announcement: ${input.title}`,
+                body: input.content.length > 120 ? `${input.content.slice(0, 117)}...` : input.content,
+                linkUrl: "/resident/announcements",
+              })
+            )
+          );
         }
       } catch (err) {
         console.error("[notification] ANNOUNCEMENT_PUBLISHED failed:", err);

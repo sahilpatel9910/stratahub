@@ -87,7 +87,7 @@ export const customBillsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, input.buildingId);
 
       const unit = await ctx.db.unit.findUniqueOrThrow({
         where: { id: input.unitId },
@@ -242,6 +242,14 @@ export const customBillsRouter = createTRPCRouter({
       }
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+      // Reuse existing open session if one exists (prevents double-click creating duplicate sessions)
+      if (bill.stripeSessionId) {
+        const existing = await getStripe().checkout.sessions.retrieve(bill.stripeSessionId);
+        if (existing.status === "open") {
+          return { url: existing.url! };
+        }
+      }
 
       const session = await getStripe().checkout.sessions.create({
         mode: "payment",

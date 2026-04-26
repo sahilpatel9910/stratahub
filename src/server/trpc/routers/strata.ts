@@ -306,9 +306,7 @@ export const strataRouter = createTRPCRouter({
         }))
       );
       if (notifications.length > 0) {
-        await ctx.db.notification.createMany({ data: notifications }).catch((err) =>
-          console.error("[notification] bulk createMany failed:", err)
-        );
+        await Promise.all(notifications.map((n) => createNotification(ctx.db, n)));
       }
       for (const unit of unitsWithOwners) {
         for (const ownership of unit.ownerships) {
@@ -527,7 +525,15 @@ export const strataRouter = createTRPCRouter({
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-      // 5. Create Stripe Checkout Session
+      // 5. Reuse existing open session if one exists (prevents double-click creating duplicate sessions)
+      if (levy.stripeSessionId) {
+        const existing = await getStripe().checkout.sessions.retrieve(levy.stripeSessionId);
+        if (existing.status === "open") {
+          return { url: existing.url! };
+        }
+      }
+
+      // 6. Create Stripe Checkout Session
       const session = await getStripe().checkout.sessions.create({
         mode: "payment",
         line_items: [
@@ -550,7 +556,7 @@ export const strataRouter = createTRPCRouter({
         cancel_url: `${appUrl}/resident/levies?payment=cancelled`,
       });
 
-      // 6. Save session ID to levy for webhook lookup
+      // 7. Save session ID to levy for webhook lookup
       await ctx.db.strataLevy.update({
         where: { id: levy.id },
         data: { stripeSessionId: session.id },
