@@ -104,7 +104,7 @@ Standard Next.js App Router + TanStack Query v5 pattern:
 - [x] Step 2: Server prefetch — manager maintenance  
 - [x] Step 2: Server prefetch — resident dashboard
 - [x] Step 2: Server prefetch — resident levies
-- [ ] Step 3: next/dynamic for Recharts (analytics page)
+- [x] Step 3: next/dynamic for Recharts (analytics page)
 - [ ] Step 3: next/dynamic for heavy dialogs
 - [ ] Step 4: Suspense boundaries — manager dashboard
 - [ ] Step 4: Suspense boundaries — resident dashboard
