@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/server/db/client";
-import { sendPaymentReceiptEmail, sendCustomBillEmail } from "@/lib/email/send";
+import { sendPaymentReceiptEmail, sendCustomBillReceiptEmail } from "@/lib/email/send";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text();
@@ -100,15 +100,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         data: { status: "PAID", paidDate },
       });
 
-      void sendCustomBillEmail(bill.recipient.email, {
+      void sendCustomBillReceiptEmail(bill.recipient.email, {
         recipientName: `${bill.recipient.firstName} ${bill.recipient.lastName}`,
         buildingName: bill.building.name,
         unitNumber: bill.unit.unitNumber,
         title: bill.title,
         category: bill.category,
         amountCents: bill.amountCents,
-        dueDate: bill.dueDate,
-        paymentMode: "ONLINE",
+        paidDate,
+        stripeSessionId: session.id,
       });
     }
   }

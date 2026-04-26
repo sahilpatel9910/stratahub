@@ -222,6 +222,72 @@ export async function sendPaymentReceiptEmail(
   }
 }
 
+// ── Custom Bill Payment Receipt ───────────────────────────────
+
+export interface CustomBillReceiptData {
+  recipientName: string;
+  buildingName: string;
+  unitNumber: string;
+  title: string;
+  category: string;
+  amountCents: number;
+  paidDate: Date;
+  stripeSessionId: string;
+}
+
+export async function sendCustomBillReceiptEmail(
+  to: string,
+  data: CustomBillReceiptData
+): Promise<void> {
+  const amount = formatCurrency(data.amountCents);
+  const paid = data.paidDate.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const categoryLabels: Record<string, string> = {
+    WATER_USAGE: "Water Usage",
+    PARKING_FINE: "Parking Fine",
+    DAMAGE: "Damage",
+    CLEANING: "Cleaning",
+    MAINTENANCE_CHARGEBACK: "Maintenance Chargeback",
+    MOVE_IN_FEE: "Move-in Fee",
+    MOVE_OUT_FEE: "Move-out Fee",
+    KEY_REPLACEMENT: "Key Replacement",
+    DOCUMENT_FEE: "Document Fee",
+    ADMIN_FEE: "Admin Fee",
+    OTHER: "Other",
+  };
+  const categoryLabel = categoryLabels[data.category] ?? data.category;
+
+  try {
+    await getResend().emails.send({
+      from: FROM,
+      to,
+      subject: `Payment Receipt — ${esc(data.title)} for Unit ${data.unitNumber}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+          <h2 style="color:#1e3a5f">StrataHub — Payment Receipt</h2>
+          <p>Dear ${esc(data.recipientName)},</p>
+          <p>Your payment for <strong>${esc(data.buildingName)}</strong> has been received. Thank you!</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Unit</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(data.unitNumber)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Bill</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(data.title)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Category</td><td style="padding:8px;border:1px solid #e2e8f0">${esc(categoryLabel)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Amount Paid</td><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600;color:#16a34a">${amount}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Date Paid</td><td style="padding:8px;border:1px solid #e2e8f0">${paid}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e2e8f0;font-weight:600">Reference</td><td style="padding:8px;border:1px solid #e2e8f0;font-size:12px;color:#64748b">${esc(data.stripeSessionId)}</td></tr>
+          </table>
+          <p>You can view your bill history in the StrataHub resident portal.</p>
+          <p style="color:#64748b;font-size:12px;margin-top:32px">StrataHub — Australian Property Management</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("[email] sendCustomBillReceiptEmail failed:", err);
+  }
+}
+
 // ── Custom Bill Notice ────────────────────────────────────────
 
 export interface CustomBillNoticeData {
