@@ -9,12 +9,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ResidentDashboardClient() {
   const { data: profile, isLoading } = trpc.resident.getMyProfile.useQuery();
   const { data: levies = [], isLoading: leviesLoading } = trpc.resident.getMyLevies.useQuery({});
+  const { data: customBills = [] } = trpc.customBills.getMyBills.useQuery({});
   const { data: maintenance = [], isLoading: maintenanceLoading } = trpc.resident.getMyMaintenanceRequests.useQuery({});
   const { data: announcements = [] } = trpc.resident.getMyAnnouncements.useQuery();
 
-  const unpaidTotal = levies
-    .filter((l) => l.status === "PENDING" || l.status === "OVERDUE")
-    .reduce((sum, l) => sum + l.amountCents, 0);
+  const unpaidTotal =
+    levies
+      .filter((l) => l.status === "PENDING" || l.status === "OVERDUE")
+      .reduce((sum, l) => sum + l.amountCents, 0) +
+    customBills
+      .filter((b) => b.status === "PENDING" || b.status === "OVERDUE")
+      .reduce((sum, b) => sum + b.amountCents, 0);
 
   const openMaintenance = maintenance.filter(
     (m) => !["COMPLETED", "CLOSED", "CANCELLED"].includes(m.status)
@@ -59,7 +64,7 @@ export default function ResidentDashboardClient() {
             <p className="panel-kicker">Current Status</p>
             <div className="mt-4 space-y-3">
               <ResidentSignal
-                label="Outstanding levies"
+                label="Outstanding balance"
                 value={unpaidTotal > 0 ? formatCurrency(unpaidTotal) : "All paid"}
               />
               <ResidentSignal
@@ -82,7 +87,7 @@ export default function ResidentDashboardClient() {
           <ResidentStatCard
             href="/resident/levies"
             icon={DollarSign}
-            label="Outstanding Levies"
+            label="Outstanding Balance"
             value={unpaidTotal > 0 ? formatCurrency(unpaidTotal) : "All paid"}
             tone={unpaidTotal > 0 ? "warning" : "positive"}
           />

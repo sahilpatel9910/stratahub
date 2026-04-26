@@ -9,6 +9,7 @@ export default async function ResidentDashboardPage() {
   await Promise.all([
     trpc.resident.getMyProfile.prefetch(),
     trpc.resident.getMyLevies.prefetch({}),
+    trpc.customBills.getMyBills.prefetch({}),
     trpc.resident.getMyMaintenanceRequests.prefetch({}),
     trpc.resident.getMyAnnouncements.prefetch(),
   ]);
