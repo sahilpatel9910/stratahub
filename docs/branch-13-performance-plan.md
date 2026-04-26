@@ -99,11 +99,11 @@ Standard Next.js App Router + TanStack Query v5 pattern:
 ## Progress Tracker
 
 - [x] Step 1: loading.tsx files for all 17 routes (+ super-admin = 23 total)
-- [ ] Step 2: Server prefetch — manager dashboard
-- [ ] Step 2: Server prefetch — manager residents
-- [ ] Step 2: Server prefetch — manager maintenance  
-- [ ] Step 2: Server prefetch — resident dashboard
-- [ ] Step 2: Server prefetch — resident levies
+- [x] Step 2: Server prefetch — manager dashboard
+- [x] Step 2: Server prefetch — manager residents
+- [x] Step 2: Server prefetch — manager maintenance  
+- [x] Step 2: Server prefetch — resident dashboard
+- [x] Step 2: Server prefetch — resident levies
 - [ ] Step 3: next/dynamic for Recharts (analytics page)
 - [ ] Step 3: next/dynamic for heavy dialogs
 - [ ] Step 4: Suspense boundaries — manager dashboard
