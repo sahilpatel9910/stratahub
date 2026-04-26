@@ -74,9 +74,13 @@ export default function ResidentLeviesPage() {
     statusFilter !== "ALL" ? { status: statusFilter as "PENDING" | "PAID" | "OVERDUE" | "PARTIAL" | "WAIVED" } : {}
   );
 
-  const unpaidTotal = levies
+  const levyUnpaidTotal = levies
     .filter((l) => l.status === "PENDING" || l.status === "OVERDUE")
     .reduce((sum, l) => sum + l.amountCents, 0);
+  const billUnpaidTotal = customBills
+    .filter((b) => b.status === "PENDING" || b.status === "OVERDUE")
+    .reduce((sum, b) => sum + b.amountCents, 0);
+  const unpaidTotal = levyUnpaidTotal + billUnpaidTotal;
   const paidCount = levies.filter((l) => l.status === "PAID").length;
   const overdueCount = levies.filter((l) => l.status === "OVERDUE").length;
 
