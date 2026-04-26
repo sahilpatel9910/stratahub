@@ -3,7 +3,6 @@ import { createHydrationHelpers } from "@trpc/react-query/rsc";
 import { createCallerFactory, createTRPCContext } from "@/server/trpc/trpc";
 import { appRouter } from "@/server/trpc/router";
 import { makeQueryClient } from "./query-client";
-import type { QueryClient } from "@tanstack/react-query";
 
 const callerFactory = createCallerFactory(appRouter);
 
@@ -19,7 +18,7 @@ const callerFactory = createCallerFactory(appRouter);
  */
 export async function createServerTRPC() {
   const ctx = await createTRPCContext();
-  const queryClient: QueryClient = makeQueryClient();
+  const queryClient = makeQueryClient();
   const caller = callerFactory(ctx);
 
   const { trpc, HydrateClient } = createHydrationHelpers<typeof appRouter>(
@@ -27,5 +26,5 @@ export async function createServerTRPC() {
     () => queryClient
   );
 
-  return { trpc, HydrateClient, ctx, queryClient };
+  return { trpc, HydrateClient, ctx };
 }

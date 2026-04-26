@@ -4,10 +4,12 @@ import ManagerDashboardClient from "./_client";
 export default async function ManagerDashboardPage() {
   const { trpc, HydrateClient, ctx } = await createServerTRPC();
 
-  // Resolve the user's first building assignment as the default for prefetch.
-  // Super-admins have no buildingAssignments — they use the building switcher
-  // and data loads client-side on first selection.
-  const buildingId = ctx.user?.buildingAssignments[0]?.buildingId;
+  // Only prefetch when the user has exactly one building assignment.
+  // Multi-building managers have a Zustand-persisted selectedBuildingId (localStorage)
+  // that may differ from buildingAssignments[0], causing a cache miss and wasted prefetch.
+  // Super-admins have no buildingAssignments — they use the building switcher.
+  const assignments = ctx.user?.buildingAssignments ?? [];
+  const buildingId = assignments.length === 1 ? assignments[0].buildingId : undefined;
 
   if (buildingId) {
     await Promise.all([
