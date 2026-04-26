@@ -33,6 +33,7 @@ export function isPublicAuthPath(pathname: string) {
   return (
     ["/", "/login", "/register", "/forgot-password", "/reset-password"].includes(pathname) ||
     pathname.startsWith("/api/webhooks") ||
+    pathname.startsWith("/api/stripe/") ||
     pathname.startsWith("/invite") ||
     pathname.startsWith("/api/auth/")
   );
