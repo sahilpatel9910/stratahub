@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ResidentDashboardClient() {
   const { data: profile, isLoading } = trpc.resident.getMyProfile.useQuery();
-  const { data: levies = [] } = trpc.resident.getMyLevies.useQuery({});
-  const { data: maintenance = [] } = trpc.resident.getMyMaintenanceRequests.useQuery({});
+  const { data: levies = [], isLoading: leviesLoading } = trpc.resident.getMyLevies.useQuery({});
+  const { data: maintenance = [], isLoading: maintenanceLoading } = trpc.resident.getMyMaintenanceRequests.useQuery({});
   const { data: announcements = [] } = trpc.resident.getMyAnnouncements.useQuery();
 
   const unpaidTotal = levies
@@ -26,39 +26,32 @@ export default function ResidentDashboardClient() {
     ...(profile?.tenancies ?? []).map((t) => t.unit),
   ];
 
-  if (isLoading) {
-    return (
-      <div className="space-y-7">
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-72 rounded-xl" />
-          <Skeleton className="h-5 w-56 rounded-xl" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section className="app-panel overflow-hidden p-6 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <div>
             <p className="eyebrow-label text-primary/80">Resident Workspace</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-5xl">
-              Welcome back, {firstName}
-            </h1>
-            {units.length > 0 ? (
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-                {units.map((u) => `Unit ${u.unitNumber} — ${u.building.name}`).join(" · ")}
-              </p>
+            {isLoading ? (
+              <>
+                <Skeleton className="mt-3 h-10 w-72 rounded-xl" />
+                <Skeleton className="mt-4 h-5 w-56 rounded-full" />
+              </>
             ) : (
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-                Your portal will show levies, requests, and announcements as soon as your unit assignment is active.
-              </p>
+              <>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.06em] text-foreground md:text-5xl">
+                  Welcome back, {firstName}
+                </h1>
+                {units.length > 0 ? (
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+                    {units.map((u) => `Unit ${u.unitNumber} — ${u.building.name}`).join(" · ")}
+                  </p>
+                ) : (
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+                    Your portal will show levies, requests, and announcements as soon as your unit assignment is active.
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -83,20 +76,28 @@ export default function ResidentDashboardClient() {
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ResidentStatCard
-          href="/resident/levies"
-          icon={DollarSign}
-          label="Outstanding Levies"
-          value={unpaidTotal > 0 ? formatCurrency(unpaidTotal) : "All paid"}
-          tone={unpaidTotal > 0 ? "warning" : "positive"}
-        />
-        <ResidentStatCard
-          href="/resident/maintenance"
-          icon={Wrench}
-          label="Open Requests"
-          value={`${openMaintenance} open`}
-          tone={openMaintenance > 0 ? "default" : "muted"}
-        />
+        {leviesLoading ? (
+          <Skeleton className="h-32 rounded-2xl" />
+        ) : (
+          <ResidentStatCard
+            href="/resident/levies"
+            icon={DollarSign}
+            label="Outstanding Levies"
+            value={unpaidTotal > 0 ? formatCurrency(unpaidTotal) : "All paid"}
+            tone={unpaidTotal > 0 ? "warning" : "positive"}
+          />
+        )}
+        {maintenanceLoading ? (
+          <Skeleton className="h-32 rounded-2xl" />
+        ) : (
+          <ResidentStatCard
+            href="/resident/maintenance"
+            icon={Wrench}
+            label="Open Requests"
+            value={`${openMaintenance} open`}
+            tone={openMaintenance > 0 ? "default" : "muted"}
+          />
+        )}
         <ResidentStatCard
           href="/resident/announcements"
           icon={Megaphone}

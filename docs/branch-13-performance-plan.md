@@ -106,9 +106,9 @@ Standard Next.js App Router + TanStack Query v5 pattern:
 - [x] Step 2: Server prefetch — resident levies
 - [x] Step 3: next/dynamic for Recharts (analytics page)
 - [ ] Step 3: next/dynamic for heavy dialogs
-- [ ] Step 4: Suspense boundaries — manager dashboard
-- [ ] Step 4: Suspense boundaries — resident dashboard
-- [ ] Step 4: Suspense boundaries — analytics
+- [x] Step 4: Suspense boundaries — manager dashboard (already had per-section skeletons)
+- [x] Step 4: Suspense boundaries — resident dashboard (removed global isLoading block; per-section skeletons)
+- [x] Step 4: Suspense boundaries — analytics (skeleton fallback on dynamic import)
 
 ## Definition of Done
 - Navigation between pages shows a skeleton immediately (no blank flash)
