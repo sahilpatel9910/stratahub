@@ -4,7 +4,8 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-[linear-gradient(145deg,rgba(22,78,99,0.12),transparent_42%),linear-gradient(180deg,#f8fbfc_0%,#edf4f7_100%)]">
+    <div className="relative flex min-h-screen overflow-hidden bg-[radial-gradient(circle_at_12%_8%,rgba(14,165,233,0.16),transparent_30%),radial-gradient(circle_at_80%_18%,rgba(16,185,129,0.10),transparent_28%),linear-gradient(180deg,#f8fbfc_0%,#edf4f7_100%)]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/80" />
       <div className="hidden flex-1 lg:block">
         <div className="flex h-full flex-col justify-between p-10 xl:p-14">
           <div className="max-w-lg">

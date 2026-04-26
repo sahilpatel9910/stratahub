@@ -74,7 +74,7 @@ export default async function ResidentLayout({
               : null
           }
         />
-        <main className="app-main">{children}</main>
+        <main className="app-main relative z-10">{children}</main>
       </div>
     </div>
   );

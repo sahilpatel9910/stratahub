@@ -274,7 +274,7 @@ export default function SuperAdminUsersPage() {
   const inviteUnits = unitsQuery.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>

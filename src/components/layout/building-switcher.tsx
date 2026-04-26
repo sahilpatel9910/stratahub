@@ -64,7 +64,7 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
       <button
         ref={triggerRef}
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-white/70 bg-white/85 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white"
+        className="flex min-h-11 items-center gap-2 rounded-xl border border-white/75 bg-white/85 px-3 py-2 text-sm font-semibold text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-colors hover:bg-white"
       >
         <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <span className="max-w-[180px] truncate">
@@ -84,7 +84,7 @@ export function BuildingSwitcher({ buildings }: BuildingSwitcherProps) {
           <>
             <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
             <div
-              className="fixed z-[70] w-72 overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+              className="fixed z-[70] w-72 overflow-hidden rounded-[1rem] border border-border/80 bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/60"
               style={{ top: panelStyle?.top ?? 80, left: panelStyle?.left ?? 0 }}
             >
               {showOrgs
@@ -139,7 +139,7 @@ function BuildingOption({
   return (
     <button
       onClick={onSelect}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${selected ? "bg-muted/40" : ""}`}
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/60 ${selected ? "bg-muted/50" : ""}`}
     >
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium ${selected ? "text-foreground" : "text-foreground/80"}`}>

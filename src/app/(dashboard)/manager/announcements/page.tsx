@@ -118,7 +118,7 @@ export default function AnnouncementsPage() {
   const scheduledExpiryCount = announcements.filter((announcement) => !!announcement.expiresAt).length;
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <section className="app-panel overflow-hidden p-6 md:p-8">
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div>

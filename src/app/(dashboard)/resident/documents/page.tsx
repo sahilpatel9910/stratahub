@@ -48,7 +48,7 @@ export default function ResidentDocumentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <div>
         <h1 className="text-2xl font-bold">Building Documents</h1>
         <p className="text-muted-foreground text-sm mt-1">

@@ -22,8 +22,25 @@ const ROLE_ENUM = z.enum([
 const MANAGER_INVITE_ROLE_ENUM = z.enum(["OWNER", "TENANT"]);
 const INVITE_LIFECYCLE_INPUT = z.object({ id: z.string() });
 
+type InviteEmailLookupContext = {
+  db: {
+    organisation: {
+      findUnique: (args: {
+        where: { id: string };
+        select: { name: true };
+      }) => Promise<{ name: string } | null>;
+    };
+    building: {
+      findUnique: (args: {
+        where: { id: string };
+        select: { name: true };
+      }) => Promise<{ name: string } | null>;
+    };
+  };
+};
+
 async function sendInvitationEmail(
-  ctx: { db: { organisation: { findUnique: Function }; building: { findUnique: Function } } },
+  ctx: InviteEmailLookupContext,
   invite: {
     email: string;
     organisationId: string;

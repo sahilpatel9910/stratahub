@@ -113,10 +113,10 @@ export function Topbar({
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-white/70 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-0 z-50 border-b border-white/70 bg-white/72 px-4 shadow-[0_16px_48px_-36px_rgba(15,23,42,0.5)] backdrop-blur-xl md:px-6">
       <div className="flex min-h-16 items-center gap-3">
         <div className="flex items-center gap-3">
-          <SidebarTrigger className="rounded-xl border border-white/70 bg-white/85 hover:bg-white" />
+          <SidebarTrigger className="rounded-xl border border-white/75 bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] hover:bg-white" />
           <Separator orientation="vertical" className="hidden h-6 bg-border md:block" />
         </div>
 
@@ -137,12 +137,12 @@ export function Topbar({
           </div>
         )}
 
-        <div className="relative ml-auto flex-1 max-w-xl">
+        <div className="relative ml-auto hidden flex-1 max-w-xl md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label={searchPlaceholder}
             placeholder={searchPlaceholder}
-            className="h-11 rounded-xl border-white/70 bg-white/85 pl-9 pr-4 shadow-none"
+            className="h-11 rounded-xl border-white/75 bg-white/85 pl-9 pr-4 shadow-none"
           />
         </div>
 
@@ -152,7 +152,7 @@ export function Topbar({
             variant="ghost"
             size="icon"
             aria-label={bellOpen ? "Close notifications" : "Open notifications"}
-            className="relative size-11 rounded-xl border border-white/70 bg-white/85 hover:bg-white"
+            className="relative size-11 rounded-xl border border-white/75 bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] hover:bg-white"
             onClick={() => setBellOpen((o) => !o)}
           >
             <Bell className="h-5 w-5" />
@@ -174,7 +174,7 @@ export function Topbar({
                     />
 
                     <div
-                      className="fixed z-[70] w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1rem] border border-border bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+                      className="fixed z-[70] w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1rem] border border-border/80 bg-popover shadow-[0_24px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/60"
                       style={{
                         top: panelStyle?.top ?? 80,
                         right: panelStyle?.right ?? 16,
@@ -242,7 +242,7 @@ export function Topbar({
               const base = pathname.startsWith("/resident") ? "/resident" : "/manager";
               router.push(`${base}/settings`);
             }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full overflow-hidden text-xs font-semibold text-white transition-opacity hover:opacity-80"
+            className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white shadow-[0_14px_30px_-18px_rgba(15,23,42,0.8)] ring-2 ring-white/80 transition-opacity hover:opacity-85"
             style={
               avatarUrl
                 ? undefined

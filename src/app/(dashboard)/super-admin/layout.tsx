@@ -63,7 +63,7 @@ export default async function SuperAdminLayout({
               : null
           }
         />
-        <main className="app-main">{children}</main>
+        <main className="app-main relative z-10">{children}</main>
       </div>
     </div>
   );
