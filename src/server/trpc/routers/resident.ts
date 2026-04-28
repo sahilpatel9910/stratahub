@@ -216,6 +216,20 @@ export const residentRouter = createTRPCRouter({
     });
   }),
 
+  // Active tenancy for this resident (tenants only)
+  getMyTenancy: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    return ctx.db.tenancy.findFirst({
+      where: { userId: ctx.user!.id, isActive: true },
+      include: {
+        unit: {
+          include: {
+            building: { select: { name: true, suburb: true } },
+          },
+        },
+      },
+    });
+  }),
+
   // Active common areas for this resident's building
   getMyCommonAreas: tenantOrAboveProcedure.query(async ({ ctx }) => {
     const ownership = await ctx.db.ownership.findFirst({

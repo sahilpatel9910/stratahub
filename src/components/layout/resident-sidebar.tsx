@@ -12,6 +12,7 @@ import {
   LogOut,
   DoorOpen,
   Settings,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ import { trpc } from "@/lib/trpc/client";
 const residentNavItems = [
   { title: "My Home", href: "/resident", icon: Home },
   { title: "My Levies", href: "/resident/levies", icon: DollarSign },
+  { title: "My Rent", href: "/resident/rent", icon: Wallet },
   { title: "Maintenance", href: "/resident/maintenance", icon: Wrench },
   { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
