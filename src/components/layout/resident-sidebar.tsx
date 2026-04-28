@@ -34,7 +34,6 @@ import { trpc } from "@/lib/trpc/client";
 const residentNavItems = [
   { title: "My Home", href: "/resident", icon: Home },
   { title: "My Levies", href: "/resident/levies", icon: DollarSign },
-  { title: "My Rent", href: "/resident/rent", icon: Wallet },
   { title: "Maintenance", href: "/resident/maintenance", icon: Wrench },
   { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
@@ -49,6 +48,7 @@ export function ResidentSidebar() {
   const { data: unreadCount } = trpc.messaging.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
+  const { data: myTenancy } = trpc.resident.getMyTenancy.useQuery();
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -78,7 +78,31 @@ export function ResidentSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {residentNavItems.map((item) => (
+              {residentNavItems.slice(0, 2).map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    render={<Link href={item.href} />}
+                    isActive={pathname === item.href}
+                    className="sidebar-nav-button"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {myTenancy && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/resident/rent" />}
+                    isActive={pathname === "/resident/rent"}
+                    className="sidebar-nav-button"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    <span>My Rent</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {residentNavItems.slice(2).map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}

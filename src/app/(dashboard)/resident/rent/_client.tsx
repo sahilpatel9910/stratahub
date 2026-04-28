@@ -237,7 +237,7 @@ export default function ResidentRentClient() {
               <p className="text-2xl font-bold">{formatCurrency(totalPaidCents)}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              across {payments.filter((p) => p.status === "PAID").length} payments
+              across {payments.filter((p) => p.status === "PAID" || p.status === "PARTIAL").length} payments
             </p>
           </CardContent>
         </Card>
