@@ -112,17 +112,27 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role` —
 - ✅ **Branch 11** — Stripe levy payments (Stripe Checkout test mode, webhook marks PAID, Resend receipt email, resident levies Pay Now button)
 - ✅ **Branch 12** — Custom billing: managers/reception raise ad-hoc bills against individual owners or tenants; ONLINE (Stripe Checkout) or MANUAL payment mode; `CUSTOM_BILL_CREATED` in-app notification + Resend email on creation; manager Custom Bills tab on `/manager/strata` (5th tab) with filter pills, full table, Mark Overdue/Mark Paid/Delete actions; resident Custom Bills section on `/resident/levies` with Pay Now (online) or "Pay at reception" (manual); webhook extended to mark custom bills PAID.
 - ✅ **Branch 13** — Performance & SSR sprint: `loading.tsx` skeletons for all 17+ routes; server-side prefetch via `createCallerFactory` + `HydrationBoundary` for 5 priority pages (manager dashboard, residents, maintenance, resident dashboard, resident levies); Recharts lazy-loaded with `next/dynamic`; Suspense boundaries on manager dashboard, resident dashboard, analytics; heavy dialogs extracted and lazy-loaded.
+- ✅ **Branch 14** — Resident rent view (`/resident/rent`): tenant-only page showing lease summary, 3 stat cards, full payment schedule table; `resident.getMyTenancy` tRPC query; "My Rent" nav item conditionally shown in sidebar only for active tenants.
 
 ### Branch 13 — SSR/Performance patterns (non-obvious gotchas)
 
 **RSC + tRPC prefetch pattern** (`src/lib/trpc/server.ts` exports `createServerTRPC`):
 ```ts
-const { trpc, HydrateClient, ctx } = await createServerTRPC();
+const { trpc, HydrateClient, ctx, caller } = await createServerTRPC();
 await trpc.someRouter.someProc.prefetch({ ... });
 return <HydrateClient><ClientComponent /></HydrateClient>;
 ```
 - `ctx.user?.buildingAssignments` is how server pages resolve the default buildingId — only works when user has exactly 1 assignment; fall back to client fetch otherwise.
-- Pages converted to RSC: `/manager`, `/manager/residents`, `/manager/maintenance`, `/resident`, `/resident/levies`. Their interactive parts live in `_client.tsx` siblings.
+- Pages converted to RSC: `/manager`, `/manager/residents`, `/manager/maintenance`, `/resident`, `/resident/levies`, `/resident/rent`. Their interactive parts live in `_client.tsx` siblings.
+- **`caller` vs `trpc` in RSC pages:** `trpc` from `createHydrationHelpers` only has `.prefetch()` — it does NOT have `.fetch()`. When query B depends on the result of query A (sequential dependency), use `caller` directly to get the data, then `prefetch` both into the cache. Example in `/resident/rent/page.tsx`:
+  ```ts
+  const tenancy = await caller.resident.getMyTenancy();      // direct call, returns data
+  await Promise.all([
+    trpc.resident.getMyTenancy.prefetch(),                   // populate cache for client
+    tenancy ? trpc.rent.listByTenancy.prefetch({ tenancyId: tenancy.id }) : Promise.resolve(),
+  ]);
+  ```
+  `createServerTRPC` now returns `{ trpc, HydrateClient, ctx, caller }` — use `caller` for dependent prefetches.
 
 **Dynamic import pattern for dialogs** — dialogs with significant form content are extracted to `_<name>-dialog.tsx` siblings and imported with `dynamic(..., { ssr: false })` at module level in the parent. Current examples:
 - `super-admin/buildings/page.tsx` → `_create-dialog.tsx`, `_edit-dialog.tsx`
@@ -131,5 +141,13 @@ return <HydrateClient><ClientComponent /></HydrateClient>;
 - Edit dialog syncs form fields from a `building` prop via `useEffect` — not pre-populated by the parent.
 
 **`_client.tsx` convention** — pages that are RSC wrappers delegate all interactivity to a `_client.tsx` sibling. The RSC page only does prefetch + `HydrationBoundary`; the client file has `"use client"` and all hooks/mutations.
+
+### Branch 14 — Resident rent view (non-obvious gotchas)
+
+**`RentPayment.amountCents` is mutable for PARTIAL payments.** When `rent.recordPayment` is called with an amount less than scheduled, the row's `amountCents` is overwritten with the paid amount and status set to `PARTIAL`. There is no `originalAmountCents` field — the original scheduled amount is lost. Any UI summing `amountCents` for PARTIAL rows is summing what was actually paid, not what was owed. Do not assume `amountCents` always equals the scheduled rent amount.
+
+**Sidebar conditional nav pattern.** `residentNavItems` is the static array mapped in `ResidentSidebar`. Items that are conditional on user data (role, tenancy, etc.) must NOT go in this array — they fall through the map unconditionally. Render them separately with an explicit query/condition guard. "My Rent" is rendered outside the map using `trpc.resident.getMyTenancy.useQuery()` — appears only when the result is truthy.
+
+**`resident.getMyTenancy` returns null for non-tenants** — never throws. Owners, managers, and admins calling it get `null`. The page handles this with an explicit empty state. The procedure uses `tenantOrAboveProcedure` (tightest guard that includes TENANT) because no tenant-only guard exists.
 
 ## ⬜ Next Priorities
