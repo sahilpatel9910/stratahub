@@ -289,4 +289,23 @@ export const rentRouter = createTRPCRouter({
         nextDue: t.rentPayments[0]?.dueDate ?? null,
       }));
     }),
+
+  markOverdue: buildingManagerProcedure
+    .input(z.object({ buildingId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
+
+      const now = new Date();
+      return ctx.db.rentPayment.updateMany({
+        where: {
+          status: "PENDING",
+          dueDate: { lt: now },
+          tenancy: {
+            isActive: true,
+            unit: { buildingId: input.buildingId },
+          },
+        },
+        data: { status: "OVERDUE" },
+      });
+    }),
 });
