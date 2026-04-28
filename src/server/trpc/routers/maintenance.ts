@@ -98,10 +98,15 @@ export const maintenanceRouter = createTRPCRouter({
             .createSignedUrls(paths, 60 * 60); // 1-hour expiry
 
           if (data) {
-            imagesWithUrls = result.images.map((img, i) => ({
-              ...img,
-              displayUrl: data[i]?.signedUrl ?? null,
-            }));
+            // Build a path→signedUrl map to avoid index mismatches when some
+            // images have null storagePath (those were filtered out of `paths`)
+            const urlByPath = new Map(
+              data.map((d) => [d.path, d.signedUrl ?? null])
+            );
+            imagesWithUrls = result.images.map((img) => {
+              const path = img.storagePath ?? img.imageUrl;
+              return { ...img, displayUrl: path ? (urlByPath.get(path) ?? null) : null };
+            });
           }
         } catch (err) {
           console.error("[maintenance] signed URL generation failed:", err);
@@ -183,7 +188,7 @@ export const maintenanceRouter = createTRPCRouter({
       return request;
     }),
 
-  updateStatus: managerProcedure
+  updateStatus: buildingManagerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -235,19 +240,23 @@ export const maintenanceRouter = createTRPCRouter({
       return updated;
     }),
 
-  assign: managerProcedure
+  assign: buildingManagerProcedure
     .input(z.object({ id: z.string(), assignedTo: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await ctx.db.maintenanceRequest.findUniqueOrThrow({
         where: { id: input.id },
-        select: { unit: { select: { buildingId: true } } },
+        select: { status: true, unit: { select: { buildingId: true } } },
       });
 
       await assertBuildingOperationsAccess(ctx.db, ctx.user!, existing.unit.buildingId);
 
+      // Only advance to ACKNOWLEDGED if still at SUBMITTED — don't roll back progress
+      const statusUpdate =
+        existing.status === "SUBMITTED" ? { status: "ACKNOWLEDGED" as const } : {};
+
       return ctx.db.maintenanceRequest.update({
         where: { id: input.id },
-        data: { assignedTo: input.assignedTo, status: "ACKNOWLEDGED" },
+        data: { assignedTo: input.assignedTo, ...statusUpdate },
       });
     }),
 
