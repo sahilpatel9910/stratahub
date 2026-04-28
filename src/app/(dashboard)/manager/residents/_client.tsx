@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { skipToken } from "@tanstack/react-query";
-import { Home, Phone, Search, Users, UserRound, UserPlus, Copy, Check } from "lucide-react";
+import { Home, Phone, Search, Users, UserRound, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -21,46 +19,21 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { toast } from "sonner";
+
+const InviteResidentDialog = dynamic(() => import("./_invite-dialog"), {
+  ssr: false,
+});
 
 type RoleFilter = "all" | "owner" | "tenant";
-type InviteRole = "OWNER" | "TENANT";
-
-function getAppUrl() {
-  if (typeof window !== "undefined") return window.location.origin;
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
 
 export default function ResidentsClient() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<RoleFilter>("all");
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<InviteRole>("TENANT");
-  const [inviteUnitId, setInviteUnitId] = useState("");
-  const [inviteLink, setInviteLink] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const { selectedBuildingId } = useBuildingContext();
-  const utils = trpc.useUtils();
 
   const query = trpc.residents.listByBuilding.useQuery(
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
@@ -70,15 +43,6 @@ export default function ResidentsClient() {
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
-
-  const inviteMutation = trpc.users.createManagerInvite.useMutation({
-    onSuccess: (invite) => {
-      setInviteLink(`${getAppUrl()}/invite/${invite.token}`);
-      utils.residents.listByBuilding.invalidate();
-      toast.success("Resident invite created");
-    },
-    onError: (err) => toast.error(err.message ?? "Failed to create invite"),
-  });
 
   const allResidents = query.data ?? [];
   const residents = allResidents.filter((resident) => {
@@ -98,31 +62,6 @@ export default function ResidentsClient() {
   const ownerCount = allResidents.filter((r) => r.buildingRole === "OWNER").length;
   const tenantCount = allResidents.filter((r) => r.buildingRole === "TENANT").length;
   const units = unitsQuery.data ?? [];
-
-  function resetInviteForm() {
-    setInviteEmail("");
-    setInviteRole("TENANT");
-    setInviteUnitId("");
-    setInviteLink("");
-    setCopied(false);
-  }
-
-  function handleInvite() {
-    if (!selectedBuildingId || !inviteEmail.trim() || !inviteUnitId) return;
-    inviteMutation.mutate({
-      email: inviteEmail.trim(),
-      buildingId: selectedBuildingId,
-      unitId: inviteUnitId,
-      role: inviteRole,
-    });
-  }
-
-  async function handleCopyInviteLink() {
-    await navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    toast.success("Invite link copied");
-    setTimeout(() => setCopied(false), 2000);
-  }
 
   return (
     <div className="space-y-6">
@@ -158,15 +97,9 @@ export default function ResidentsClient() {
         <Tabs value={tab} onValueChange={(v) => setTab(v as RoleFilter)}>
           <div className="app-grid-panel flex flex-col gap-4 p-4 lg:flex-row lg:items-center">
             <TabsList className="bg-background/80">
-              <TabsTrigger value="all">
-                All ({allResidents.length})
-              </TabsTrigger>
-              <TabsTrigger value="owner">
-                Owners ({ownerCount})
-              </TabsTrigger>
-              <TabsTrigger value="tenant">
-                Tenants ({tenantCount})
-              </TabsTrigger>
+              <TabsTrigger value="all">All ({allResidents.length})</TabsTrigger>
+              <TabsTrigger value="owner">Owners ({ownerCount})</TabsTrigger>
+              <TabsTrigger value="tenant">Tenants ({tenantCount})</TabsTrigger>
             </TabsList>
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -179,10 +112,7 @@ export default function ResidentsClient() {
             </div>
             <Button
               className="h-11 rounded-xl px-5 lg:ml-auto"
-              onClick={() => {
-                resetInviteForm();
-                setInviteOpen(true);
-              }}
+              onClick={() => setInviteOpen(true)}
             >
               <UserPlus className="mr-2 h-4 w-4" />
               Invite Resident
@@ -295,22 +225,16 @@ export default function ResidentsClient() {
                                   {resident.phone}
                                 </div>
                               ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  —
-                                </span>
+                                <span className="text-sm text-muted-foreground">—</span>
                               )}
                             </TableCell>
                             <TableCell>
                               {leaseEnd ? (
                                 <span className="text-sm">
-                                  {new Date(leaseEnd).toLocaleDateString(
-                                    "en-AU"
-                                  )}
+                                  {new Date(leaseEnd).toLocaleDateString("en-AU")}
                                 </span>
                               ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  N/A
-                                </span>
+                                <span className="text-sm text-muted-foreground">N/A</span>
                               )}
                             </TableCell>
                             <TableCell>
@@ -330,132 +254,12 @@ export default function ResidentsClient() {
         </Tabs>
       )}
 
-      <Dialog
+      <InviteResidentDialog
         open={inviteOpen}
-        onOpenChange={(open) => {
-          setInviteOpen(open);
-          if (!open) resetInviteForm();
-        }}
-      >
-        <DialogContent className="max-w-lg p-0">
-          <DialogHeader>
-            <DialogTitle className="px-0 pt-0">Invite Resident</DialogTitle>
-            <DialogDescription className="px-0">
-              Send an invite for an owner or tenant in the selected building.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-7 py-5">
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="inviteEmail">Email <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="inviteEmail"
-                    type="email"
-                    className="h-12 rounded-xl"
-                    placeholder="resident@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>Role <span className="text-destructive">*</span></Label>
-                  <Select
-                    value={inviteRole}
-                    onValueChange={(value) => value !== null && setInviteRole(value as InviteRole)}
-                    itemToStringLabel={(value) =>
-                      value === "OWNER" ? "Owner" : value === "TENANT" ? "Tenant" : String(value)
-                    }
-                  >
-                    <SelectTrigger className="h-12 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TENANT" label="Tenant">
-                        Tenant
-                      </SelectItem>
-                      <SelectItem value="OWNER" label="Owner">
-                        Owner
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label>Unit <span className="text-destructive">*</span></Label>
-                  <Select
-                    value={inviteUnitId}
-                    onValueChange={(value) => value !== null && setInviteUnitId(value)}
-                    itemToStringLabel={(value) => {
-                      const unit = units.find((item) => item.id === value);
-                      return unit ? `Unit ${unit.unitNumber}` : String(value);
-                    }}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {units.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id} label={`Unit ${unit.unitNumber}`}>
-                          Unit {unit.unitNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {inviteLink && (
-                  <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
-                    <p className="text-sm font-medium text-foreground">Invite link ready</p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <code className="block flex-1 truncate rounded-xl bg-background px-3 py-2 text-xs">
-                        {inviteLink}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl"
-                        onClick={handleCopyInviteLink}
-                      >
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Invite scope
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Building managers can invite residents only into the currently selected building, only as an owner or tenant, and only for a specific unit.
-                </p>
-                <div className="mt-4 rounded-2xl border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground">What happens next</p>
-                  <p className="mt-2 leading-6">
-                    Once the invite is accepted, the user will be linked to this building and unit. Owner invites create ownership immediately; tenant invites create an active tenancy placeholder that should be reviewed in Units or Rent.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setInviteOpen(false)}
-              disabled={inviteMutation.isPending}
-              className="h-11 rounded-xl px-5"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={handleInvite}
-              disabled={!inviteEmail.trim() || !inviteUnitId || inviteMutation.isPending}
-              className="h-11 rounded-xl px-5"
-            >
-              {inviteMutation.isPending ? "Creating..." : "Create Invite"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setInviteOpen}
+        selectedBuildingId={selectedBuildingId}
+        units={units}
+      />
     </div>
   );
 }
