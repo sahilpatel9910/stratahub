@@ -26,5 +26,5 @@ export async function createServerTRPC() {
     () => queryClient
   );
 
-  return { trpc, HydrateClient, ctx };
+  return { trpc, HydrateClient, ctx, caller };
 }
