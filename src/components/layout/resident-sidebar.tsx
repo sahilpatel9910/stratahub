@@ -13,6 +13,7 @@ import {
   DoorOpen,
   Settings,
   Wallet,
+  ClipboardList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const residentNavItems = [
   { title: "Maintenance", href: "/resident/maintenance", icon: Wrench },
   { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
+  { title: "Inspections", href: "/resident/inspections", icon: ClipboardList },
   { title: "Announcements", href: "/resident/announcements", icon: Megaphone },
   { title: "Settings", href: "/resident/settings", icon: Settings },
 ];

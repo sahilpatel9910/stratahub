@@ -21,6 +21,7 @@ import {
   Shield,
   LogOut,
   Bell,
+  ClipboardList,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import {
@@ -45,6 +46,7 @@ const managerNavItems = [
   { title: "Rent", href: "/manager/rent", icon: DollarSign },
   { title: "Keys & Access", href: "/manager/keys", icon: Key },
   { title: "Maintenance", href: "/manager/maintenance", icon: Wrench },
+  { title: "Inspections", href: "/manager/inspections", icon: ClipboardList },
   { title: "Visitors", href: "/manager/visitors", icon: UserCheck },
   { title: "Parcels", href: "/manager/parcels", icon: Package },
   { title: "Announcements", href: "/manager/announcements", icon: Megaphone },

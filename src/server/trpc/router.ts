@@ -22,6 +22,7 @@ import { notificationPreferencesRouter } from "./routers/notification-preference
 import { avatarRouter } from "./routers/avatar";
 import { customBillsRouter } from "./routers/custom-bills";
 import { tenancyRouter } from "./routers/tenancy";
+import { inspectionRouter } from "./routers/inspection";
 
 export const appRouter = createTRPCRouter({
   organisations: organisationsRouter,
@@ -47,6 +48,7 @@ export const appRouter = createTRPCRouter({
   avatar: avatarRouter,
   customBills: customBillsRouter,
   tenancy: tenancyRouter,
+  inspection: inspectionRouter,
 });
 
 export type AppRouter = typeof appRouter;
