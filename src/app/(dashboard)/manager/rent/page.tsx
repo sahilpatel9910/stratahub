@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { skipToken } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
+
+const CreateTenancyDialog = dynamic(() => import("./_create-tenancy-dialog"), { ssr: false });
+const EditTenancyDialog = dynamic(() => import("./_edit-tenancy-dialog"), { ssr: false });
 import { AlertTriangle, CalendarDays, DollarSign, Wallet, ClipboardCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -45,7 +50,7 @@ import { formatCurrency, BOND_LODGEMENT_AUTHORITIES, AUSTRALIAN_STATES } from "@
 import { toast } from "sonner";
 
 type PaymentStatus = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "PARTIAL";
-type RentTab = "roll" | "payments" | "setup" | "bonds";
+type RentTab = "roll" | "payments" | "setup" | "bonds" | "tenancies";
 type BondStatus = "PENDING" | "LODGED" | "PARTIALLY_RELEASED" | "FULLY_RELEASED" | "DISPUTED";
 type AustralianStateCode = "NSW" | "VIC" | "QLD" | "SA" | "WA" | "TAS" | "NT" | "ACT";
 type RentFrequency = "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
@@ -94,6 +99,7 @@ function formatDate(date: Date | string | null | undefined) {
 
 export default function RentPage() {
   const { selectedBuildingId } = useBuildingContext();
+  const router = useRouter();
   const [tab, setTab] = useState<RentTab>("roll");
   const [paymentStatusFilter, setPaymentStatusFilter] =
     useState<PaymentStatus>("ALL");
@@ -145,6 +151,17 @@ export default function RentPage() {
   const [selectedBondId, setSelectedBondId] = useState<string | null>(null);
   const [bondStatusForm, setBondStatusForm] = useState<{ status: BondStatus; notes: string }>({ status: "LODGED", notes: "" });
 
+  // Edit tenancy dialog
+  const [editTenancy, setEditTenancy] = useState<{
+    id: string;
+    leaseStartDate: Date;
+    leaseEndDate?: Date | null;
+    rentAmountCents: number;
+    rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
+    bondAmountCents: number;
+  } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+
   const utils = trpc.useUtils();
 
   const rentRollQuery = trpc.rent.getRentRoll.useQuery(
@@ -165,6 +182,12 @@ export default function RentPage() {
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
+
+  const tenancyQuery = trpc.tenancy.listByBuilding.useQuery(
+    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
+    { placeholderData: (prev) => prev }
+  );
+  const tenancies = tenancyQuery.data ?? [];
 
   const recordPaymentMutation = trpc.rent.recordPayment.useMutation({
     onSuccess: () => {
@@ -207,6 +230,24 @@ export default function RentPage() {
       toast.success("Bond status updated");
     },
     onError: (err) => toast.error(err.message ?? "Failed to update bond status"),
+  });
+
+  const endTenancyMutation = trpc.tenancy.end.useMutation({
+    onSuccess: () => {
+      toast.success("Tenancy ended");
+      void utils.tenancy.listByBuilding.invalidate();
+      void utils.rent.getRentRoll.invalidate();
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to end tenancy"),
+  });
+
+  const markOverdueMutation = trpc.rent.markOverdue.useMutation({
+    onSuccess: (result) => {
+      toast.success(`${result.count} payment(s) marked overdue`);
+      void utils.rent.listByBuilding.invalidate();
+      void utils.rent.getRentRoll.invalidate();
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to mark overdue"),
   });
 
   function openRecordDialog(payment: {
@@ -469,6 +510,7 @@ export default function RentPage() {
               <TabsTrigger value="payments">Payments</TabsTrigger>
               <TabsTrigger value="setup">Tenant Setup</TabsTrigger>
               <TabsTrigger value="bonds">Bond Tracking</TabsTrigger>
+              <TabsTrigger value="tenancies">Tenancies</TabsTrigger>
             </TabsList>
 
             {/* RENT ROLL TAB */}
@@ -862,6 +904,117 @@ export default function RentPage() {
                   </Card>
                 );
               })()}
+            </TabsContent>
+
+            <TabsContent value="tenancies">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {tenancies.length} active {tenancies.length === 1 ? "tenancy" : "tenancies"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-xl"
+                    disabled={!selectedBuildingId || markOverdueMutation.isPending}
+                    onClick={() => selectedBuildingId && markOverdueMutation.mutate({ buildingId: selectedBuildingId })}
+                  >
+                    {markOverdueMutation.isPending ? "Marking…" : "Mark Overdue"}
+                  </Button>
+                  <CreateTenancyDialog />
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Rent</TableHead>
+                    <TableHead>Lease End</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tenancyQuery.isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <TableRow key={i}>
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <TableCell key={j}><div className="h-4 w-20 animate-pulse rounded bg-muted" /></TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : tenancies.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                        No active tenancies.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    tenancies.map((t) => {
+                      const overdue = t.rentPayments.filter((p: { status: string }) => p.status === "OVERDUE").length;
+                      return (
+                        <TableRow
+                          key={t.id}
+                          className="cursor-pointer"
+                          onClick={() => router.push(`/manager/tenancies/${t.id}`)}
+                        >
+                          <TableCell className="font-medium">
+                            {t.user.firstName} {t.user.lastName}
+                          </TableCell>
+                          <TableCell>Unit {t.unit.unitNumber}</TableCell>
+                          <TableCell>
+                            {formatCurrency(t.rentAmountCents)} / {t.rentFrequency.toLowerCase()}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {t.leaseEndDate ? new Date(t.leaseEndDate).toLocaleDateString("en-AU") : "Ongoing"}
+                          </TableCell>
+                          <TableCell>
+                            {overdue > 0 ? (
+                              <Badge variant="destructive">{overdue} overdue</Badge>
+                            ) : (
+                              <Badge variant="outline">Active</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-lg text-xs"
+                                onClick={() => {
+                                  setEditTenancy(t);
+                                  setEditOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 rounded-lg text-xs text-red-600 hover:bg-red-50"
+                                disabled={endTenancyMutation.isPending}
+                                onClick={() => {
+                                  if (confirm(`End tenancy for ${t.user.firstName} ${t.user.lastName}? This cannot be undone.`)) {
+                                    endTenancyMutation.mutate({ id: t.id });
+                                  }
+                                }}
+                              >
+                                End
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+
+              <EditTenancyDialog tenancy={editTenancy} open={editOpen} onOpenChange={setEditOpen} />
             </TabsContent>
           </Tabs>
         </>
