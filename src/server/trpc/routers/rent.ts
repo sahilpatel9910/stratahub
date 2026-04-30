@@ -4,10 +4,12 @@ import {
   createTRPCRouter,
   managerProcedure,
   protectedProcedure,
+  tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { assertBuildingManagementAccess, hasBuildingManagementAccess } from "@/server/auth/building-access";
 import { isTenancySetupPending } from "@/lib/tenancies";
+import { getStripe } from "@/lib/stripe/client";
 
 const rentFrequencyEnum = z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY"]);
 
@@ -307,5 +309,84 @@ export const rentRouter = createTRPCRouter({
         },
         data: { status: "OVERDUE" },
       });
+    }),
+
+  createPaymentSession: tenantOrAboveProcedure
+    .input(z.object({ rentPaymentId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const payment = await ctx.db.rentPayment.findUniqueOrThrow({
+        where: { id: input.rentPaymentId },
+        include: {
+          tenancy: {
+            include: {
+              user: { select: { id: true, email: true, firstName: true, lastName: true } },
+              unit: {
+                select: {
+                  unitNumber: true,
+                  building: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Only the tenant on this tenancy may initiate payment
+      if (payment.tenancy.userId !== ctx.user!.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this payment." });
+      }
+
+      if (payment.status !== "PENDING" && payment.status !== "OVERDUE") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This payment is not payable." });
+      }
+
+      // Reuse existing open Stripe session if present
+      if (payment.stripeSessionId) {
+        try {
+          const existing = await getStripe().checkout.sessions.retrieve(payment.stripeSessionId);
+          if (existing.status === "open") {
+            return { url: existing.url! };
+          }
+        } catch {
+          // Session expired or invalid — create a new one below
+        }
+      }
+
+      const { unitNumber, building } = payment.tenancy.unit;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+      const session = await getStripe().checkout.sessions.create({
+        mode: "payment",
+        line_items: [
+          {
+            price_data: {
+              currency: "aud",
+              unit_amount: payment.amountCents,
+              product_data: {
+                name: `Rent — Unit ${unitNumber}, ${building.name}`,
+                description: `Due ${new Date(payment.dueDate).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          rentPaymentId: payment.id,
+          userId: ctx.user!.id,
+        },
+        success_url: `${appUrl}/resident/rent?payment=success`,
+        cancel_url: `${appUrl}/resident/rent?payment=cancelled`,
+      });
+
+      await ctx.db.rentPayment.update({
+        where: { id: payment.id },
+        data: { stripeSessionId: session.id },
+      });
+
+      if (!session.url) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe did not return a checkout URL." });
+      }
+
+      return { url: session.url };
     }),
 });
