@@ -1,4 +1,4 @@
-import { createTRPCRouter, ownerProcedure } from "@/server/trpc/trpc";
+import { createTRPCRouter, tenantOrAboveProcedure } from "@/server/trpc/trpc";
 
 type Transaction = {
   date: Date;
@@ -9,7 +9,7 @@ type Transaction = {
 };
 
 export const ownerRouter = createTRPCRouter({
-  getFinancialSummary: ownerProcedure.query(async ({ ctx }) => {
+  getFinancialSummary: tenantOrAboveProcedure.query(async ({ ctx }) => {
     const userId = ctx.user!.id;
 
     // Find all units the user owns
@@ -29,6 +29,7 @@ export const ownerRouter = createTRPCRouter({
 
     if (ownerships.length === 0) {
       return {
+        hasOwnerships: false,
         levyTotalPaidCents: 0,
         levyOutstandingCents: 0,
         customBillsOwingCents: 0,
@@ -104,6 +105,7 @@ export const ownerRouter = createTRPCRouter({
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return {
+      hasOwnerships: true,
       levyTotalPaidCents,
       levyOutstandingCents,
       customBillsOwingCents,

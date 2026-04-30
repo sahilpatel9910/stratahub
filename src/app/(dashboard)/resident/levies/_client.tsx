@@ -159,7 +159,9 @@ export default function ResidentLeviesClient() {
         <TabsList>
           <TabsTrigger value="levies">Levies</TabsTrigger>
           <TabsTrigger value="custom-bills">Custom Bills</TabsTrigger>
-          <TabsTrigger value="financials">Financial Summary</TabsTrigger>
+          {financials?.hasOwnerships && (
+            <TabsTrigger value="financials">Financial Summary</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="levies" className="mt-6 flex flex-col gap-6">
