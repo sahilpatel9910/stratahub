@@ -195,7 +195,7 @@ export default function TenancyDetailClient({ id }: { id: string }) {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Amount (cents)</Label>
+              <Label>Payment amount (cents)</Label>
               <Input
                 type="number"
                 className="rounded-xl"

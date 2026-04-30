@@ -108,7 +108,7 @@ export default function EditTenancyDialog({ tenancy, open, onOpenChange }: Props
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Rent (cents)</Label>
+              <Label>Rent amount (cents)</Label>
               <Input
                 type="number"
                 className="rounded-xl"
@@ -133,7 +133,7 @@ export default function EditTenancyDialog({ tenancy, open, onOpenChange }: Props
           </div>
 
           <div className="space-y-1.5">
-            <Label>Bond (cents)</Label>
+            <Label>Bond amount (cents)</Label>
             <Input
               type="number"
               className="rounded-xl"

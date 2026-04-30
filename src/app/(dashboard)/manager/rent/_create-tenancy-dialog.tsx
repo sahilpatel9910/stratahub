@@ -147,10 +147,10 @@ export default function CreateTenancyDialog() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Rent (cents)</Label>
+              <Label>Rent amount (cents)</Label>
               <Input
                 type="number"
-                placeholder="e.g. 150000 = $1,500"
+                placeholder="e.g. 150000 for $1,500"
                 className="rounded-xl"
                 value={form.rentAmountCents}
                 onChange={(e) => setForm((f) => ({ ...f, rentAmountCents: e.target.value }))}
@@ -176,10 +176,10 @@ export default function CreateTenancyDialog() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Bond (cents)</Label>
+              <Label>Bond amount (cents)</Label>
               <Input
                 type="number"
-                placeholder="e.g. 450000 = $4,500"
+                placeholder="e.g. 450000 for $4,500"
                 className="rounded-xl"
                 value={form.bondAmountCents}
                 onChange={(e) => setForm((f) => ({ ...f, bondAmountCents: e.target.value }))}

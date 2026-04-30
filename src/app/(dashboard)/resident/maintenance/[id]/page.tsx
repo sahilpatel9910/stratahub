@@ -5,6 +5,7 @@ import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon, Upload, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -431,12 +432,12 @@ export default function ResidentMaintenanceDetailPage({
 
             {/* Add comment form */}
             <div className="mt-5 border-t border-border/50 pt-5">
-              <label
+              <Label
                 htmlFor="new-comment"
                 className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
               >
                 Add a comment
-              </label>
+              </Label>
               <Textarea
                 id="new-comment"
                 className="min-h-20 rounded-xl bg-background"
