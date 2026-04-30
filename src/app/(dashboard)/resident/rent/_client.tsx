@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { skipToken } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { CalendarDays, CreditCard, DollarSign, AlertTriangle, Wallet, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
@@ -80,18 +81,23 @@ export default function ResidentRentClient() {
     onError: (e) => toast.error(e.message ?? "Failed to start payment"),
   });
 
+  const router = useRouter();
+  const toastShownRef = useRef(false);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (toastShownRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const result = params.get("payment");
     if (result === "success") {
+      toastShownRef.current = true;
       toast.success("Payment successful!");
-      window.history.replaceState({}, "", "/resident/rent");
+      router.replace("/resident/rent");
     } else if (result === "cancelled") {
+      toastShownRef.current = true;
       toast.info("Payment cancelled.");
-      window.history.replaceState({}, "", "/resident/rent");
+      router.replace("/resident/rent");
     }
-  }, []);
+  }, [router]);
 
   const isLoading = tenancyLoading || (!!tenancy && paymentsLoading);
 

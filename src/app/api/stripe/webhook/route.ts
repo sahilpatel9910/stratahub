@@ -93,24 +93,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    if (bill && bill.status !== "PAID") {
-      const paidDate = new Date();
-      await db.customBill.update({
-        where: { id: bill.id },
-        data: { status: "PAID", paidDate },
-      });
+    if (bill) {
+      if (bill.status !== "PAID") {
+        const paidDate = new Date();
+        await db.customBill.update({
+          where: { id: bill.id },
+          data: { status: "PAID", paidDate },
+        });
 
-      void sendCustomBillReceiptEmail(bill.recipient.email, {
-        recipientName: `${bill.recipient.firstName} ${bill.recipient.lastName}`,
-        buildingName: bill.building.name,
-        unitNumber: bill.unit.unitNumber,
-        title: bill.title,
-        category: bill.category,
-        amountCents: bill.amountCents,
-        paidDate,
-        stripeSessionId: session.id,
-      });
+        void sendCustomBillReceiptEmail(bill.recipient.email, {
+          recipientName: `${bill.recipient.firstName} ${bill.recipient.lastName}`,
+          buildingName: bill.building.name,
+          unitNumber: bill.unit.unitNumber,
+          title: bill.title,
+          category: bill.category,
+          amountCents: bill.amountCents,
+          paidDate,
+          stripeSessionId: session.id,
+        });
+      }
+      return NextResponse.json({ received: true });
     }
+
     // ── Rent payment ──────────────────────────────────────────
     const rentPayment = await db.rentPayment.findFirst({
       where: { stripeSessionId: session.id },
