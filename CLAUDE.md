@@ -1,9 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
----
-
 ## Commands
 
 ```bash
@@ -26,7 +22,7 @@ npx prisma generate   # Regenerate Prisma client after schema changes
 
 ### App Structure
 
-Next.js 16 App Router with two portals behind `src/app/(dashboard)/`:
+Next.js 16 App Router with portals behind `src/app/(dashboard)/`:
 
 - **`/manager/*`** — Building managers, reception, strata owners. Full admin capabilities.
 - **`/resident/*`** — Owners and tenants. Read-heavy portal with maintenance, levies, documents, settings.
@@ -38,18 +34,18 @@ Root `page.tsx` redirects users to the correct portal based on their role.
 ### Auth Flow
 
 1. Supabase Auth (cookie-based via `@supabase/ssr`) handles sessions.
-2. `src/lib/supabase/server.ts` — server-side Supabase client (used in layouts and API routes).
-3. `/api/auth/callback` — exchanges Supabase code for session; handles email verification and password recovery (`type=recovery` → `/reset-password`).
-4. Every layout does: `supabase.auth.getUser()` → `db.user.findUnique({ where: { supabaseAuthId } })` → role check → redirect if unauthorized.
+2. `src/lib/supabase/server.ts` — server-side Supabase client.
+3. `/api/auth/callback` — exchanges code for session; `type=recovery` → `/reset-password`.
+4. Every layout: `supabase.auth.getUser()` → `db.user.findUnique({ where: { supabaseAuthId } })` → role check → redirect if unauthorized.
 
 ### tRPC
 
-- Context built in `src/server/trpc/trpc.ts`: provides `{ db, supabase, supabaseUser, user }`.
-- All routers in `src/server/trpc/routers/`, combined in `src/server/trpc/router.ts`.
-- Client: `src/lib/trpc/client.ts` + `src/lib/trpc/provider.tsx` (wraps app in `TRPCProvider` + `QueryClientProvider`).
+- Context in `src/server/trpc/trpc.ts`: `{ db, supabase, supabaseUser, user }`.
+- Routers in `src/server/trpc/routers/`, combined in `src/server/trpc/router.ts`.
+- Client: `src/lib/trpc/client.ts` + `src/lib/trpc/provider.tsx`.
 - Serializer: superjson (handles Dates automatically).
 
-**Procedure guards** — pick the tightest one that fits:
+**Procedure guards:**
 
 | Procedure | Roles allowed |
 |---|---|
@@ -61,39 +57,37 @@ Root `page.tsx` redirects users to the correct portal based on their role.
 | `ownerProcedure` | SUPER_ADMIN, BUILDING_MANAGER, OWNER |
 | `tenantOrAboveProcedure` | All roles incl. OWNER and TENANT |
 
-Role checking uses both `orgMemberships.role` and `buildingAssignments.role` — a user can satisfy the check via either.
+Role checking uses both `orgMemberships.role` and `buildingAssignments.role`.
 
-**Building auth gotcha:** Never trust a caller-supplied `buildingId`. Always resolve the building from the record being accessed (e.g. look up the unit's buildingId, then check the caller has access to that building).
+**Building auth gotcha:** Never trust a caller-supplied `buildingId`. Always resolve from the record being accessed.
 
 ### Prisma 7
 
 - Import from `@/generated/prisma/client` — **not** `@prisma/client`.
-- Uses `PrismaPg` adapter (`@prisma/adapter-pg`) — native Postgres driver, no ORM connection overhead.
-- Schema output: `prisma/schema.prisma` → `src/generated/prisma/`.
+- Uses `PrismaPg` adapter (`@prisma/adapter-pg`).
 - Use `prisma db push` not `migrate dev` (Supabase managed Postgres).
-- Pool: max 2 connections, 10s idle timeout (Vercel serverless + Supabase free tier constraints).
+- Pool: max 2 connections, 10s idle timeout.
 
 ### UI Components
 
-- **`@base-ui/react`** (v1.3.0) — headless unstyled components. Uses `render={}` prop, **not** `asChild`:
+- **`@base-ui/react`** (v1.3.0) — headless. Uses `render={}` prop, **not** `asChild`:
   ```tsx
   <Dialog.Close render={<Button variant="outline" />}>Close</Dialog.Close>
   ```
-- **`shadcn`** wraps these into `src/components/ui/`.
-- **`lucide-react`** for icons, **`sonner`** for toasts, **`recharts`** for charts.
-- Select `onValueChange` needs a null guard: `(v) => v !== null && setState(v)`.
+- **`shadcn`** wraps into `src/components/ui/`. No `Checkbox` component — use styled `<input type="checkbox">`.
+- **`lucide-react`** icons, **`sonner`** toasts, **`recharts`** charts.
+- Select `onValueChange` needs null guard: `(v) => v !== null && setState(v)`.
 
 ### Tailwind v4
 
-- No `tailwind.config.ts` — config lives in `src/app/globals.css` via `@theme inline {}`.
-- Colors use oklch color space as CSS variables.
-- Dark mode: `@custom-variant dark (&:is(.dark *))`.
+- No `tailwind.config.ts` — config in `src/app/globals.css` via `@theme inline {}`.
+- Colors use oklch CSS variables. Dark mode: `@custom-variant dark (&:is(.dark *))`.
 
 ### State Management
 
 - **TanStack Query v5** — all server state via tRPC hooks.
 - **Zustand v5** — client-side UI state (selected building, modals, filters).
-- Use `skipToken` from `@tanstack/react-query` for conditional tRPC queries.
+- Use `skipToken` from `@tanstack/react-query` for conditional queries.
 
 ---
 
@@ -105,50 +99,49 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role` —
 - ✅ **Branch 4** — Levies, documents, announcements, parcels, visitors, keys
 - ✅ **Branch 5** — Messaging, notifications, financials, analytics, strata
 - ✅ **Branch 6** — Common areas + booking system
-- ✅ **Branch 7** — Resident settings page + maintenance comment form; avatar button → settings
-- ✅ **Branch 8** — Resident maintenance detail page (`/resident/maintenance/[id]`) — status timeline, photos (two-step upload), comments thread; label maps consolidated into `src/lib/constants.ts`
-- ✅ **Branch 9** — Manager notifications centre (`/manager/notifications`) — type filter pills, cursor pagination, mark read/all read, unread badge in sidebar
-- ✅ **Branch 10** — Real-time messages (Supabase postgres_changes on messages table), avatar upload to Supabase Storage (manager settings), per-type notification preference toggles (DB-backed, both manager + resident settings pages)
-- ✅ **Branch 11** — Stripe levy payments (Stripe Checkout test mode, webhook marks PAID, Resend receipt email, resident levies Pay Now button)
-- ✅ **Branch 12** — Custom billing: managers/reception raise ad-hoc bills against individual owners or tenants; ONLINE (Stripe Checkout) or MANUAL payment mode; `CUSTOM_BILL_CREATED` in-app notification + Resend email on creation; manager Custom Bills tab on `/manager/strata` (5th tab) with filter pills, full table, Mark Overdue/Mark Paid/Delete actions; resident Custom Bills section on `/resident/levies` with Pay Now (online) or "Pay at reception" (manual); webhook extended to mark custom bills PAID.
-- ✅ **Branch 13** — Performance & SSR sprint: `loading.tsx` skeletons for all 17+ routes; server-side prefetch via `createCallerFactory` + `HydrationBoundary` for 5 priority pages (manager dashboard, residents, maintenance, resident dashboard, resident levies); Recharts lazy-loaded with `next/dynamic`; Suspense boundaries on manager dashboard, resident dashboard, analytics; heavy dialogs extracted and lazy-loaded.
-- ✅ **Branch 14** — Resident rent view (`/resident/rent`): tenant-only page showing lease summary, 3 stat cards, full payment schedule table; `resident.getMyTenancy` tRPC query; "My Rent" nav item conditionally shown in sidebar only for active tenants.
-- ✅ **Branch 15** — Manager maintenance detail page (`/manager/maintenance/[id]`): replaces the read-only dialog with a full-page view; adds comment compose form, contractor assign (`maintenance.assign`), status timeline, two-step photo upload/delete; list rows now navigate instead of opening a dialog.
+- ✅ **Branch 7** — Resident settings + maintenance comment form; avatar → settings
+- ✅ **Branch 8** — Resident maintenance detail (`/resident/maintenance/[id]`): timeline, photos, comments; label maps → `src/lib/constants.ts`
+- ✅ **Branch 9** — Manager notifications centre: filter pills, cursor pagination, mark read, unread badge
+- ✅ **Branch 10** — Real-time messages, avatar upload to Supabase Storage, notification preference toggles
+- ✅ **Branch 11** — Stripe levy payments (Checkout test mode, webhook → PAID, Resend receipt)
+- ✅ **Branch 12** — Custom billing: ad-hoc bills, ONLINE/MANUAL payment, in-app + email notification, manager Custom Bills tab, resident Pay Now / pay at reception
+- ✅ **Branch 13** — Performance & SSR: `loading.tsx` skeletons, server prefetch + `HydrationBoundary` on 5 pages, Recharts lazy-loaded, heavy dialogs lazy-loaded
+- ✅ **Branch 14** — Resident rent view (`/resident/rent`): lease summary, payment schedule; "My Rent" nav shown only for active tenants
+- ✅ **Branch 15** — Manager maintenance detail (`/manager/maintenance/[id]`): full-page view, comments, contractor assign, timeline, photo upload/delete
+- ✅ **Branch 16** — Tenancy management: `tenancy` router, Create/Edit dialogs, Tenancies tab on `/manager/rent`, `/manager/tenancies/[id]` detail + Record Payment
+- ✅ **Branch 17** — Inspections: Prisma models (Inspection, Room, Item, Image), `inspection` router, `/manager/inspections` list + `[id]` editor, `/resident/inspections` read-only
+- ✅ **Branch 18** — Owner Financial Dashboard: `owner.getFinancialSummary` tRPC query (`tenantOrAboveProcedure`), Financial Summary tab on `/resident/levies` (owners only), stat cards + transaction table + CSV export
 
-### Branch 13 — SSR/Performance patterns (non-obvious gotchas)
+---
 
-**RSC + tRPC prefetch pattern** (`src/lib/trpc/server.ts` exports `createServerTRPC`):
+## Patterns & Gotchas
+
+**RSC prefetch: `caller` vs `trpc`** — `trpc` from `createHydrationHelpers` only exposes `.prefetch()`. When query B depends on query A, call A via `caller` directly:
 ```ts
-const { trpc, HydrateClient, ctx, caller } = await createServerTRPC();
-await trpc.someRouter.someProc.prefetch({ ... });
-return <HydrateClient><ClientComponent /></HydrateClient>;
+const tenancy = await caller.resident.getMyTenancy();
+await Promise.all([
+  trpc.resident.getMyTenancy.prefetch(),
+  tenancy ? trpc.rent.listByTenancy.prefetch({ tenancyId: tenancy.id }) : Promise.resolve(),
+]);
 ```
-- `ctx.user?.buildingAssignments` is how server pages resolve the default buildingId — only works when user has exactly 1 assignment; fall back to client fetch otherwise.
-- Pages converted to RSC: `/manager`, `/manager/residents`, `/manager/maintenance`, `/resident`, `/resident/levies`, `/resident/rent`. Their interactive parts live in `_client.tsx` siblings.
-- **`caller` vs `trpc` in RSC pages:** `trpc` from `createHydrationHelpers` only has `.prefetch()` — it does NOT have `.fetch()`. When query B depends on the result of query A (sequential dependency), use `caller` directly to get the data, then `prefetch` both into the cache. Example in `/resident/rent/page.tsx`:
-  ```ts
-  const tenancy = await caller.resident.getMyTenancy();      // direct call, returns data
-  await Promise.all([
-    trpc.resident.getMyTenancy.prefetch(),                   // populate cache for client
-    tenancy ? trpc.rent.listByTenancy.prefetch({ tenancyId: tenancy.id }) : Promise.resolve(),
-  ]);
-  ```
-  `createServerTRPC` now returns `{ trpc, HydrateClient, ctx, caller }` — use `caller` for dependent prefetches.
+`createServerTRPC` returns `{ trpc, HydrateClient, ctx, caller }`.
 
-**Dynamic import pattern for dialogs** — dialogs with significant form content are extracted to `_<name>-dialog.tsx` siblings and imported with `dynamic(..., { ssr: false })` at module level in the parent. Current examples:
-- `super-admin/buildings/page.tsx` → `_create-dialog.tsx`, `_edit-dialog.tsx`
-- `manager/residents/_client.tsx` → `_invite-dialog.tsx`
-- The create dialog owns its own trigger button and open state; edit/invite dialogs are controlled (receive `open`/`onOpenChange` props).
-- Edit dialog syncs form fields from a `building` prop via `useEffect` — not pre-populated by the parent.
+**`_client.tsx` convention** — RSC pages only do prefetch + `HydrationBoundary`; all hooks/mutations live in the `_client.tsx` sibling.
 
-**`_client.tsx` convention** — pages that are RSC wrappers delegate all interactivity to a `_client.tsx` sibling. The RSC page only does prefetch + `HydrationBoundary`; the client file has `"use client"` and all hooks/mutations.
+**Lazy dialog pattern** — heavy dialogs extracted to `_<name>-dialog.tsx`, imported with `dynamic(..., { ssr: false })`. Create dialogs own their trigger + open state; edit dialogs are controlled (`open`/`onOpenChange`) and sync form fields from prop via `useEffect`.
 
-### Branch 14 — Resident rent view (non-obvious gotchas)
+**Sidebar conditional nav** — items gated on runtime data must NOT go in the static nav array. Render separately with an explicit query guard (e.g. "My Rent" checks `resident.getMyTenancy`).
 
-**`RentPayment.amountCents` is mutable for PARTIAL payments.** When `rent.recordPayment` is called with an amount less than scheduled, the row's `amountCents` is overwritten with the paid amount and status set to `PARTIAL`. There is no `originalAmountCents` field — the original scheduled amount is lost. Any UI summing `amountCents` for PARTIAL rows is summing what was actually paid, not what was owed. Do not assume `amountCents` always equals the scheduled rent amount.
+**`resident.getMyTenancy` returns `null` for non-tenants** — never throws. Uses `tenantOrAboveProcedure` (no tenant-only guard exists).
 
-**Sidebar conditional nav pattern.** `residentNavItems` is the static array mapped in `ResidentSidebar`. Items that are conditional on user data (role, tenancy, etc.) must NOT go in this array — they fall through the map unconditionally. Render them separately with an explicit query/condition guard. "My Rent" is rendered outside the map using `trpc.resident.getMyTenancy.useQuery()` — appears only when the result is truthy.
+**`RentPayment.amountCents` is overwritten on PARTIAL payments** — no `originalAmountCents`. Summing PARTIAL rows gives amount paid, not amount owed.
 
-**`resident.getMyTenancy` returns null for non-tenants** — never throws. Owners, managers, and admins calling it get `null`. The page handles this with an explicit empty state. The procedure uses `tenantOrAboveProcedure` (tightest guard that includes TENANT) because no tenant-only guard exists.
+**`NEXT_STATUSES` transition map is duplicated** in `manager/maintenance/_client.tsx` and `manager/maintenance/[id]/_client.tsx`. Update both if transitions change.
 
-## ⬜ Next Priorities
+**Cache invalidation gap in maintenance** — detail page `updateStatusMutation` only invalidates `getById`; list page version only invalidates `listByBuilding` + `getStats`. Both should invalidate all three.
+
+**`assignInput` useEffect clobbers mid-edit text** — syncs from `req.assignedTo` on every refetch, overwriting in-progress input. Fix with a `hasInitialized` ref.
+
+**Two-step photo upload** (`/api/storage/maintenance-upload-url` → PUT → `addImage` tRPC): failed upload leaves Add Photo disabled until user manually cancels (`confirmUpload` catch block doesn't call `cancelPendingFile`).
+
+**`owner.getFinancialSummary` uses `tenantOrAboveProcedure`** — not `ownerProcedure`, because it's called on `/resident/levies` which tenants also access. Returns `{ hasOwnerships: false }` for non-owners; tab is hidden when `hasOwnerships` is false.
