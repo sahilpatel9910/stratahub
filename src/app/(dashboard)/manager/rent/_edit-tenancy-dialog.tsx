@@ -84,7 +84,7 @@ export default function EditTenancyDialog({ tenancy, open, onOpenChange }: Props
           <DialogTitle>Edit Lease Terms</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 px-7 py-5">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Lease start</Label>
