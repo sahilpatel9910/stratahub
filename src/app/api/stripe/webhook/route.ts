@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { db } from "@/server/db/client";
-import { sendPaymentReceiptEmail, sendCustomBillReceiptEmail } from "@/lib/email/send";
+import { sendPaymentReceiptEmail, sendCustomBillReceiptEmail, sendRentReceiptEmail } from "@/lib/email/send";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = await request.text();
@@ -107,6 +107,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         title: bill.title,
         category: bill.category,
         amountCents: bill.amountCents,
+        paidDate,
+        stripeSessionId: session.id,
+      });
+    }
+    // ── Rent payment ──────────────────────────────────────────
+    const rentPayment = await db.rentPayment.findFirst({
+      where: { stripeSessionId: session.id },
+      include: {
+        tenancy: {
+          include: {
+            user: { select: { email: true, firstName: true, lastName: true } },
+            unit: {
+              select: {
+                unitNumber: true,
+                building: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (rentPayment && rentPayment.status !== "PAID") {
+      const paidDate = new Date();
+      await db.rentPayment.update({
+        where: { id: rentPayment.id },
+        data: { status: "PAID", paidDate, paymentMethod: "stripe" },
+      });
+
+      const { user, unit } = rentPayment.tenancy;
+      void sendRentReceiptEmail(user.email, {
+        recipientName: `${user.firstName} ${user.lastName}`,
+        buildingName: unit.building.name,
+        unitNumber: unit.unitNumber,
+        amountCents: rentPayment.amountCents,
+        dueDate: rentPayment.dueDate,
         paidDate,
         stripeSessionId: session.id,
       });
