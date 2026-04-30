@@ -7,6 +7,7 @@ export default async function ResidentLeviesPage() {
   await Promise.all([
     trpc.resident.getMyLevies.prefetch({}),
     trpc.customBills.getMyBills.prefetch({}),
+    trpc.owner.getFinancialSummary.prefetch(),
   ]);
 
   return (
