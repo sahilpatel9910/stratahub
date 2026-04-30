@@ -1,10 +1,14 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { CalendarDays, DollarSign, AlertTriangle, Wallet, Building2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, CreditCard, DollarSign, AlertTriangle, Wallet, Building2 } from "lucide-react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 import { formatCurrency } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -69,6 +73,31 @@ export default function ResidentRentClient() {
     trpc.rent.listByTenancy.useQuery(
       tenancy ? { tenancyId: tenancy.id } : skipToken
     );
+
+  const createSession = trpc.rent.createPaymentSession.useMutation({
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to start payment"),
+  });
+
+  const router = useRouter();
+  const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (toastShownRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("payment");
+    if (result === "success") {
+      toastShownRef.current = true;
+      toast.success("Payment successful!");
+      router.replace("/resident/rent");
+    } else if (result === "cancelled") {
+      toastShownRef.current = true;
+      toast.info("Payment cancelled.");
+      router.replace("/resident/rent");
+    }
+  }, [router]);
 
   const isLoading = tenancyLoading || (!!tenancy && paymentsLoading);
 
@@ -243,6 +272,36 @@ export default function ResidentRentClient() {
         </Card>
       </div>
 
+      {/* Next payment action banner */}
+      {nextDue && (
+        <section className="app-panel overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5">
+            <div>
+              <p className="eyebrow-label text-primary/80">
+                {nextDue.status === "OVERDUE" ? "Overdue Payment" : "Next Payment Due"}
+              </p>
+              <p className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-foreground">
+                {formatCurrency(nextDue.amountCents)}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Due {formatDate(nextDue.dueDate)}
+                {nextDue.status === "OVERDUE" && (
+                  <span className="ml-2 font-medium text-red-600">Overdue</span>
+                )}
+              </p>
+            </div>
+            <Button
+              className="h-10 rounded-xl"
+              disabled={createSession.isPending}
+              onClick={() => createSession.mutate({ rentPaymentId: nextDue.id })}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              {createSession.isPending ? "Redirecting…" : "Pay Now"}
+            </Button>
+          </div>
+        </section>
+      )}
+
       {/* Payment schedule */}
       <section className="app-panel overflow-hidden">
         <div className="border-b border-border/70 px-5 py-4">
@@ -259,6 +318,7 @@ export default function ResidentRentClient() {
               <TableHead>Status</TableHead>
               <TableHead>Paid Date</TableHead>
               <TableHead>Method</TableHead>
+              <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -275,7 +335,7 @@ export default function ResidentRentClient() {
             ) : payments.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="py-12 text-center text-muted-foreground"
                 >
                   No payment schedule has been set up yet.
@@ -296,6 +356,19 @@ export default function ResidentRentClient() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {payment.paymentMethod ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    {(payment.status === "PENDING" || payment.status === "OVERDUE") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 rounded-lg text-xs"
+                        disabled={createSession.isPending}
+                        onClick={() => createSession.mutate({ rentPaymentId: payment.id })}
+                      >
+                        Pay
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

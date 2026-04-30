@@ -540,10 +540,12 @@ model RentPayment {
   paymentMethod String?
   receiptUrl    String?
   notes         String?
+  stripeSessionId String?
   createdAt     DateTime      @default(now())
 
   tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
 
+  @@index([stripeSessionId])
   @@map("rent_payments")
 }
 
