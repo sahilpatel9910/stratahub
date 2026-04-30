@@ -468,7 +468,7 @@ export default function MaintenanceClient() {
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
-                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Open maintenance actions for ${req.title}`} className="h-8 w-8" disabled={updateStatusMutation.isPending} />}>
+                              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`Open maintenance actions for ${req.title}`} className="h-8 w-8" disabled={updateStatusMutation.isPending} onClick={(e) => e.stopPropagation()} />}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
