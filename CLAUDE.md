@@ -111,6 +111,7 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role`.
 - ✅ **Branch 16** — Tenancy management: `tenancy` router, Create/Edit dialogs, Tenancies tab on `/manager/rent`, `/manager/tenancies/[id]` detail + Record Payment
 - ✅ **Branch 17** — Inspections: Prisma models (Inspection, Room, Item, Image), `inspection` router, `/manager/inspections` list + `[id]` editor, `/resident/inspections` read-only
 - ✅ **Branch 18** — Owner Financial Dashboard: `owner.getFinancialSummary` tRPC query (`tenantOrAboveProcedure`), Financial Summary tab on `/resident/levies` (owners only), stat cards + transaction table + CSV export
+- ✅ **Branch 19** — Tenant rent payments via Stripe: `stripeSessionId` on `RentPayment`, `rent.createPaymentSession` tRPC mutation (tenant-gated), Stripe webhook handles rent case, "Next Payment Due" action banner + Pay Now buttons on `/resident/rent`, receipt email via Resend
 
 ---
 
