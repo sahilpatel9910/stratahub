@@ -39,10 +39,6 @@ export default function ResidentsClient() {
     selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
     { placeholderData: (prev) => prev }
   );
-  const unitsQuery = trpc.units.listByBuilding.useQuery(
-    selectedBuildingId ? { buildingId: selectedBuildingId } : skipToken,
-    { placeholderData: (prev) => prev }
-  );
 
   const allResidents = query.data ?? [];
   const residents = allResidents.filter((resident) => {
@@ -61,7 +57,6 @@ export default function ResidentsClient() {
 
   const ownerCount = allResidents.filter((r) => r.buildingRole === "OWNER").length;
   const tenantCount = allResidents.filter((r) => r.buildingRole === "TENANT").length;
-  const units = unitsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -178,7 +173,13 @@ export default function ResidentsClient() {
                           ? `${ec.name} (${ec.relationship}) — ${ec.phone}`
                           : "—";
 
-                        const initials = `${resident.firstName[0]}${resident.lastName[0]}`;
+                        const hasName = resident.firstName.trim() || resident.lastName.trim();
+                        const displayName = hasName
+                          ? `${resident.firstName} ${resident.lastName}`.trim()
+                          : resident.email;
+                        const initials = hasName
+                          ? `${resident.firstName[0] ?? ""}${resident.lastName[0] ?? ""}`.toUpperCase()
+                          : resident.email.slice(0, 2).toUpperCase();
 
                         return (
                           <TableRow
@@ -188,14 +189,19 @@ export default function ResidentsClient() {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-9 w-9">
-                                  <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
+                                  <AvatarFallback className={`text-sm ${resident.isActivated ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
                                     {initials}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="font-medium">
-                                    {resident.firstName} {resident.lastName}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{displayName}</p>
+                                    {!resident.isActivated && (
+                                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-[10px] text-amber-700">
+                                        Invited
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <p className="text-sm text-muted-foreground">
                                     {resident.email}
                                   </p>
@@ -258,7 +264,6 @@ export default function ResidentsClient() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         selectedBuildingId={selectedBuildingId}
-        units={units}
       />
     </div>
   );

@@ -91,6 +91,8 @@ export const residentsRouter = createTRPCRouter({
       let residents = buildingAssignments.map((ba) => ({
         ...ba.user,
         buildingRole: ba.role,
+        // true = account activated (Supabase Auth linked); false = invite sent, not yet activated
+        isActivated: !!ba.user.supabaseAuthId,
       }));
 
       if (input.search) {

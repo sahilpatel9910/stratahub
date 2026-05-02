@@ -24,7 +24,6 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 
 type InviteRole = "OWNER" | "TENANT";
-type Unit = { id: string; unitNumber: string };
 
 function getAppUrl() {
   if (typeof window !== "undefined") return window.location.origin;
@@ -35,18 +34,15 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedBuildingId: string | null;
-  units: Unit[];
 };
 
 export default function InviteResidentDialog({
   open,
   onOpenChange,
   selectedBuildingId,
-  units,
 }: Props) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("TENANT");
-  const [inviteUnitId, setInviteUnitId] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -55,7 +51,6 @@ export default function InviteResidentDialog({
   function resetForm() {
     setInviteEmail("");
     setInviteRole("TENANT");
-    setInviteUnitId("");
     setInviteLink("");
     setCopied(false);
   }
@@ -64,17 +59,16 @@ export default function InviteResidentDialog({
     onSuccess: (invite) => {
       setInviteLink(`${getAppUrl()}/invite/${invite.token}`);
       utils.residents.listByBuilding.invalidate();
-      toast.success("Resident invite created");
+      toast.success("Resident added — invite link ready to share");
     },
     onError: (err) => toast.error(err.message ?? "Failed to create invite"),
   });
 
   function handleInvite() {
-    if (!selectedBuildingId || !inviteEmail.trim() || !inviteUnitId) return;
+    if (!selectedBuildingId || !inviteEmail.trim()) return;
     inviteMutation.mutate({
       email: inviteEmail.trim(),
       buildingId: selectedBuildingId,
-      unitId: inviteUnitId,
       role: inviteRole,
     });
   }
@@ -96,9 +90,9 @@ export default function InviteResidentDialog({
     >
       <DialogContent className="max-w-lg p-0">
         <DialogHeader>
-          <DialogTitle className="px-0 pt-0">Invite Resident</DialogTitle>
+          <DialogTitle className="px-0 pt-0">Add Resident</DialogTitle>
           <DialogDescription className="px-0">
-            Send an invite for an owner or tenant in the selected building.
+            Add an owner or tenant to the building roster. Unit assignment happens separately on the Units page.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-7 py-5">
@@ -147,36 +141,6 @@ export default function InviteResidentDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>
-                  Unit <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={inviteUnitId}
-                  onValueChange={(value) =>
-                    value !== null && setInviteUnitId(value)
-                  }
-                  itemToStringLabel={(value) => {
-                    const unit = units.find((item) => item.id === value);
-                    return unit ? `Unit ${unit.unitNumber}` : String(value);
-                  }}
-                >
-                  <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue placeholder="Select unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem
-                        key={unit.id}
-                        value={unit.id}
-                        label={`Unit ${unit.unitNumber}`}
-                      >
-                        Unit {unit.unitNumber}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               {inviteLink && (
                 <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
                   <p className="text-sm font-medium text-foreground">
@@ -214,10 +178,7 @@ export default function InviteResidentDialog({
               <div className="mt-4 rounded-2xl border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">What happens next</p>
                 <p className="mt-2 leading-6">
-                  Once the invite is accepted, the user will be linked to this
-                  building and unit. Owner invites create ownership immediately;
-                  tenant invites create an active tenancy placeholder that
-                  should be reviewed in Units or Rent.
+                  The resident is added to the building roster immediately — they appear on the Residents page right away. Send them the invite link so they can activate their account. Once ready, assign them to a unit from the Units page to create the tenancy or ownership.
                 </p>
               </div>
             </div>
@@ -234,12 +195,10 @@ export default function InviteResidentDialog({
           </Button>
           <Button
             onClick={handleInvite}
-            disabled={
-              !inviteEmail.trim() || !inviteUnitId || inviteMutation.isPending
-            }
+            disabled={!inviteEmail.trim() || inviteMutation.isPending}
             className="h-11 rounded-xl px-5"
           >
-            {inviteMutation.isPending ? "Creating..." : "Create Invite"}
+            {inviteMutation.isPending ? "Adding..." : "Add Resident"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -229,7 +229,7 @@ model Organisation {
 
 model User {
   id             String   @id @default(cuid())
-  supabaseAuthId String   @unique
+  supabaseAuthId String?  @unique
   email          String   @unique
   firstName      String
   lastName       String
