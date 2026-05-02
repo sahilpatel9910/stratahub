@@ -41,6 +41,8 @@ export default function InviteResidentDialog({
   onOpenChange,
   selectedBuildingId,
 }: Props) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<InviteRole>("TENANT");
   const [inviteLink, setInviteLink] = useState("");
@@ -49,6 +51,8 @@ export default function InviteResidentDialog({
   const utils = trpc.useUtils();
 
   function resetForm() {
+    setFirstName("");
+    setLastName("");
     setInviteEmail("");
     setInviteRole("TENANT");
     setInviteLink("");
@@ -65,8 +69,10 @@ export default function InviteResidentDialog({
   });
 
   function handleInvite() {
-    if (!selectedBuildingId || !inviteEmail.trim()) return;
+    if (!selectedBuildingId || !firstName.trim() || !lastName.trim() || !inviteEmail.trim()) return;
     inviteMutation.mutate({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: inviteEmail.trim(),
       buildingId: selectedBuildingId,
       role: inviteRole,
@@ -98,6 +104,32 @@ export default function InviteResidentDialog({
         <div className="flex-1 overflow-y-auto px-7 py-5">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="firstName">
+                    First Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="firstName"
+                    className="h-12 rounded-xl"
+                    placeholder="Jane"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="lastName">
+                    Last Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    className="h-12 rounded-xl"
+                    placeholder="Smith"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="inviteEmail">
                   Email <span className="text-destructive">*</span>
@@ -195,7 +227,7 @@ export default function InviteResidentDialog({
           </Button>
           <Button
             onClick={handleInvite}
-            disabled={!inviteEmail.trim() || inviteMutation.isPending}
+            disabled={!firstName.trim() || !lastName.trim() || !inviteEmail.trim() || inviteMutation.isPending}
             className="h-11 rounded-xl px-5"
           >
             {inviteMutation.isPending ? "Adding..." : "Add Resident"}

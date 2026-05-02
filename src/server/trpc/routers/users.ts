@@ -272,6 +272,8 @@ export const usersRouter = createTRPCRouter({
   createManagerInvite: protectedProcedure
     .input(
       z.object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
         email: z.string().email(),
         buildingId: z.string(),
         role: MANAGER_INVITE_ROLE_ENUM,
@@ -310,7 +312,7 @@ export const usersRouter = createTRPCRouter({
       const dbUser = await ctx.db.user.upsert({
         where: { email },
         update: {},
-        create: { email, firstName: "", lastName: "" },
+        create: { email, firstName: input.firstName, lastName: input.lastName },
       });
 
       // Give them building access immediately (no unit yet — that happens on assign)
