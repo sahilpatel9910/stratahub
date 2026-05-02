@@ -27,7 +27,7 @@ function buildRentSchedule({
     if (rentFrequency === "WEEKLY") dueDate.setDate(start.getDate() + i * 7);
     else if (rentFrequency === "FORTNIGHTLY") dueDate.setDate(start.getDate() + i * 14);
     else dueDate.setMonth(start.getMonth() + i);
-    if (leaseEndDate && dueDate > leaseEndDate) break;
+    if (leaseEndDate && dueDate >= leaseEndDate) break;
     payments.push({ tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const });
   }
   return payments;

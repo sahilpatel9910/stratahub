@@ -48,7 +48,7 @@ function buildRentScheduleEntries({
       dueDate.setMonth(dueDate.getMonth() + i);
     }
 
-    if (leaseEndDate && dueDate > leaseEndDate) break;
+    if (leaseEndDate && dueDate >= leaseEndDate) break;
 
     payments.push({
       tenancyId,
