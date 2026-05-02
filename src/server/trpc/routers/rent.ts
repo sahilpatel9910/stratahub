@@ -19,17 +19,23 @@ function buildRentScheduleEntries({
   rentFrequency,
   rentAmountCents,
   months,
+  leaseEndDate,
 }: {
   tenancyId: string;
   leaseStartDate: Date;
   rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
   rentAmountCents: number;
   months: number;
+  leaseEndDate?: Date | null;
 }) {
   const payments = [];
   const startDate = new Date(leaseStartDate);
+  const count =
+    rentFrequency === "WEEKLY" ? months * 4 :
+    rentFrequency === "FORTNIGHTLY" ? months * 2 :
+    months;
 
-  for (let i = 0; i < months; i++) {
+  for (let i = 0; i < count; i++) {
     let dueDate: Date;
     if (rentFrequency === "WEEKLY") {
       dueDate = new Date(startDate);
@@ -41,6 +47,8 @@ function buildRentScheduleEntries({
       dueDate = new Date(startDate);
       dueDate.setMonth(dueDate.getMonth() + i);
     }
+
+    if (leaseEndDate && dueDate >= leaseEndDate) break;
 
     payments.push({
       tenancyId,
@@ -157,6 +165,22 @@ export const rentRouter = createTRPCRouter({
         },
       });
       await assertBuildingManagementAccess(ctx.db, ctx.user!, payment.tenancy.unit.buildingId);
+
+      // Enforce sequential payment — block if an earlier payment is still outstanding
+      const earlierDue = await ctx.db.rentPayment.findFirst({
+        where: {
+          tenancyId: payment.tenancyId,
+          status: { in: ["PENDING", "OVERDUE"] },
+          dueDate: { lt: payment.dueDate },
+        },
+      });
+      if (earlierDue) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "There are earlier outstanding payments. Please clear those first.",
+        });
+      }
+
       const status = data.amountCents >= payment.amountCents ? "PAID" : "PARTIAL";
       return ctx.db.rentPayment.update({
         where: { id },
@@ -176,6 +200,7 @@ export const rentRouter = createTRPCRouter({
         where: { id: input.tenancyId },
         select: {
           leaseStartDate: true,
+          leaseEndDate: true,
           rentFrequency: true,
           rentAmountCents: true,
           unit: { select: { buildingId: true } },
@@ -198,6 +223,7 @@ export const rentRouter = createTRPCRouter({
         rentFrequency: tenancy.rentFrequency,
         rentAmountCents: tenancy.rentAmountCents,
         months: input.months,
+        leaseEndDate: tenancy.leaseEndDate,
       });
 
       return ctx.db.rentPayment.createMany({ data: payments });
@@ -249,6 +275,7 @@ export const rentRouter = createTRPCRouter({
               rentFrequency: input.rentFrequency,
               rentAmountCents: input.rentAmountCents,
               months: input.scheduleMonths,
+              leaseEndDate: input.leaseEndDate,
             }),
           });
         }
@@ -338,6 +365,21 @@ export const rentRouter = createTRPCRouter({
 
       if (payment.status !== "PENDING" && payment.status !== "OVERDUE") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This payment is not payable." });
+      }
+
+      // Enforce sequential payment — block if an earlier payment is still outstanding
+      const earlierDue = await ctx.db.rentPayment.findFirst({
+        where: {
+          tenancyId: payment.tenancyId,
+          status: { in: ["PENDING", "OVERDUE"] },
+          dueDate: { lt: payment.dueDate },
+        },
+      });
+      if (earlierDue) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "There are earlier outstanding payments. Please clear those first.",
+        });
       }
 
       // Reuse existing open Stripe session if present

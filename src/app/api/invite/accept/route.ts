@@ -46,20 +46,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Find or create the Prisma user record
-  let dbUser = await db.user.findUnique({
-    where: { supabaseAuthId: authUser.id },
+  const meta = authUser.user_metadata as Record<string, string> | undefined;
+  const normalizedEmail = normalizeEmail(authUser.email!);
+
+  // Find pre-created user by email (created at invite time), or find by supabaseAuthId,
+  // or create fresh if neither exists.
+  let dbUser = await db.user.findFirst({
+    where: { email: normalizedEmail },
   });
 
   if (!dbUser) {
-    // Create the Prisma record from Supabase metadata
-    const meta = authUser.user_metadata as Record<string, string> | undefined;
     dbUser = await db.user.create({
       data: {
         supabaseAuthId: authUser.id,
-        email: normalizeEmail(authUser.email!),
-        firstName: meta?.first_name ?? authUser.email!.split("@")[0],
-        lastName: meta?.last_name ?? "",
+        email: normalizedEmail,
+        firstName: meta?.first_name ?? meta?.firstName ?? normalizedEmail.split("@")[0],
+        lastName: meta?.last_name ?? meta?.lastName ?? "",
+      },
+    });
+  } else if (!dbUser.supabaseAuthId) {
+    // Pre-created user activating their account for the first time — link auth ID and fill name.
+    dbUser = await db.user.update({
+      where: { id: dbUser.id },
+      data: {
+        supabaseAuthId: authUser.id,
+        firstName: (meta?.first_name ?? meta?.firstName ?? "").trim() || dbUser.firstName,
+        lastName: (meta?.last_name ?? meta?.lastName ?? "").trim() || dbUser.lastName,
       },
     });
   }
@@ -127,82 +139,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const ownerUnitId = activeInvite.unitId;
-
-  if (ownerUnitId && activeInvite.role === "OWNER") {
-    await db.$transaction(async (tx) => {
-      await tx.ownership.updateMany({
-        where: { unitId: ownerUnitId, isActive: true },
-        data: { isActive: false },
-      });
-
-      await tx.tenancy.updateMany({
-        where: { unitId: ownerUnitId, isActive: true },
-        data: {
-          isActive: false,
-          moveOutDate: new Date(),
-        },
-      });
-
-      await tx.ownership.upsert({
-        where: {
-          userId_unitId: {
-            userId: dbUser.id,
-            unitId: ownerUnitId,
-          },
-        },
-        create: {
-          userId: dbUser.id,
-          unitId: ownerUnitId,
-          isPrimary: true,
-          ownershipPct: 100,
-          purchaseDate: new Date(),
-        },
-        update: {
-          isActive: true,
-          isPrimary: true,
-          ownershipPct: 100,
-          purchaseDate: new Date(),
-        },
-      });
-
-      await tx.unit.update({
-        where: { id: ownerUnitId },
-        data: { isOccupied: true },
-      });
-    });
-  }
-
-  const tenantUnitId = activeInvite.unitId;
-
-  if (tenantUnitId && activeInvite.role === "TENANT") {
-    await db.$transaction(async (tx) => {
-      await tx.tenancy.updateMany({
-        where: { unitId: tenantUnitId, isActive: true },
-        data: {
-          isActive: false,
-          moveOutDate: new Date(),
-        },
-      });
-
-      await tx.tenancy.create({
-        data: {
-          userId: dbUser.id,
-          unitId: tenantUnitId,
-          leaseStartDate: new Date(),
-          rentAmountCents: 0,
-          rentFrequency: "MONTHLY",
-          bondAmountCents: 0,
-          moveInDate: new Date(),
-        },
-      });
-
-      await tx.unit.update({
-        where: { id: tenantUnitId },
-        data: { isOccupied: true },
-      });
-    });
-  }
+  // Tenancy and ownership are NOT created here.
+  // Unit assignment (and tenancy/ownership creation) is done by the manager
+  // via the Units page after the resident is in the building roster.
 
   // Mark invite as accepted
   await db.invitation.update({

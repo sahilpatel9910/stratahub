@@ -358,7 +358,7 @@ export default function ResidentRentClient() {
                     {payment.paymentMethod ?? "—"}
                   </TableCell>
                   <TableCell>
-                    {(payment.status === "PENDING" || payment.status === "OVERDUE") && (
+                    {nextDue && payment.id === nextDue.id && (
                       <Button
                         size="sm"
                         variant="outline"

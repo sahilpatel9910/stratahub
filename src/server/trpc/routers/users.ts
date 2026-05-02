@@ -272,9 +272,10 @@ export const usersRouter = createTRPCRouter({
   createManagerInvite: protectedProcedure
     .input(
       z.object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
         email: z.string().email(),
         buildingId: z.string(),
-        unitId: z.string(),
         role: MANAGER_INVITE_ROLE_ENUM,
       })
     )
@@ -306,15 +307,30 @@ export const usersRouter = createTRPCRouter({
         },
       });
 
-      const unit = await ctx.db.unit.findUnique({
-        where: { id: input.unitId },
-        select: { id: true, buildingId: true, unitNumber: true },
+      // Pre-create the user record immediately so they appear on the residents page
+      // right away — even before they accept the invite and activate their account.
+      const dbUser = await ctx.db.user.upsert({
+        where: { email },
+        update: {},
+        create: { email, firstName: input.firstName, lastName: input.lastName },
       });
 
-      if (!unit || unit.buildingId !== building.id) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Resident invites must target a unit in the selected building.",
+      // Give them building access immediately (no unit yet — that happens on assign)
+      const existingMembership = await ctx.db.organisationMembership.findUnique({
+        where: { userId_organisationId: { userId: dbUser.id, organisationId: building.organisationId } },
+      });
+      if (!existingMembership) {
+        await ctx.db.organisationMembership.create({
+          data: { userId: dbUser.id, organisationId: building.organisationId, role: input.role },
+        });
+      }
+
+      const existingAssignment = await ctx.db.buildingAssignment.findFirst({
+        where: { userId: dbUser.id, buildingId: building.id },
+      });
+      if (!existingAssignment) {
+        await ctx.db.buildingAssignment.create({
+          data: { userId: dbUser.id, buildingId: building.id, role: input.role, isActive: true },
         });
       }
 
@@ -325,7 +341,6 @@ export const usersRouter = createTRPCRouter({
           email,
           organisationId: building.organisationId,
           buildingId: building.id,
-          unitId: unit.id,
           role: input.role,
           expiresAt,
         },
@@ -333,17 +348,16 @@ export const usersRouter = createTRPCRouter({
 
       await sendInvitationEmail(ctx, invite);
 
-      // If the invitee already has an account, send an in-app notification (fire-and-forget)
-      void ctx.db.user.findFirst({ where: { email }, select: { id: true } }).then((existing) => {
-        if (!existing) return;
-        return createNotification(ctx.db, {
-          userId: existing.id,
+      // In-app notification if they already have an activated account
+      if (dbUser.supabaseAuthId) {
+        void createNotification(ctx.db, {
+          userId: dbUser.id,
           type: "INVITE_SENT",
           title: "You have a new invitation",
-          body: `Join ${building.organisation.name} — Unit ${unit.unitNumber}`,
+          body: `Join ${building.organisation.name} — ${building.name}`,
           linkUrl: `/invite/${invite.token}`,
-        });
-      }).catch((err) => console.error("[notification] MANAGER_INVITE_SENT failed:", err));
+        }).catch((err) => console.error("[notification] MANAGER_INVITE_SENT failed:", err));
+      }
 
       return invite;
     }),

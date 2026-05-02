@@ -504,18 +504,20 @@ export default function UnitsPage() {
                       </TableRow>
                     ) : (
                       filtered.map((unit) => {
-                        const owner = unit.ownerships[0]?.user;
+                        // Tenant takes priority — if someone is actively renting,
+                        // the unit shows as occupied by the tenant, not the owner.
                         const tenant = unit.tenancies[0]?.user;
+                        const owner = unit.ownerships[0]?.user;
                         const activeTenancy = unit.tenancies[0];
-                        const residentName = owner
-                          ? `${owner.firstName} ${owner.lastName}`
-                          : tenant
-                            ? `${tenant.firstName} ${tenant.lastName}`
+                        const residentName = tenant
+                          ? `${tenant.firstName} ${tenant.lastName}`
+                          : owner
+                            ? `${owner.firstName} ${owner.lastName}`
                             : null;
-                        const residentRole = owner
-                          ? "Owner"
-                          : tenant
-                            ? "Tenant"
+                        const residentRole = tenant
+                          ? "Tenant"
+                          : owner
+                            ? "Owner"
                             : null;
 
                         return (

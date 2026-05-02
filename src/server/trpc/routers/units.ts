@@ -13,6 +13,26 @@ import {
 import { ROLE_RANK } from "@/lib/auth/roles";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 
+function buildRentSchedule({
+  tenancyId, leaseStartDate, rentFrequency, rentAmountCents, months, leaseEndDate,
+}: {
+  tenancyId: string; leaseStartDate: Date; rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
+  rentAmountCents: number; months: number; leaseEndDate?: Date | null;
+}) {
+  const start = new Date(leaseStartDate);
+  const count = rentFrequency === "WEEKLY" ? months * 4 : rentFrequency === "FORTNIGHTLY" ? months * 2 : months;
+  const payments = [];
+  for (let i = 0; i < count; i++) {
+    const dueDate = new Date(start);
+    if (rentFrequency === "WEEKLY") dueDate.setDate(start.getDate() + i * 7);
+    else if (rentFrequency === "FORTNIGHTLY") dueDate.setDate(start.getDate() + i * 14);
+    else dueDate.setMonth(start.getMonth() + i);
+    if (leaseEndDate && dueDate >= leaseEndDate) break;
+    payments.push({ tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const });
+  }
+  return payments;
+}
+
 const unitTypeEnum = z.enum([
   "APARTMENT", "STUDIO", "PENTHOUSE", "TOWNHOUSE", "COMMERCIAL", "STORAGE", "PARKING",
 ]);
@@ -308,6 +328,7 @@ export const unitsRouter = createTRPCRouter({
         rentFrequency: rentFrequencyEnum.optional(),
         bondAmountCents: z.number().int().min(0).optional(),
         moveInDate: z.date().optional().nullable(),
+        scheduleMonths: z.number().int().min(1).max(24).default(12),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -406,7 +427,7 @@ export const unitsRouter = createTRPCRouter({
           },
         });
 
-        await tx.tenancy.create({
+        const tenancy = await tx.tenancy.create({
           data: {
             userId: resident.id,
             unitId: unit.id,
@@ -418,6 +439,17 @@ export const unitsRouter = createTRPCRouter({
             moveInDate: input.moveInDate ?? leaseStartDate,
           },
         });
+
+        // Auto-generate payment schedule (same behaviour as tenancy.create router)
+        const schedule = buildRentSchedule({
+          tenancyId: tenancy.id,
+          leaseStartDate,
+          rentFrequency,
+          rentAmountCents,
+          months: input.scheduleMonths,
+          leaseEndDate: input.leaseEndDate,
+        });
+        await tx.rentPayment.createMany({ data: schedule });
 
         await tx.unit.update({
           where: { id: unit.id },
