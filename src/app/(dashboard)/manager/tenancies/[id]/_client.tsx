@@ -60,6 +60,14 @@ export default function TenancyDetailClient({ id }: { id: string }) {
     onError: (e) => toast.error(e.message ?? "Failed to record payment"),
   });
 
+  const generateScheduleMutation = trpc.rent.generateSchedule.useMutation({
+    onSuccess: () => {
+      toast.success("Payment schedule generated");
+      void utils.tenancy.getById.invalidate({ id });
+    },
+    onError: (e) => toast.error(e.message ?? "Failed to generate schedule"),
+  });
+
   if (isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -132,11 +140,23 @@ export default function TenancyDetailClient({ id }: { id: string }) {
 
       {/* Payment schedule */}
       <section className="app-panel overflow-hidden">
-        <div className="border-b border-border/70 px-5 py-4">
-          <p className="panel-kicker">Payment Schedule</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-foreground">
-            Rent history &amp; upcoming payments
-          </h2>
+        <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+          <div>
+            <p className="panel-kicker">Payment Schedule</p>
+            <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-foreground">
+              Rent history &amp; upcoming payments
+            </h2>
+          </div>
+          {tenancy.rentPayments.length === 0 && (
+            <Button
+              size="sm"
+              className="h-9 rounded-lg"
+              disabled={generateScheduleMutation.isPending}
+              onClick={() => generateScheduleMutation.mutate({ tenancyId: id, months: 12 })}
+            >
+              {generateScheduleMutation.isPending ? "Generating…" : "Generate Schedule"}
+            </Button>
+          )}
         </div>
         <Table>
           <TableHeader>
@@ -150,6 +170,13 @@ export default function TenancyDetailClient({ id }: { id: string }) {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {tenancy.rentPayments.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                  No payment schedule yet. Click &quot;Generate Schedule&quot; to create one.
+                </TableCell>
+              </TableRow>
+            )}
             {tenancy.rentPayments.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{formatDate(p.dueDate)}</TableCell>

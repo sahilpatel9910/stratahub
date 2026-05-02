@@ -112,6 +112,13 @@ Role checking uses both `orgMemberships.role` and `buildingAssignments.role`.
 - ✅ **Branch 17** — Inspections: Prisma models (Inspection, Room, Item, Image), `inspection` router, `/manager/inspections` list + `[id]` editor, `/resident/inspections` read-only
 - ✅ **Branch 18** — Owner Financial Dashboard: `owner.getFinancialSummary` tRPC query (`tenantOrAboveProcedure`), Financial Summary tab on `/resident/levies` (owners only), stat cards + transaction table + CSV export
 - ✅ **Branch 19** — Tenant rent payments via Stripe: `stripeSessionId` on `RentPayment`, `rent.createPaymentSession` tRPC mutation (tenant-gated), Stripe webhook handles rent case, "Next Payment Due" action banner + Pay Now buttons on `/resident/rent`, receipt email via Resend
+- ✅ **Branch 20** — Invite workflow overhaul + rent schedule fixes:
+  - Invite flow: manager provides first name + last name + email + role (no unit). User row + BuildingAssignment + OrgMembership created immediately at invite time. Residents page shows them with amber "Invited" badge (`isActivated: !!supabaseAuthId`). Unit assignment stays separate.
+  - `supabaseAuthId` is now `String?` (nullable). Invite accept links it to the pre-created row.
+  - `assignResident` (Units page) now generates RentPayment schedule for TENANT assignments — same as `tenancy.create` router. Both paths are now identical.
+  - Tenancy detail page: "Generate Schedule" button shown when `rentPayments.length === 0`; empty state row in table.
+  - Units page display: tenant shown over owner when active tenancy exists.
+  - Seed: tenancies now seeded with 12-month RentPayment schedules.
 
 ---
 
@@ -146,3 +153,9 @@ await Promise.all([
 **Two-step photo upload** (`/api/storage/maintenance-upload-url` → PUT → `addImage` tRPC): failed upload leaves Add Photo disabled until user manually cancels (`confirmUpload` catch block doesn't call `cancelPendingFile`).
 
 **`owner.getFinancialSummary` uses `tenantOrAboveProcedure`** — not `ownerProcedure`, because it's called on `/resident/levies` which tenants also access. Returns `{ hasOwnerships: false }` for non-owners; tab is hidden when `hasOwnerships` is false.
+
+**`supabaseAuthId` is nullable** — pre-created users (invited but not activated) have no Supabase Auth ID. Never assume it's always set. Auth context (`getUser`) will not find them until they activate. The invite accept route finds the pre-created row by email and links the ID.
+
+**Invite workflow (Branch 20)** — Invitation no longer carries a `unitId`. Manager invites → user created immediately → shown on Residents page. Unit assignment (Units page → Assign) is the only place tenancy/ownership is created. `assignResident` generates the RentPayment schedule; do not create a tenancy without also generating the schedule.
+
+**Units page: tenant display priority** — `unit.tenancies[0]` shown over `unit.ownerships[0]` in the Resident column. A unit can simultaneously have an ownership AND an active tenancy — always prioritise the tenant in occupancy-facing UI.
