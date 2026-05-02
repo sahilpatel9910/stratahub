@@ -93,6 +93,9 @@ export default function TenancyDetailClient({ id }: { id: string }) {
   }
 
   const overdueCount = tenancy.rentPayments.filter((p) => p.status === "OVERDUE").length;
+  const oldestPending = tenancy.rentPayments
+    .filter((p) => p.status === "PENDING" || p.status === "OVERDUE")
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -189,7 +192,7 @@ export default function TenancyDetailClient({ id }: { id: string }) {
                 <TableCell className="text-muted-foreground">{formatDate(p.paidDate)}</TableCell>
                 <TableCell className="text-muted-foreground">{p.paymentMethod ?? "—"}</TableCell>
                 <TableCell>
-                  {(p.status === "PENDING" || p.status === "OVERDUE") && (
+                  {oldestPending && p.id === oldestPending.id && (
                     <Button
                       variant="ghost"
                       size="sm"

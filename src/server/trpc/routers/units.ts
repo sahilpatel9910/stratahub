@@ -14,20 +14,23 @@ import { ROLE_RANK } from "@/lib/auth/roles";
 import { sendWelcomeInviteEmail } from "@/lib/email/send";
 
 function buildRentSchedule({
-  tenancyId, leaseStartDate, rentFrequency, rentAmountCents, months,
+  tenancyId, leaseStartDate, rentFrequency, rentAmountCents, months, leaseEndDate,
 }: {
   tenancyId: string; leaseStartDate: Date; rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
-  rentAmountCents: number; months: number;
+  rentAmountCents: number; months: number; leaseEndDate?: Date | null;
 }) {
   const start = new Date(leaseStartDate);
   const count = rentFrequency === "WEEKLY" ? months * 4 : rentFrequency === "FORTNIGHTLY" ? months * 2 : months;
-  return Array.from({ length: count }, (_, i) => {
+  const payments = [];
+  for (let i = 0; i < count; i++) {
     const dueDate = new Date(start);
     if (rentFrequency === "WEEKLY") dueDate.setDate(start.getDate() + i * 7);
     else if (rentFrequency === "FORTNIGHTLY") dueDate.setDate(start.getDate() + i * 14);
     else dueDate.setMonth(start.getMonth() + i);
-    return { tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const };
-  });
+    if (leaseEndDate && dueDate > leaseEndDate) break;
+    payments.push({ tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const });
+  }
+  return payments;
 }
 
 const unitTypeEnum = z.enum([
@@ -444,6 +447,7 @@ export const unitsRouter = createTRPCRouter({
           rentFrequency,
           rentAmountCents,
           months: input.scheduleMonths,
+          leaseEndDate: input.leaseEndDate,
         });
         await tx.rentPayment.createMany({ data: schedule });
 

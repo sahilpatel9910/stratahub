@@ -112,6 +112,7 @@ export const tenancyRouter = createTRPCRouter({
             rentFrequency: tenancy.rentFrequency,
             rentAmountCents: tenancy.rentAmountCents,
             months: scheduleMonths,
+            leaseEndDate: tenancy.leaseEndDate,
           });
           await tx.rentPayment.createMany({ data: payments });
         }
@@ -174,12 +175,14 @@ function buildSchedule({
   rentFrequency,
   rentAmountCents,
   months,
+  leaseEndDate,
 }: {
   tenancyId: string;
   leaseStartDate: Date;
   rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
   rentAmountCents: number;
   months: number;
+  leaseEndDate?: Date | null;
 }) {
   const payments = [];
   const start = new Date(leaseStartDate);
@@ -193,6 +196,8 @@ function buildSchedule({
     if (rentFrequency === "WEEKLY") dueDate.setDate(start.getDate() + i * 7);
     else if (rentFrequency === "FORTNIGHTLY") dueDate.setDate(start.getDate() + i * 14);
     else dueDate.setMonth(start.getMonth() + i);
+
+    if (leaseEndDate && dueDate > leaseEndDate) break;
 
     payments.push({ tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const });
   }
