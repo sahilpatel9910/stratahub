@@ -43,6 +43,10 @@ export default async function Home() {
     );
   }
 
+  if (dbUser.isSuperAdmin) {
+    redirect("/super-admin/organisations");
+  }
+
   const roles = [
     ...dbUser.orgMemberships.map((m) => m.role),
     ...dbUser.buildingAssignments.map((a) => a.role),

@@ -46,6 +46,7 @@ next-env.d.ts
 
 # Local dev seed scripts (contain demo credentials)
 /seed/
+/prisma/seed.ts
 
 # Agent context — local coding agent use only
 CLAUDE.md
