@@ -532,17 +532,18 @@ model BondRecord {
 // ============================================================
 
 model RentPayment {
-  id            String        @id @default(cuid())
-  tenancyId     String
-  amountCents   Int
-  dueDate       DateTime
-  paidDate      DateTime?
-  status        PaymentStatus @default(PENDING)
-  paymentMethod String?
-  receiptUrl    String?
-  notes         String?
-  stripeSessionId String?
-  createdAt     DateTime      @default(now())
+  id                  String        @id @default(cuid())
+  tenancyId           String
+  amountCents         Int
+  originalAmountCents Int?
+  dueDate             DateTime
+  paidDate            DateTime?
+  status              PaymentStatus @default(PENDING)
+  paymentMethod       String?
+  receiptUrl          String?
+  notes               String?
+  stripeSessionId     String?
+  createdAt           DateTime      @default(now())
 
   tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
 

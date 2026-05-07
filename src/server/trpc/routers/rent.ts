@@ -181,10 +181,18 @@ export const rentRouter = createTRPCRouter({
         });
       }
 
-      const status = data.amountCents >= payment.amountCents ? "PAID" : "PARTIAL";
+      const isPartial = data.amountCents < payment.amountCents;
+      const status = isPartial ? "PARTIAL" : "PAID";
       return ctx.db.rentPayment.update({
         where: { id },
-        data: { ...data, status },
+        data: {
+          ...data,
+          status,
+          // Preserve original owed amount on first partial payment
+          ...(isPartial && !payment.originalAmountCents
+            ? { originalAmountCents: payment.amountCents }
+            : {}),
+        },
       });
     }),
 
