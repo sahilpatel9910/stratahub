@@ -42,7 +42,7 @@ test.describe('Manager Units page (/manager/units)', () => {
   });
 
   test('search/filter works if present', async ({ page }) => {
-    const search = page.getByPlaceholder(/search/i);
+    const search = page.getByPlaceholder(/search by unit/i);
     if (await search.isVisible()) {
       await search.fill('Unit 1');
       await page.waitForTimeout(300);

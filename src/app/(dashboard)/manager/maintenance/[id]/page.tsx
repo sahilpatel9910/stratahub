@@ -10,8 +10,11 @@ export default async function ManagerMaintenanceDetailPage({
   const { trpc, HydrateClient } = await createServerTRPC();
   await trpc.maintenance.getById.prefetch({ id });
   return (
-    <HydrateClient>
-      <ManagerMaintenanceDetailClient id={id} />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Maintenance Request</h1>
+      <HydrateClient>
+        <ManagerMaintenanceDetailClient id={id} />
+      </HydrateClient>
+    </>
   );
 }

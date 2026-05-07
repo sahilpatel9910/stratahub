@@ -12,8 +12,11 @@ export default async function ResidentRentPage() {
   ]);
 
   return (
-    <HydrateClient>
-      <ResidentRentClient />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Rent</h1>
+      <HydrateClient>
+        <ResidentRentClient />
+      </HydrateClient>
+    </>
   );
 }

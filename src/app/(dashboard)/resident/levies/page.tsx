@@ -11,8 +11,11 @@ export default async function ResidentLeviesPage() {
   ]);
 
   return (
-    <HydrateClient>
-      <ResidentLeviesClient />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Levies</h1>
+      <HydrateClient>
+        <ResidentLeviesClient />
+      </HydrateClient>
+    </>
   );
 }
