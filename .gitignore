@@ -55,7 +55,6 @@ PLAN.md
 /docs/superpowers/.worktrees/
 /docs/plan/
 /.worktrees/
-/tests
 /test-results
 /playwright-report
 
