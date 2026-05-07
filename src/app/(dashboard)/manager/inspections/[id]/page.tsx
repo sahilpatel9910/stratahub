@@ -12,7 +12,7 @@ export default async function InspectionDetailPage({
 
   return (
     <>
-      <h1 className="sr-only">Inspection Detail</h1>
+      <h1 className="sr-only" aria-hidden="true">Inspection Detail</h1>
       <HydrateClient>
         <InspectionDetailClient id={id} />
       </HydrateClient>

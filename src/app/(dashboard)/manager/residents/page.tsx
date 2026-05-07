@@ -16,7 +16,7 @@ export default async function ResidentsPage() {
 
   return (
     <>
-      <h1 className="sr-only">Residents</h1>
+      <h1 className="sr-only" aria-hidden="true">Residents</h1>
       <HydrateClient>
         <ResidentsClient />
       </HydrateClient>

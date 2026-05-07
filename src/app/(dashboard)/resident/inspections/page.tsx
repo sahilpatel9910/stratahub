@@ -5,7 +5,7 @@ export default async function ResidentInspectionsPage() {
   const { HydrateClient } = await createServerTRPC();
   return (
     <>
-      <h1 className="sr-only">Inspections</h1>
+      <h1 className="sr-only" aria-hidden="true">Inspections</h1>
       <HydrateClient>
         <ResidentInspectionsClient />
       </HydrateClient>

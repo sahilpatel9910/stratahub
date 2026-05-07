@@ -12,7 +12,7 @@ export default async function TenancyDetailPage({
 
   return (
     <>
-      <h1 className="sr-only">Tenancy Detail</h1>
+      <h1 className="sr-only" aria-hidden="true">Tenancy Detail</h1>
       <HydrateClient>
         <TenancyDetailClient id={id} />
       </HydrateClient>
