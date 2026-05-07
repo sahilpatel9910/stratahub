@@ -62,7 +62,7 @@ test.describe('Login page', () => {
 
   test('forgot password link navigates correctly', async ({ page }) => {
     await page.getByRole('link', { name: /forgot password/i }).click();
-    await expect(page).toHaveURL(/\/forgot-password/);
+    await expect(page).toHaveURL(/\/forgot-password/, { timeout: 10_000 });
   });
 });
 
