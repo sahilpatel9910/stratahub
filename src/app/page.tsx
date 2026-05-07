@@ -3,6 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
 import { findPendingInvitationByEmail } from "@/server/auth/invitations";
 import { getRootRedirectPath } from "@/lib/auth/redirects";
+import type { UserRole } from "@/generated/prisma/client";
+
+function getPrimaryRole(roles: string[]): string | null {
+  if (roles.includes('SUPER_ADMIN')) return 'SUPER_ADMIN';
+  if (roles.includes('BUILDING_MANAGER')) return 'BUILDING_MANAGER';
+  if (roles.includes('RECEPTION')) return 'RECEPTION';
+  if (roles.includes('OWNER')) return 'OWNER';
+  if (roles.includes('TENANT')) return 'TENANT';
+  return null;
+}
 
 export default async function Home() {
   const supabase = await createClient();
@@ -20,6 +30,19 @@ export default async function Home() {
     );
   }
 
+  // Fast path: use cached role from user metadata (avoids DB round-trip on warm sessions)
+  const cachedRole = authUser.user_metadata?.primaryRole as string | undefined;
+  if (cachedRole) {
+    redirect(
+      getRootRedirectPath({
+        hasAuthUser: true,
+        hasAppUser: true,
+        roles: [cachedRole as UserRole],
+      })
+    );
+  }
+
+  // Slow path: full DB lookup (first login, or metadata not yet set)
   const dbUser = await db.user.findUnique({
     where: { supabaseAuthId: authUser.id },
     include: {
@@ -47,6 +70,12 @@ export default async function Home() {
     ...dbUser.orgMemberships.map((m) => m.role),
     ...dbUser.buildingAssignments.map((a) => a.role),
   ];
+
+  // Cache role in metadata for next visit (fire-and-forget — don't block the redirect)
+  const primaryRole = getPrimaryRole(roles);
+  if (primaryRole) {
+    void supabase.auth.updateUser({ data: { primaryRole } });
+  }
 
   const pendingInvite = roles.length === 0
     ? await findPendingInvitationByEmail(dbUser.email)
