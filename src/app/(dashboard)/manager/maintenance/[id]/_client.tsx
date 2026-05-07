@@ -18,20 +18,8 @@ import {
   STATUS_COLORS,
   PRIORITY_LABELS,
   CATEGORY_LABELS,
+  NEXT_STATUSES,
 } from "@/lib/constants";
-
-// ─── Status transition map ────────────────────────────────────────────────────
-
-const NEXT_STATUSES: Record<string, string[]> = {
-  SUBMITTED: ["ACKNOWLEDGED", "CANCELLED"],
-  ACKNOWLEDGED: ["IN_PROGRESS", "SCHEDULED", "CANCELLED"],
-  IN_PROGRESS: ["AWAITING_PARTS", "SCHEDULED", "COMPLETED", "CANCELLED"],
-  AWAITING_PARTS: ["IN_PROGRESS", "SCHEDULED", "COMPLETED", "CANCELLED"],
-  SCHEDULED: ["IN_PROGRESS", "COMPLETED", "CANCELLED"],
-  COMPLETED: ["CLOSED"],
-  CLOSED: [],
-  CANCELLED: [],
-};
 
 const TERMINAL_STATUSES = new Set(["CLOSED", "CANCELLED"]);
 
@@ -170,8 +158,12 @@ export default function ManagerMaintenanceDetailClient({ id }: { id: string }) {
   const utils = trpc.useUtils();
   const { data: req, isLoading, isError } = trpc.maintenance.getById.useQuery({ id });
 
+  const hasInitializedAssign = useRef(false);
   useEffect(() => {
-    if (req?.assignedTo) setAssignInput(req.assignedTo);
+    if (!hasInitializedAssign.current && req?.assignedTo !== undefined) {
+      setAssignInput(req.assignedTo ?? "");
+      hasInitializedAssign.current = true;
+    }
   }, [req?.assignedTo]);
 
   const assignMutation = trpc.maintenance.assign.useMutation({
@@ -185,6 +177,8 @@ export default function ManagerMaintenanceDetailClient({ id }: { id: string }) {
   const updateStatusMutation = trpc.maintenance.updateStatus.useMutation({
     onSuccess: () => {
       void utils.maintenance.getById.invalidate({ id });
+      void utils.maintenance.listByBuilding.invalidate();
+      void utils.buildings.getStats.invalidate();
       toast.success("Status updated");
     },
     onError: (e) => toast.error(e.message ?? "Failed to update status"),
@@ -264,6 +258,7 @@ export default function ManagerMaintenanceDetailClient({ id }: { id: string }) {
       await addImageMutation.mutateAsync({ maintenanceRequestId: id, storagePath: path });
       cancelPendingFile();
     } catch (err) {
+      cancelPendingFile();
       toast.error(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setUploading(false);

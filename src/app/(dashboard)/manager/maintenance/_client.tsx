@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { MAINTENANCE_CATEGORY_LABELS, PRIORITY_LABELS } from "@/lib/constants";
+import { MAINTENANCE_CATEGORY_LABELS, NEXT_STATUSES, PRIORITY_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 
 type TabValue = "all" | "active" | "completed" | "cancelled";
@@ -69,17 +69,6 @@ const PRIORITY_STYLES: Record<string, string> = {
   MEDIUM: "bg-yellow-100 text-yellow-700",
   HIGH: "bg-orange-100 text-orange-700",
   URGENT: "bg-red-100 text-red-700",
-};
-
-const NEXT_STATUSES: Record<string, string[]> = {
-  SUBMITTED: ["ACKNOWLEDGED", "CANCELLED"],
-  ACKNOWLEDGED: ["IN_PROGRESS", "SCHEDULED", "CANCELLED"],
-  IN_PROGRESS: ["AWAITING_PARTS", "SCHEDULED", "COMPLETED", "CANCELLED"],
-  AWAITING_PARTS: ["IN_PROGRESS", "SCHEDULED", "COMPLETED", "CANCELLED"],
-  SCHEDULED: ["IN_PROGRESS", "COMPLETED", "CANCELLED"],
-  COMPLETED: ["CLOSED"],
-  CLOSED: [],
-  CANCELLED: [],
 };
 
 const CATEGORIES = Object.entries(MAINTENANCE_CATEGORY_LABELS) as [

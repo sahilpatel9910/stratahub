@@ -64,6 +64,17 @@ export const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelled",
 };
 
+export const NEXT_STATUSES: Record<string, string[]> = {
+  SUBMITTED: ["ACKNOWLEDGED", "CANCELLED"],
+  ACKNOWLEDGED: ["IN_PROGRESS", "SCHEDULED", "CANCELLED"],
+  IN_PROGRESS: ["AWAITING_PARTS", "SCHEDULED", "COMPLETED", "CANCELLED"],
+  AWAITING_PARTS: ["IN_PROGRESS", "SCHEDULED", "COMPLETED", "CANCELLED"],
+  SCHEDULED: ["IN_PROGRESS", "COMPLETED", "CANCELLED"],
+  COMPLETED: ["CLOSED"],
+  CLOSED: [],
+  CANCELLED: [],
+};
+
 export const STATUS_COLORS: Record<string, string> = {
   SUBMITTED: "bg-gray-100 text-gray-800",
   ACKNOWLEDGED: "bg-blue-100 text-blue-800",
