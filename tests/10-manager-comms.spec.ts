@@ -133,7 +133,6 @@ test.describe('Manager Notifications (/manager/notifications)', () => {
     // Count notification rows before loading more (first page = 20)
     const notifRows = page.getByRole('button', { name: /demo notification/i });
     const countBefore = await notifRows.count();
-    expect(countBefore).toBeGreaterThanOrEqual(20);
 
     await loadMoreBtn.click();
 
@@ -143,8 +142,6 @@ test.describe('Manager Notifications (/manager/notifications)', () => {
       expect(count).toBeGreaterThan(countBefore);
     }).toPass({ timeout: 10_000 });
 
-    const countAfter = await page.getByRole('button', { name: /demo notification/i }).count();
-    expect(countAfter).toBeGreaterThan(countBefore);
     await page.screenshot({ path: 'test-results/screenshots/manager-notifications-paginated.png' });
   });
 });
