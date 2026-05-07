@@ -150,16 +150,17 @@ test.describe('Known bug: NEXT_STATUSES consistency check', () => {
 // CLAUDE.md: "/api/stripe/ is whitelisted in isPublicAuthPath(). If removed, payments silently fail."
 
 test.describe('Critical: Stripe webhook path accessibility', () => {
-  test('POST /api/stripe/webhook returns 400 (not 307 redirect) without auth', async ({ page }) => {
-    // Use page.request — not page.evaluate/fetch — so we get a real HTTP response
-    // without depending on browser origin. Must use absolute URL.
-    const response = await page.request.post('http://localhost:3000/api/stripe/webhook', {
+  test('POST /api/stripe/webhook returns 400 (not 307 redirect) without auth', async ({ page, request }) => {
+    // Use the request fixture — not page.evaluate/fetch — so we get a real HTTP response.
+    // The request fixture uses Playwright's HTTP client and respects baseURL from playwright.config.ts.
+    const response = await request.post('/api/stripe/webhook', {
       headers: { 'content-type': 'application/json' },
       data: {},
     });
 
-    // Should be 400 (bad signature) not 307 (redirect to login)
+    // 307 = intercepted by auth middleware (the bug this test guards against)
     expect(response.status()).not.toBe(307);
+    // 400 = Stripe rejects the malformed/unsigned payload (expected success path)
     expect(response.status()).toBe(400);
     await page.screenshot({ path: 'test-results/screenshots/critical-stripe-webhook.png' });
   });
