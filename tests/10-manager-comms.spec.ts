@@ -125,12 +125,26 @@ test.describe('Manager Notifications (/manager/notifications)', () => {
     }
   });
 
-  test('pagination is present when many notifications exist', async ({ page }) => {
-    // Branch 9: cursor pagination
-    const nextBtn = page.getByRole('button', { name: /next|load more/i });
-    if (await nextBtn.count() > 0 && await nextBtn.isVisible()) {
-      await nextBtn.click();
-      await page.screenshot({ path: 'test-results/screenshots/manager-notifications-paginated.png' });
-    }
+  test('Load more button appears and loads additional notifications', async ({ page }) => {
+    // Demo seed creates 25 notifications; page size is 20, so hasNextPage = true
+    const loadMoreBtn = page.getByRole('button', { name: /load more/i });
+    await expect(loadMoreBtn).toBeVisible({ timeout: 10_000 });
+
+    // Count notification rows before loading more (first page = 20)
+    const notifRows = page.getByRole('button', { name: /demo notification/i });
+    const countBefore = await notifRows.count();
+    expect(countBefore).toBeGreaterThanOrEqual(20);
+
+    await loadMoreBtn.click();
+
+    // Wait until more rows appear (or Load more disappears meaning all loaded)
+    await expect(async () => {
+      const count = await page.getByRole('button', { name: /demo notification/i }).count();
+      expect(count).toBeGreaterThan(countBefore);
+    }).toPass({ timeout: 10_000 });
+
+    const countAfter = await page.getByRole('button', { name: /demo notification/i }).count();
+    expect(countAfter).toBeGreaterThan(countBefore);
+    await page.screenshot({ path: 'test-results/screenshots/manager-notifications-paginated.png' });
   });
 });

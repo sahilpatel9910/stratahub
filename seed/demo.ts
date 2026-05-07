@@ -523,6 +523,28 @@ async function main() {
   }
   console.log("  ✓ 3 parcels");
 
+  // ── 14. Notifications (25 — enough to trigger pagination on the manager notifications page) ───
+  console.log("→ Notifications...");
+  const notifTypes = [
+    'LEVY_CREATED', 'MAINTENANCE_STATUS_UPDATED', 'MAINTENANCE_CREATED',
+    'ANNOUNCEMENT_PUBLISHED', 'PARCEL_RECEIVED', 'INVITE_SENT', 'MESSAGE_RECEIVED',
+  ] as const;
+
+  const existingNotifCount = await db.notification.count({ where: { userId: managerId } });
+  if (existingNotifCount < 25) {
+    await db.notification.createMany({
+      data: Array.from({ length: 25 }, (_, i) => ({
+        userId: managerId,
+        type: notifTypes[i % notifTypes.length],
+        title: `Demo notification ${i + 1}`,
+        body: `Seeded for pagination testing — item ${i + 1}`,
+        isRead: i % 3 !== 0,
+        createdAt: new Date(Date.now() - i * 60_000),
+      })),
+    });
+  }
+  console.log("  ✓ 25 notifications (pagination seed)");
+
   // ── Done ──────────────────────────────────────────────────────────────────
   console.log(`
 ╔══════════════════════════════════════════════════════════════════════╗
