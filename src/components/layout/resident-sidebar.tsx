@@ -62,7 +62,10 @@ export function ResidentSidebar() {
 
   async function handleSignOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    // scope: 'local' clears only this browser's session without invalidating
+    // other active sessions globally (the default 'global' would sign out
+    // the user from all devices simultaneously).
+    await supabase.auth.signOut({ scope: 'local' });
     router.push("/login");
     router.refresh();
   }

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, DEMO_ACCOUNTS } from './helpers/auth';
+import { loginAs, loginAsFresh, DEMO_ACCOUNTS } from './helpers/auth';
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
 
@@ -143,7 +143,10 @@ test.describe('Register page', () => {
 
 test.describe('Sign out', () => {
   test('manager can sign out and is redirected to login', async ({ page }) => {
-    await loginAs(page, 'manager');
+    // Must use loginAsFresh — loginAs() uses the globally cached session.
+    // supabase.auth.signOut() invalidates the server-side token, which
+    // would break all other parallel tests that share that cached session.
+    await loginAsFresh(page, 'manager');
     await page.getByRole('button', { name: /sign out/i }).click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
     await page.screenshot({ path: 'test-results/screenshots/signed-out.png' });

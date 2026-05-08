@@ -60,6 +60,25 @@ export async function loginAs(page: Page, role: keyof typeof DEMO_ACCOUNTS) {
 }
 
 /**
+ * Like loginAs but always performs a full interactive login.
+ *
+ * Use this in tests that sign out — the sign-out call invalidates the
+ * Supabase server-side session, which would break other parallel tests
+ * that share the cached session from .auth/<role>.json.  By doing a
+ * fresh login here, only this test's newly created session gets destroyed.
+ */
+export async function loginAsFresh(page: Page, role: keyof typeof DEMO_ACCOUNTS) {
+  const { email, password } = DEMO_ACCOUNTS[role];
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+    timeout: LOGIN_TIMEOUT,
+  });
+}
+
+/**
  * Click Sign Out and wait for the /login redirect.
  */
 export async function logout(page: Page) {
