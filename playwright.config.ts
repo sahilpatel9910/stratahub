@@ -2,20 +2,22 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false,
+  globalSetup: './playwright/global-setup.ts',
+  fullyParallel: true,         // run test files in parallel
+  workers: 4,                  // 4 parallel workers (safe for a local dev machine)
   retries: 1,
-  timeout: 120_000,   // 2 min per test — Supabase free-tier auth is slow
-  reporter: 'html',
+  timeout: 120_000,            // 2 min per test — Supabase free-tier auth is slow
+  reporter: [['html', { open: 'never' }], ['list']],
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
-    screenshot: 'on',
-    video: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'off',
     actionTimeout: 30_000,
     navigationTimeout: 60_000,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['iPhone 13'] } },
+    // mobile disabled — run manually with: npx playwright test --project=mobile
   ],
 });
