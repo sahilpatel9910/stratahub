@@ -81,10 +81,12 @@ export default async function Home() {
     ...dbUser.buildingAssignments.map((a) => a.role),
   ];
 
-  // Cache role in metadata for next visit (fire-and-forget — don't block the redirect)
+  // Cache role in metadata for next visit.
+  // void = fire-and-forget: we don't block the redirect on this write.
+  // The cache miss on the next request is acceptable; correctness is preserved by the TTL.
   const primaryRole = getPrimaryRole(roles);
   if (primaryRole) {
-    await supabase.auth.updateUser({ data: { primaryRole, primaryRoleCachedAt: Date.now() } });
+    void supabase.auth.updateUser({ data: { primaryRole, primaryRoleCachedAt: Date.now() } });
   }
 
   const pendingInvite = roles.length === 0

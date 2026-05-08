@@ -23,16 +23,13 @@ test.describe('Manager Residents page (/manager/residents)', () => {
   test('switching to Owners tab filters results', async ({ page }) => {
     await page.getByRole('tab', { name: /owners/i }).click();
     await page.screenshot({ path: 'test-results/screenshots/residents-owners-tab.png' });
-    // Verify only owner rows remain — check no TENANT badge is shown
-    const tenantBadges = page.getByText('Tenant');
-    // Owners tab should not show Tenant role badges in the main column
-    // (soft check — count should be 0 or elements not visible in table body)
-    await expect(page.getByRole('tab', { name: /owners/i })).toHaveAttribute('data-state', 'active');
+    // @base-ui tabs use aria-selected, not data-state
+    await expect(page.getByRole('tab', { name: /owners/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('switching to Tenants tab filters results', async ({ page }) => {
     await page.getByRole('tab', { name: /tenants/i }).click();
-    await expect(page.getByRole('tab', { name: /tenants/i })).toHaveAttribute('data-state', 'active');
+    await expect(page.getByRole('tab', { name: /tenants/i })).toHaveAttribute('aria-selected', 'true');
     await page.screenshot({ path: 'test-results/screenshots/residents-tenants-tab.png' });
   });
 
@@ -84,8 +81,9 @@ test.describe('Manager Residents page (/manager/residents)', () => {
   test('invite form shows validation error for empty submit', async ({ page }) => {
     await page.getByRole('button', { name: /invite resident/i }).click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-    await page.getByRole('button', { name: /invite|send/i }).last().click();
-    // Should show validation error or toast
+    // Submit button ("Add Resident") is disabled when required fields are empty — that is the validation
+    const submitBtn = page.getByRole('button', { name: /add resident/i });
+    await expect(submitBtn).toBeDisabled();
     await page.screenshot({ path: 'test-results/screenshots/residents-invite-empty-submit.png' });
   });
 

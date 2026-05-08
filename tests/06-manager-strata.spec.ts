@@ -21,12 +21,11 @@ test.describe('Manager Strata page (/manager/strata) — Levies + Custom Bills',
 
   test('Custom Bills tab opens and shows table', async ({ page }) => {
     await page.getByRole('tab', { name: /custom bills/i }).click();
+    // Wait for async tRPC query to resolve — either a table or the "No custom bills found." empty state
+    await expect(
+      page.getByRole('table').or(page.getByText(/no custom bills found/i))
+    ).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: 'test-results/screenshots/manager-strata-custom-bills.png' });
-    // Should have table or empty state
-    const table = page.getByRole('table');
-    const emptyState = page.getByText(/no bills|empty|no custom/i);
-    const hasContent = (await table.count() > 0) || (await emptyState.count() > 0);
-    expect(hasContent).toBeTruthy();
   });
 
   test('New Custom Bill button opens create dialog', async ({ page }) => {

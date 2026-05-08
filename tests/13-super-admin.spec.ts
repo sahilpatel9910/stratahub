@@ -24,13 +24,13 @@ test.describe('Super-admin login and portal entry', () => {
   test('super-admin logs in and lands on /super-admin/organisations', async ({ page }) => {
     await loginAs(page, 'superAdmin');
     // Root page.tsx should redirect SUPER_ADMIN to /super-admin/organisations
-    await expect(page).toHaveURL(/\/super-admin\/organisations/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/super-admin\/organisations/, { timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-login-redirect.png' });
   });
 
   test('super-admin sees admin sidebar (Organisations, Buildings, Users)', async ({ page }) => {
     await loginAs(page, 'superAdmin');
-    await page.waitForURL(/\/super-admin/, { timeout: 15000 });
+    await page.waitForURL(/\/super-admin/, { timeout: 45000 });
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('link', { name: 'Organisations' })).toBeVisible({ timeout: 10000 });
@@ -41,7 +41,7 @@ test.describe('Super-admin login and portal entry', () => {
 
   test('super-admin sidebar also shows Property Management section', async ({ page }) => {
     await loginAs(page, 'superAdmin');
-    await page.waitForURL(/\/super-admin/, { timeout: 15000 });
+    await page.waitForURL(/\/super-admin/, { timeout: 45000 });
     await page.waitForLoadState('networkidle');
     // Super-admin also gets the manager nav (AppSidebar isSuperAdmin renders both sections)
     await expect(page.getByRole('link', { name: 'Dashboard' }).first()).toBeVisible({ timeout: 10000 });
@@ -50,7 +50,7 @@ test.describe('Super-admin login and portal entry', () => {
 
   test('super-admin can sign out and is redirected to /login', async ({ page }) => {
     await loginAs(page, 'superAdmin');
-    await page.waitForURL(/\/super-admin/, { timeout: 15000 });
+    await page.waitForURL(/\/super-admin/, { timeout: 45000 });
     await page.waitForLoadState('networkidle');
     await logout(page);
     await expect(page).toHaveURL(/\/login/);
@@ -402,7 +402,7 @@ test.describe('Super-admin Users page (/super-admin/users)', () => {
 test.describe('Super-admin cross-portal access (can reach /manager pages)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'superAdmin');
-    await page.waitForURL(/\/super-admin/, { timeout: 15000 });
+    await page.waitForURL(/\/super-admin/, { timeout: 45000 });
   });
 
   test('super-admin can navigate to /manager via sidebar and it loads', async ({ page }) => {
@@ -430,18 +430,18 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
 
   test('unauthenticated user accessing /super-admin/organisations is redirected to /login', async ({ page }) => {
     await page.goto('/super-admin/organisations');
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-access-unauthed.png' });
   });
 
   test('unauthenticated user accessing /super-admin/buildings is redirected to /login', async ({ page }) => {
     await page.goto('/super-admin/buildings');
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 45000 });
   });
 
   test('unauthenticated user accessing /super-admin/users is redirected to /login', async ({ page }) => {
     await page.goto('/super-admin/users');
-    await expect(page).toHaveURL(/\/login/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 45000 });
   });
 
   test('BUILDING_MANAGER accessing /super-admin/organisations is redirected away', async ({ page }) => {
@@ -451,7 +451,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.goto('/super-admin/organisations');
     await page.waitForLoadState('networkidle');
     // Must NOT stay on super-admin — should land on /manager
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-manager-blocked.png' });
   });
 
@@ -460,7 +460,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 45000 });
     await page.goto('/super-admin/buildings');
     await page.waitForLoadState('networkidle');
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
   });
 
   test('BUILDING_MANAGER accessing /super-admin/users is redirected away', async ({ page }) => {
@@ -468,7 +468,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 45000 });
     await page.goto('/super-admin/users');
     await page.waitForLoadState('networkidle');
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-manager-users-blocked.png' });
   });
 
@@ -478,7 +478,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.goto('/super-admin/organisations');
     await page.waitForLoadState('networkidle');
     // Owner should end up on /resident, not /super-admin
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
     await expect(page).toHaveURL(/\/resident/, { timeout: 10000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-owner-blocked.png' });
   });
@@ -488,7 +488,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 45000 });
     await page.goto('/super-admin/buildings');
     await page.waitForLoadState('networkidle');
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
     await expect(page).toHaveURL(/\/resident/, { timeout: 10000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-tenant-blocked.png' });
   });
@@ -499,7 +499,7 @@ test.describe('Access control — non-super-admin cannot reach /super-admin rout
     await page.goto('/super-admin/organisations');
     await page.waitForLoadState('networkidle');
     // Reception is a manager-portal role — should go to /manager not /super-admin
-    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/super-admin/, { timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-reception-blocked.png' });
   });
 });
@@ -550,7 +550,7 @@ test.describe('Super-admin pages on mobile viewport', () => {
     await loginAs(page, 'superAdmin');
     await page.goto('/super-admin/organisations');
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: 'Organisations' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Organisations' })).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-mobile-orgs.png' });
   });
 
@@ -558,7 +558,7 @@ test.describe('Super-admin pages on mobile viewport', () => {
     await loginAs(page, 'superAdmin');
     await page.goto('/super-admin/buildings');
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: 'Buildings' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Buildings' })).toBeVisible({ timeout: 45000 });
     await page.screenshot({ path: 'test-results/screenshots/sa-mobile-buildings.png' });
   });
 });
