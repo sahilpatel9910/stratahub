@@ -11,7 +11,7 @@ export default async function ManagerMaintenanceDetailPage({
   await trpc.maintenance.getById.prefetch({ id });
   return (
     <>
-      <h1 className="sr-only" aria-hidden="true">Maintenance Request</h1>
+      <h1 className="sr-only">Maintenance Request</h1>
       <HydrateClient>
         <ManagerMaintenanceDetailClient id={id} />
       </HydrateClient>

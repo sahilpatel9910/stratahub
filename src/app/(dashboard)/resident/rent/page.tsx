@@ -13,7 +13,7 @@ export default async function ResidentRentPage() {
 
   return (
     <>
-      <h1 className="sr-only" aria-hidden="true">Rent</h1>
+      <h1 className="sr-only">Rent</h1>
       <HydrateClient>
         <ResidentRentClient />
       </HydrateClient>

@@ -13,7 +13,7 @@ export default async function MaintenancePage() {
 
   return (
     <>
-      <h1 className="sr-only" aria-hidden="true">Maintenance</h1>
+      <h1 className="sr-only">Maintenance</h1>
       <HydrateClient>
         <MaintenanceClient />
       </HydrateClient>

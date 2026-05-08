@@ -12,7 +12,7 @@ export default async function ResidentLeviesPage() {
 
   return (
     <>
-      <h1 className="sr-only" aria-hidden="true">Levies</h1>
+      <h1 className="sr-only">Levies</h1>
       <HydrateClient>
         <ResidentLeviesClient />
       </HydrateClient>
