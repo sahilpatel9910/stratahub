@@ -13,13 +13,13 @@ export const DEMO_ACCOUNTS = {
   tenant1:    { email: 'tenant1@demo.com',        password: 'Demo1234!' },
 };
 
-// Where each role lands after login — used by the fast-path.
+// Where each role lands after login — must match actual Next.js page routes.
 const ROLE_HOME: Record<string, string> = {
-  manager:    '/manager/dashboard',
+  manager:    '/manager',
   reception:  '/manager/visitors',
-  owner1:     '/resident/dashboard',
-  tenant1:    '/resident/dashboard',
-  superAdmin: '/super-admin',
+  owner1:     '/resident',
+  tenant1:    '/resident',
+  superAdmin: '/super-admin/organisations',
 };
 
 /**
