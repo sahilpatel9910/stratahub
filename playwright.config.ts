@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests',
   globalSetup: './playwright/global-setup.ts',
   fullyParallel: true,         // run test files in parallel
-  workers: 4,                  // 4 parallel workers (safe for a local dev machine)
+  workers: 2,                  // 2 workers — balances speed vs Next.js dev-server compile pressure
   retries: 1,
   timeout: 120_000,            // 2 min per test — Supabase free-tier auth is slow
   reporter: [['html', { open: 'never' }], ['list']],

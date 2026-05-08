@@ -37,6 +37,12 @@ export async function loginAs(page: Page, role: keyof typeof DEMO_ACCOUNTS) {
 
   if (fs.existsSync(stateFile)) {
     const state = JSON.parse(fs.readFileSync(stateFile, 'utf-8'));
+    // Navigate to /login first so the dev server has compiled the app shell
+    // and the localhost origin is established before injecting cookies.
+    // Avoids a 404 race condition when the fast-path hits a complex RSC route
+    // (e.g. /manager) before the dev server has finished compiling it under
+    // heavy parallel load.
+    await page.goto('/login');
     await page.context().addCookies(state.cookies ?? []);
     await page.goto(ROLE_HOME[role] ?? '/');
     return;
