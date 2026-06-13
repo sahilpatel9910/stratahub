@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Bath, BedDouble, Building2, DoorOpen, Home, Plus, Search, SquareMenu, UserPlus } from "lucide-react";
+import { Bath, BedDouble, Building2, DoorOpen, Home, Pencil, Plus, Search, SquareMenu, Trash2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,6 +72,7 @@ export default function UnitsPage() {
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
 
+  const [editingUnit, setEditingUnit] = useState<{ id: string } | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignUnitId, setAssignUnitId] = useState("");
   const [assignRole, setAssignRole] = useState<ResidentAssignmentRole>("OWNER");
@@ -109,6 +110,25 @@ export default function UnitsPage() {
       );
     },
     onError: (err) => toast.error(err.message ?? "Failed to create unit"),
+  });
+
+  const updateMutation = trpc.units.update.useMutation({
+    onSuccess: () => {
+      utils.units.listByBuilding.invalidate();
+      setEditingUnit(null);
+      resetForm();
+      toast.success("Unit updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update unit"),
+  });
+
+  const deleteMutation = trpc.units.delete.useMutation({
+    onSuccess: () => {
+      utils.units.listByBuilding.invalidate();
+      utils.buildings.getStats.invalidate();
+      toast.success("Unit deleted");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to delete unit"),
   });
 
   const assignResidentMutation = trpc.units.assignResident.useMutation({
@@ -173,6 +193,31 @@ export default function UnitsPage() {
       ownerLastName: ownerLastName.trim(),
       ownerEmail: ownerEmail.trim().toLowerCase(),
       ownerPhone: ownerPhone.trim(),
+    });
+  }
+
+  function openEditUnit(unit: { id: string; unitNumber: string; unitType: string; bedrooms: number | null; bathrooms: number | null; squareMetres: number | null; parkingSpaces: number; storageSpaces: number }) {
+    setFormUnitNumber(unit.unitNumber);
+    setFormUnitType(unit.unitType as keyof typeof UNIT_TYPE_LABELS);
+    setFormBedrooms(unit.bedrooms?.toString() ?? "");
+    setFormBathrooms(unit.bathrooms?.toString() ?? "");
+    setFormSize(unit.squareMetres?.toString() ?? "");
+    setFormParking(unit.parkingSpaces.toString());
+    setFormStorage(unit.storageSpaces.toString());
+    setEditingUnit({ id: unit.id });
+  }
+
+  function handleUpdate() {
+    if (!editingUnit || !formUnitNumber.trim()) return;
+    updateMutation.mutate({
+      id: editingUnit.id,
+      unitNumber: formUnitNumber.trim(),
+      unitType: formUnitType,
+      bedrooms: formBedrooms ? parseInt(formBedrooms) : undefined,
+      bathrooms: formBathrooms ? parseInt(formBathrooms) : undefined,
+      squareMetres: formSize ? parseFloat(formSize) : undefined,
+      parkingSpaces: parseInt(formParking) || 0,
+      storageSpaces: parseInt(formStorage) || 0,
     });
   }
 
@@ -607,19 +652,44 @@ export default function UnitsPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-9 rounded-lg"
-                                onClick={() => {
-                                  resetAssignForm();
-                                  setAssignUnitId(unit.id);
-                                  setAssignDialogOpen(true);
-                                }}
-                              >
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Assign
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 rounded-lg"
+                                  onClick={() => {
+                                    resetAssignForm();
+                                    setAssignUnitId(unit.id);
+                                    setAssignDialogOpen(true);
+                                  }}
+                                >
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Assign
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  aria-label={`Edit unit ${unit.unitNumber}`}
+                                  onClick={() => openEditUnit(unit)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                  aria-label={`Delete unit ${unit.unitNumber}`}
+                                  disabled={deleteMutation.isPending}
+                                  onClick={() => {
+                                    if (confirm(`Delete unit ${unit.unitNumber}? All associated records will be removed. This cannot be undone.`)) {
+                                      deleteMutation.mutate({ id: unit.id });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -813,6 +883,83 @@ export default function UnitsPage() {
               }
             >
               {assignResidentMutation.isPending ? "Saving..." : "Assign Resident"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Unit Dialog */}
+      <Dialog
+        open={!!editingUnit}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingUnit(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Edit Unit</DialogTitle>
+            <DialogDescription className="px-6">
+              Update unit details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto px-7 pb-6">
+            <div className="grid gap-4 py-6 md:grid-cols-2">
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <Label htmlFor="editUnitNumber">Unit Number <span className="text-destructive">*</span></Label>
+                <Input
+                  id="editUnitNumber"
+                  className="h-11 rounded-xl bg-background"
+                  value={formUnitNumber}
+                  onChange={(e) => setFormUnitNumber(e.target.value)}
+                />
+              </div>
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <Label>Unit Type</Label>
+                <Select
+                  value={formUnitType}
+                  onValueChange={(v) => setFormUnitType(v as keyof typeof UNIT_TYPE_LABELS)}
+                  itemToStringLabel={(v) => UNIT_TYPES.find(([val]) => val === v)?.[1] ?? String(v)}
+                >
+                  <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_TYPES.map(([value, label]) => (
+                      <SelectItem key={value} value={value} label={label}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editBedrooms">Bedrooms</Label>
+                <Input id="editBedrooms" type="number" min="0" className="h-11 rounded-xl bg-background" value={formBedrooms} onChange={(e) => setFormBedrooms(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editBathrooms">Bathrooms</Label>
+                <Input id="editBathrooms" type="number" min="0" className="h-11 rounded-xl bg-background" value={formBathrooms} onChange={(e) => setFormBathrooms(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editSize">Size (m²)</Label>
+                <Input id="editSize" type="number" min="0" step="0.1" className="h-11 rounded-xl bg-background" value={formSize} onChange={(e) => setFormSize(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editParking">Parking Spaces</Label>
+                <Input id="editParking" type="number" min="0" className="h-11 rounded-xl bg-background" value={formParking} onChange={(e) => setFormParking(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editStorage">Storage Spaces</Label>
+                <Input id="editStorage" type="number" min="0" className="h-11 rounded-xl bg-background" value={formStorage} onChange={(e) => setFormStorage(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="px-7">
+            <Button variant="outline" onClick={() => { setEditingUnit(null); resetForm(); }} disabled={updateMutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={!formUnitNumber.trim() || updateMutation.isPending}>
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

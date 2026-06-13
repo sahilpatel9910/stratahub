@@ -10,6 +10,7 @@ import {
   FileText,
   Megaphone,
   MessageSquare,
+  Bell,
   LogOut,
   DoorOpen,
   Settings,
@@ -56,6 +57,9 @@ export function ResidentSidebar() {
   }, [pathname, setOpenMobile]);
 
   const { data: unreadCount } = trpc.messaging.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+  const { data: unreadNotifications } = trpc.notifications.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
   const { data: myTenancy } = trpc.resident.getMyTenancy.useQuery();
@@ -138,6 +142,21 @@ export function ResidentSidebar() {
                   {!!unreadCount && unreadCount > 0 && (
                     <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                       {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/resident/notifications" />}
+                  isActive={pathname === "/resident/notifications"}
+                  className="sidebar-nav-button"
+                >
+                  <Bell className="h-4 w-4" />
+                  <span>Notifications</span>
+                  {!!unreadNotifications && unreadNotifications > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                      {unreadNotifications > 99 ? "99+" : unreadNotifications}
                     </span>
                   )}
                 </SidebarMenuButton>

@@ -84,6 +84,36 @@ export const financialsRouter = createTRPCRouter({
       });
     }),
 
+  update: buildingManagerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        type: z.enum(["INCOME", "EXPENSE"]).optional(),
+        category: z.string().min(1).optional(),
+        description: z.string().min(1).optional(),
+        amountCents: z.number().int().positive().optional(),
+        date: z.string().optional(),
+        receiptUrl: z.string().url().optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const record = await ctx.db.financialRecord.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, record.buildingId);
+
+      const { id, date, ...rest } = input;
+      return ctx.db.financialRecord.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(date ? { date: new Date(date) } : {}),
+        },
+      });
+    }),
+
   delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

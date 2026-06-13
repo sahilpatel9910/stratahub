@@ -81,6 +81,35 @@ export const documentsRouter = createTRPCRouter({
       });
     }),
 
+  update: buildingManagerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        title: z.string().min(1).optional(),
+        description: z.string().optional().nullable(),
+        category: z.enum(DOC_CATEGORIES).optional(),
+        isPublic: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const document = await ctx.db.document.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      if (!document.buildingId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Unable to determine which building owns this document.",
+        });
+      }
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, document.buildingId);
+
+      const { id, ...data } = input;
+      return ctx.db.document.update({ where: { id }, data });
+    }),
+
   delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

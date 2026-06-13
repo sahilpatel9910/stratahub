@@ -264,7 +264,7 @@ export const maintenanceRouter = createTRPCRouter({
     .input(
       z.object({
         maintenanceRequestId: z.string(),
-        content: z.string().min(1),
+        content: z.string().min(1).max(5000),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -304,10 +304,19 @@ export const maintenanceRouter = createTRPCRouter({
         await assertBuildingManagementAccess(ctx.db, ctx.user!, request.unit.buildingId);
       }
 
+      // Validate that storagePath is scoped to this request's building
+      const expectedPrefix = `${request.unit.buildingId}/${input.maintenanceRequestId}/`;
+      if (!input.storagePath.startsWith(expectedPrefix)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storage path does not match the maintenance request.",
+        });
+      }
+
       return ctx.db.maintenanceImage.create({
         data: {
           maintenanceRequestId: input.maintenanceRequestId,
-          imageUrl: input.storagePath, // imageUrl holds the path; signed URL generated on getById
+          imageUrl: input.storagePath,
           storagePath: input.storagePath,
           caption: input.caption,
         },

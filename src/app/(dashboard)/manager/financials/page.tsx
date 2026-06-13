@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { DollarSign, Pencil, Plus, Trash2, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,6 +74,7 @@ export default function FinancialsPage() {
   const { selectedBuildingId } = useBuildingContext();
   const [tab, setTab] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<{ id: string } | null>(null);
 
   const [formType, setFormType] = useState<"INCOME" | "EXPENSE">("INCOME");
   const [formCategory, setFormCategory] = useState("");
@@ -107,6 +108,17 @@ export default function FinancialsPage() {
     onError: (err) => toast.error(err.message ?? "Failed to add record"),
   });
 
+  const updateMutation = trpc.financials.update.useMutation({
+    onSuccess: () => {
+      utils.financials.listByBuilding.invalidate();
+      utils.financials.getSummary.invalidate();
+      setEditingRecord(null);
+      resetForm();
+      toast.success("Record updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update record"),
+  });
+
   const deleteMutation = trpc.financials.delete.useMutation({
     onSuccess: () => {
       utils.financials.listByBuilding.invalidate();
@@ -131,6 +143,29 @@ export default function FinancialsPage() {
 
     createMutation.mutate({
       buildingId: selectedBuildingId,
+      type: formType,
+      category: formCategory,
+      description: formDescription.trim(),
+      amountCents: Math.round(dollars * 100),
+      date: formDate,
+    });
+  }
+
+  function openEdit(rec: { id: string; type: string; category: string; description: string; amountCents: number; date: Date | string }) {
+    setFormType(rec.type as "INCOME" | "EXPENSE");
+    setFormCategory(rec.category);
+    setFormDescription(rec.description);
+    setFormAmount((rec.amountCents / 100).toFixed(2));
+    setFormDate(new Date(rec.date).toISOString().split("T")[0]);
+    setEditingRecord({ id: rec.id });
+  }
+
+  function handleUpdate() {
+    if (!editingRecord || !formCategory || !formDescription.trim() || !formAmount) return;
+    const dollars = parseFloat(formAmount);
+    if (isNaN(dollars) || dollars <= 0) return;
+    updateMutation.mutate({
+      id: editingRecord.id,
       type: formType,
       category: formCategory,
       description: formDescription.trim(),
@@ -441,18 +476,31 @@ export default function FinancialsPage() {
                               {formatCurrency(rec.amountCents)}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label={`Delete financial record ${rec.description}`}
-                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                                disabled={deleteMutation.isPending}
-                                onClick={() =>
-                                  deleteMutation.mutate({ id: rec.id })
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Edit financial record ${rec.description}`}
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openEdit(rec)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Delete financial record ${rec.description}`}
+                                  className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                  disabled={deleteMutation.isPending}
+                                  onClick={() => {
+                                    if (confirm(`Delete this ${rec.type.toLowerCase()} record? This cannot be undone.`)) {
+                                      deleteMutation.mutate({ id: rec.id });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -465,6 +513,113 @@ export default function FinancialsPage() {
           </Card>
         </>
       )}
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editingRecord}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingRecord(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Edit Financial Record</DialogTitle>
+            <DialogDescription className="px-6">
+              Update the record details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto px-7 pb-6">
+            <div className="flex flex-col gap-5 py-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Type</Label>
+                  <Select
+                    value={formType}
+                    onValueChange={(v) => {
+                      setFormType(v as "INCOME" | "EXPENSE");
+                      setFormCategory("");
+                    }}
+                    itemToStringLabel={(v) => v === "INCOME" ? "Income" : v === "EXPENSE" ? "Expense" : v}
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INCOME" label="Income">Income</SelectItem>
+                      <SelectItem value="EXPENSE" label="Expense">Expense</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Category <span className="text-destructive">*</span></Label>
+                  <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => v}>
+                    <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c} value={c} label={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editFinDesc">Description <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="editFinDesc"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="e.g. Q1 strata levy collection"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="editFinAmount">Amount (AUD) <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="editFinAmount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      className="h-11 rounded-xl bg-background"
+                      placeholder="0.00"
+                      value={formAmount}
+                      onChange={(e) => setFormAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="editFinDate">Date <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="editFinDate"
+                      type="date"
+                      className="h-11 rounded-xl bg-background"
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="px-7">
+            <Button
+              variant="outline"
+              onClick={() => { setEditingRecord(null); resetForm(); }}
+              disabled={updateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={!formCategory || !formDescription.trim() || !formAmount || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -13,8 +13,22 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StrataHub — Property Management",
-  description: "Australian strata and apartment building management platform",
+  title: {
+    default: "StrataHub — Property Management",
+    template: "%s | StrataHub",
+  },
+  description:
+    "Australian strata and apartment building management platform. Manage units, maintenance, levies, inspections, and more.",
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

@@ -548,6 +548,7 @@ model RentPayment {
   tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
 
   @@index([stripeSessionId])
+  @@index([tenancyId])
   @@map("rent_payments")
 }
 
@@ -577,6 +578,7 @@ model MaintenanceRequest {
   images      MaintenanceImage[]
   comments    MaintenanceComment[]
 
+  @@index([unitId])
   @@map("maintenance_requests")
 }
 

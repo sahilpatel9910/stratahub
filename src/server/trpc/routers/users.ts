@@ -10,6 +10,7 @@ import { ROLE_RANK } from "@/lib/auth/roles";
 import { normalizeEmail } from "@/lib/auth/invitations";
 import { roleCanTargetBuilding, roleRequiresUnit } from "@/lib/auth/invite-scope";
 import { TRPCError } from "@trpc/server";
+import type { Context } from "@/server/trpc/trpc";
 
 const ROLE_ENUM = z.enum([
   "SUPER_ADMIN",
@@ -23,7 +24,7 @@ const MANAGER_INVITE_ROLE_ENUM = z.enum(["OWNER", "TENANT"]);
 const INVITE_LIFECYCLE_INPUT = z.object({ id: z.string() });
 
 async function sendInvitationEmail(
-  ctx: { db: { organisation: { findUnique: Function }; building: { findUnique: Function } } },
+  ctx: Pick<Context, "db">,
   invite: {
     email: string;
     organisationId: string;

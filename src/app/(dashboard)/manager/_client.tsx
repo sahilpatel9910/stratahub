@@ -287,7 +287,7 @@ export default function ManagerDashboardClient() {
               {recentMaintenance.map((request, index) => (
                 <Link
                   key={request.id}
-                  href="/manager/maintenance"
+                  href={`/manager/maintenance/${request.id}`}
                   className={`flex items-center justify-between gap-4 px-4 py-4 transition-colors hover:bg-muted/30 ${index !== recentMaintenance.length - 1 ? "border-b border-border/70" : ""}`}
                 >
                   <div className="min-w-0">

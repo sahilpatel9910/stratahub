@@ -5,6 +5,7 @@ import {
 } from "@/server/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { createNotification } from "@/server/trpc/lib/create-notification";
+import { isSuperAdmin } from "@/server/auth/building-access";
 
 export const messagingRouter = createTRPCRouter({
   listThreads: protectedProcedure.query(async ({ ctx }) => {
@@ -85,6 +86,51 @@ export const messagingRouter = createTRPCRouter({
 
       let threadId = input.threadId ?? `thread_${Date.now()}_${ctx.user!.id}`;
       let recipientId = input.recipientId;
+
+      // For new threads, verify sender and recipient share at least one building
+      if (!input.threadId && !isSuperAdmin(ctx.user!)) {
+        async function getUserBuildingIds(userId: string) {
+          const [assignments, ownerships, tenancies] = await Promise.all([
+            ctx.db.buildingAssignment.findMany({
+              where: { userId, isActive: true },
+              select: { buildingId: true },
+            }),
+            ctx.db.ownership.findMany({
+              where: { userId, isActive: true },
+              select: { unit: { select: { buildingId: true } } },
+            }),
+            ctx.db.tenancy.findMany({
+              where: { userId, isActive: true },
+              select: { unit: { select: { buildingId: true } } },
+            }),
+          ]);
+          return new Set([
+            ...assignments.map((a) => a.buildingId),
+            ...ownerships.map((o) => o.unit.buildingId),
+            ...tenancies.map((t) => t.unit.buildingId),
+          ]);
+        }
+
+        const [senderBuildings, recipientBuildings] = await Promise.all([
+          getUserBuildingIds(ctx.user!.id),
+          getUserBuildingIds(input.recipientId),
+        ]);
+
+        let sharedBuilding = false;
+        for (const id of recipientBuildings) {
+          if (senderBuildings.has(id)) {
+            sharedBuilding = true;
+            break;
+          }
+        }
+
+        if (!sharedBuilding) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You can only message users within your building.",
+          });
+        }
+      }
 
       if (input.threadId) {
         const existingThread = await ctx.db.message.findFirst({

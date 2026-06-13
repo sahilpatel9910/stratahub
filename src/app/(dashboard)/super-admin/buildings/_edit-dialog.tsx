@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ type Props = {
 };
 
 export default function EditBuildingDialog({ open, onOpenChange, building }: Props) {
+  const [prevBuildingId, setPrevBuildingId] = useState(building?.id);
   const [formName, setFormName] = useState("");
   const [formAddress, setFormAddress] = useState("");
   const [formSuburb, setFormSuburb] = useState("");
@@ -55,20 +56,19 @@ export default function EditBuildingDialog({ open, onOpenChange, building }: Pro
   const [formUnits, setFormUnits] = useState("");
   const [formStrataNo, setFormStrataNo] = useState("");
 
-  const utils = trpc.useUtils();
+  if (building && building.id !== prevBuildingId) {
+    setPrevBuildingId(building.id);
+    setFormName(building.name);
+    setFormAddress(building.address);
+    setFormSuburb(building.suburb);
+    setFormState(building.state);
+    setFormPostcode(building.postcode);
+    setFormFloors(String(building.totalFloors));
+    setFormUnits(String(building.totalUnits));
+    setFormStrataNo(building.strataSchemeNo ?? "");
+  }
 
-  useEffect(() => {
-    if (building) {
-      setFormName(building.name);
-      setFormAddress(building.address);
-      setFormSuburb(building.suburb);
-      setFormState(building.state);
-      setFormPostcode(building.postcode);
-      setFormFloors(String(building.totalFloors));
-      setFormUnits(String(building.totalUnits));
-      setFormStrataNo(building.strataSchemeNo ?? "");
-    }
-  }, [building]);
+  const utils = trpc.useUtils();
 
   const updateMutation = trpc.buildings.update.useMutation({
     onSuccess: () => {

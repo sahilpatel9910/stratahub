@@ -35,7 +35,8 @@ export function isPublicAuthPath(pathname: string) {
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/stripe/") ||
     pathname.startsWith("/invite") ||
-    pathname.startsWith("/api/auth/")
+    pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/api/cron/")
   );
 }
 
