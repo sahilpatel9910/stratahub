@@ -15,8 +15,11 @@ export default async function ResidentsPage() {
   }
 
   return (
-    <HydrateClient>
-      <ResidentsClient />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Residents</h1>
+      <HydrateClient>
+        <ResidentsClient />
+      </HydrateClient>
+    </>
   );
 }

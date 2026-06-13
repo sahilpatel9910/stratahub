@@ -69,6 +69,7 @@ export default function StrataPage() {
   const [tab, setTab] = useState("info");
   const [editInfoOpen, setEditInfoOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<{ id: string } | null>(null);
 
   // Info form state
   const [formPlanNo, setFormPlanNo] = useState("");
@@ -140,6 +141,16 @@ export default function StrataPage() {
       toast.success("Meeting added");
     },
     onError: (err) => toast.error(err.message ?? "Failed to add meeting"),
+  });
+
+  const updateMeetingMutation = trpc.strata.updateMeeting.useMutation({
+    onSuccess: () => {
+      utils.strata.getByBuilding.invalidate();
+      setEditingMeeting(null);
+      resetMeetingForm();
+      toast.success("Meeting updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update meeting"),
   });
 
   const deleteMeetingMutation = trpc.strata.deleteMeeting.useMutation({
@@ -272,6 +283,25 @@ export default function StrataPage() {
     setFormMeetingDate("");
     setFormMeetingLocation("");
     setFormMeetingNotes("");
+  }
+
+  function openEditMeeting(m: { id: string; title: string; meetingDate: Date | string; location: string | null; notes: string | null }) {
+    setFormMeetingTitle(m.title);
+    setFormMeetingDate(toInputDate(m.meetingDate));
+    setFormMeetingLocation(m.location ?? "");
+    setFormMeetingNotes(m.notes ?? "");
+    setEditingMeeting({ id: m.id });
+  }
+
+  function handleUpdateMeeting() {
+    if (!editingMeeting || !formMeetingTitle.trim() || !formMeetingDate) return;
+    updateMeetingMutation.mutate({
+      id: editingMeeting.id,
+      title: formMeetingTitle.trim(),
+      meetingDate: formMeetingDate,
+      location: formMeetingLocation.trim() || null,
+      notes: formMeetingNotes.trim() || null,
+    });
   }
 
   function resetLevyForm() {
@@ -554,17 +584,29 @@ export default function StrataPage() {
                             </p>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-red-600"
-                          disabled={deleteMeetingMutation.isPending}
-                          onClick={() =>
-                            deleteMeetingMutation.mutate({ id: m.id })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex shrink-0 gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={() => openEditMeeting(m)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                            disabled={deleteMeetingMutation.isPending}
+                            onClick={() => {
+                              if (confirm(`Delete meeting "${m.title}"? This cannot be undone.`)) {
+                                deleteMeetingMutation.mutate({ id: m.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -715,7 +757,11 @@ export default function StrataPage() {
                                       variant="ghost"
                                       className="h-7 w-7 text-muted-foreground hover:text-red-600"
                                       disabled={deleteLevyMutation.isPending}
-                                      onClick={() => deleteLevyMutation.mutate({ id: levy.id })}
+                                      onClick={() => {
+                                        if (confirm(`Delete this levy schedule? This cannot be undone.`)) {
+                                          deleteLevyMutation.mutate({ id: levy.id });
+                                        }
+                                      }}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -801,8 +847,10 @@ export default function StrataPage() {
                               className="h-8 w-8 text-muted-foreground hover:text-red-600"
                               disabled={deletingBylawId === b.id}
                               onClick={() => {
-                                setDeletingBylawId(b.id);
-                                deleteBylawMutation.mutate({ id: b.id });
+                                if (confirm(`Delete bylaw "${b.title}"? This cannot be undone.`)) {
+                                  setDeletingBylawId(b.id);
+                                  deleteBylawMutation.mutate({ id: b.id });
+                                }
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1148,6 +1196,79 @@ export default function StrataPage() {
               }
             >
               {createMeetingMutation.isPending ? "Adding..." : "Add Meeting"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Meeting Dialog */}
+      <Dialog
+        open={!!editingMeeting}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingMeeting(null);
+            resetMeetingForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Meeting</DialogTitle>
+            <DialogDescription>Update meeting details</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-5 px-7 py-6">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="editMtTitle">Title <span className="text-destructive">*</span></Label>
+              <Input
+                id="editMtTitle"
+                placeholder="e.g. Annual General Meeting"
+                value={formMeetingTitle}
+                onChange={(e) => setFormMeetingTitle(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editMtDate">Date <span className="text-destructive">*</span></Label>
+                <Input
+                  id="editMtDate"
+                  type="date"
+                  value={formMeetingDate}
+                  onChange={(e) => setFormMeetingDate(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editMtLocation">Location</Label>
+                <Input
+                  id="editMtLocation"
+                  placeholder="e.g. Common Room"
+                  value={formMeetingLocation}
+                  onChange={(e) => setFormMeetingLocation(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="editMtNotes">Notes</Label>
+              <Textarea
+                id="editMtNotes"
+                rows={3}
+                value={formMeetingNotes}
+                onChange={(e) => setFormMeetingNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setEditingMeeting(null); resetMeetingForm(); }}
+              disabled={updateMeetingMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateMeeting}
+              disabled={!formMeetingTitle.trim() || !formMeetingDate || updateMeetingMutation.isPending}
+            >
+              {updateMeetingMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -11,8 +11,11 @@ export default async function TenancyDetailPage({
   await trpc.tenancy.getById.prefetch({ id });
 
   return (
-    <HydrateClient>
-      <TenancyDetailClient id={id} />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Tenancy Detail</h1>
+      <HydrateClient>
+        <TenancyDetailClient id={id} />
+      </HydrateClient>
+    </>
   );
 }

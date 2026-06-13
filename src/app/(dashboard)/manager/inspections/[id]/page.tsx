@@ -11,8 +11,11 @@ export default async function InspectionDetailPage({
   await trpc.inspection.getById.prefetch({ id });
 
   return (
-    <HydrateClient>
-      <InspectionDetailClient id={id} />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Inspection Detail</h1>
+      <HydrateClient>
+        <InspectionDetailClient id={id} />
+      </HydrateClient>
+    </>
   );
 }

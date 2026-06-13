@@ -236,6 +236,7 @@ model User {
   phone          String?
   avatarUrl      String?
   isActive       Boolean  @default(true)
+  isSuperAdmin   Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -531,21 +532,23 @@ model BondRecord {
 // ============================================================
 
 model RentPayment {
-  id            String        @id @default(cuid())
-  tenancyId     String
-  amountCents   Int
-  dueDate       DateTime
-  paidDate      DateTime?
-  status        PaymentStatus @default(PENDING)
-  paymentMethod String?
-  receiptUrl    String?
-  notes         String?
-  stripeSessionId String?
-  createdAt     DateTime      @default(now())
+  id                  String        @id @default(cuid())
+  tenancyId           String
+  amountCents         Int
+  originalAmountCents Int?
+  dueDate             DateTime
+  paidDate            DateTime?
+  status              PaymentStatus @default(PENDING)
+  paymentMethod       String?
+  receiptUrl          String?
+  notes               String?
+  stripeSessionId     String?
+  createdAt           DateTime      @default(now())
 
   tenancy Tenancy @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
 
   @@index([stripeSessionId])
+  @@index([tenancyId])
   @@map("rent_payments")
 }
 
@@ -575,6 +578,7 @@ model MaintenanceRequest {
   images      MaintenanceImage[]
   comments    MaintenanceComment[]
 
+  @@index([unitId])
   @@map("maintenance_requests")
 }
 

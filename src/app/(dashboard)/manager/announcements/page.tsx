@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Megaphone, Plus, Trash2 } from "lucide-react";
+import { Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,7 @@ function formatDate(d: Date | string) {
 export default function AnnouncementsPage() {
   const { selectedBuildingId } = useBuildingContext();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingAnn, setEditingAnn] = useState<{ id: string } | null>(null);
 
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
@@ -82,6 +83,16 @@ export default function AnnouncementsPage() {
       toast.success("Announcement published");
     },
     onError: (err) => toast.error(err.message ?? "Failed to publish announcement"),
+  });
+
+  const updateMutation = trpc.announcements.update.useMutation({
+    onSuccess: () => {
+      utils.announcements.listByBuilding.invalidate();
+      setEditingAnn(null);
+      resetForm();
+      toast.success("Announcement updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update announcement"),
   });
 
   const deleteMutation = trpc.announcements.delete.useMutation({
@@ -110,6 +121,28 @@ export default function AnnouncementsPage() {
       scope: formScope as "BUILDING" | "FLOOR" | "ALL_BUILDINGS",
       targetFloors: [],
       expiresAt: formExpiresAt || undefined,
+    });
+  }
+
+  function openEdit(ann: { id: string; title: string; content: string; priority: string; scope: string; expiresAt: Date | string | null }) {
+    setFormTitle(ann.title);
+    setFormContent(ann.content);
+    setFormPriority(ann.priority);
+    setFormScope(ann.scope);
+    setFormExpiresAt(ann.expiresAt ? new Date(ann.expiresAt).toISOString().split("T")[0] : "");
+    setEditingAnn({ id: ann.id });
+  }
+
+  function handleUpdate() {
+    if (!editingAnn || !formTitle.trim() || !formContent.trim()) return;
+    updateMutation.mutate({
+      id: editingAnn.id,
+      title: formTitle.trim(),
+      content: formContent.trim(),
+      priority: formPriority as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
+      scope: formScope as "BUILDING" | "FLOOR" | "ALL_BUILDINGS",
+      targetFloors: [],
+      expiresAt: formExpiresAt || null,
     });
   }
 
@@ -329,22 +362,144 @@ export default function AnnouncementsPage() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete announcement ${ann.title}`}
-                    className="shrink-0 text-muted-foreground hover:text-red-600"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate({ id: ann.id })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit announcement ${ann.title}`}
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openEdit(ann)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete announcement ${ann.title}`}
+                      className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => {
+                        if (confirm(`Delete announcement "${ann.title}"? This cannot be undone.`)) {
+                          deleteMutation.mutate({ id: ann.id });
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editingAnn}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingAnn(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-0 pt-0">Edit Announcement</DialogTitle>
+            <DialogDescription className="px-0">
+              Update announcement details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-7 py-5">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editTitle">Title <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="editTitle"
+                    className="h-12 rounded-xl"
+                    placeholder="e.g. Water Shutdown Notice"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editContent">Message <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    id="editContent"
+                    className="min-h-40 rounded-xl"
+                    placeholder="Announcement details..."
+                    value={formContent}
+                    onChange={(e) => setFormContent(e.target.value)}
+                    rows={5}
+                  />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Delivery settings
+                </p>
+                <div className="mt-4 flex flex-col gap-5">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Priority</Label>
+                    <Select value={formPriority} onValueChange={(v) => { if (v) setFormPriority(v); }} itemToStringLabel={(v) => PRIORITY_LABELS[v] ?? String(v)}>
+                      <SelectTrigger className="h-12 w-full rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
+                          <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Scope</Label>
+                    <Select value={formScope} onValueChange={(v) => { if (v) setFormScope(v); }} itemToStringLabel={(v) => SCOPE_LABELS[v] ?? String(v)}>
+                      <SelectTrigger className="h-12 w-full rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(SCOPE_LABELS).map(([v, l]) => (
+                          <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="editExpiresAt">Expires <span className="text-[11px] font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input
+                      id="editExpiresAt"
+                      className="h-12 rounded-xl"
+                      type="date"
+                      value={formExpiresAt}
+                      onChange={(e) => setFormExpiresAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setEditingAnn(null); resetForm(); }}
+              disabled={updateMutation.isPending}
+              className="h-11 rounded-xl px-5"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={!formTitle.trim() || !formContent.trim() || updateMutation.isPending}
+              className="h-11 rounded-xl px-5"
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -89,6 +89,30 @@ export const announcementsRouter = createTRPCRouter({
       return announcement;
     }),
 
+  update: buildingManagerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        title: z.string().min(1).optional(),
+        content: z.string().min(1).optional(),
+        priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+        scope: z.enum(["BUILDING", "FLOOR", "ALL_BUILDINGS"]).optional(),
+        targetFloors: z.array(z.number()).optional(),
+        expiresAt: z.string().transform((s) => new Date(s)).optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const announcement = await ctx.db.announcement.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, announcement.buildingId);
+
+      const { id, ...data } = input;
+      return ctx.db.announcement.update({ where: { id }, data });
+    }),
+
   delete: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

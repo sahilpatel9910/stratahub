@@ -101,6 +101,34 @@ export const strataRouter = createTRPCRouter({
       });
     }),
 
+  updateMeeting: buildingManagerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        title: z.string().min(1).optional(),
+        meetingDate: z.string().optional(),
+        location: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const meeting = await ctx.db.strataMeeting.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { strataInfo: { select: { buildingId: true } } },
+      });
+
+      await assertBuildingManagementAccess(ctx.db, ctx.user!, meeting.strataInfo.buildingId);
+
+      const { id, meetingDate, ...rest } = input;
+      return ctx.db.strataMeeting.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(meetingDate ? { meetingDate: new Date(meetingDate) } : {}),
+        },
+      });
+    }),
+
   deleteMeeting: buildingManagerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

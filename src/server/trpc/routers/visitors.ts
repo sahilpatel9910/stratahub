@@ -70,6 +70,32 @@ export const visitorsRouter = createTRPCRouter({
       });
     }),
 
+  update: managerProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        visitorName: z.string().min(1).optional(),
+        visitorPhone: z.string().optional().nullable(),
+        visitorCompany: z.string().optional().nullable(),
+        purpose: purposeEnum.optional(),
+        unitToVisit: z.string().optional().nullable(),
+        vehiclePlate: z.string().optional().nullable(),
+        deliveryInstructions: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const visitor = await ctx.db.visitorEntry.findUniqueOrThrow({
+        where: { id: input.id },
+        select: { buildingId: true },
+      });
+
+      await assertBuildingOperationsAccess(ctx.db, ctx.user!, visitor.buildingId);
+
+      const { id, ...data } = input;
+      return ctx.db.visitorEntry.update({ where: { id }, data });
+    }),
+
   logArrival: managerProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { skipToken } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
@@ -981,6 +982,12 @@ export default function RentPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Link
+                                href={`/manager/tenancies/${t.id}`}
+                                className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                              >
+                                View
+                              </Link>
                               <Button
                                 variant="ghost"
                                 size="sm"

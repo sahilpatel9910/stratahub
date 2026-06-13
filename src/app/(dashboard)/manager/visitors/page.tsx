@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { CalendarDays, Clock, LogIn, LogOut, Plus, ShieldCheck, UserRoundCheck } from "lucide-react";
+import { CalendarDays, Clock, LogIn, LogOut, Pencil, Plus, ShieldCheck, UserRoundCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +75,7 @@ export default function VisitorsPage() {
   const { selectedBuildingId } = useBuildingContext();
   const [dateFilter, setDateFilter] = useState(todayISO());
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingVisitor, setEditingVisitor] = useState<{ id: string } | null>(null);
 
   // Create form state
   const [formName, setFormName] = useState("");
@@ -103,6 +104,16 @@ export default function VisitorsPage() {
       toast.success("Visitor logged");
     },
     onError: (err) => toast.error(err.message ?? "Failed to log visitor"),
+  });
+
+  const updateMutation = trpc.visitors.update.useMutation({
+    onSuccess: () => {
+      utils.visitors.listByBuilding.invalidate();
+      setEditingVisitor(null);
+      resetForm();
+      toast.success("Visitor updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update visitor"),
   });
 
   const logArrivalMutation = trpc.visitors.logArrival.useMutation({
@@ -144,6 +155,31 @@ export default function VisitorsPage() {
       preApproved: formPreApproved === "true",
       vehiclePlate: formVehiclePlate.trim() || undefined,
       notes: formNotes.trim() || undefined,
+    });
+  }
+
+  function openEditVisitor(v: { id: string; visitorName: string; visitorPhone: string | null; visitorCompany: string | null; purpose: string; unitToVisit: string | null; vehiclePlate: string | null; notes: string | null }) {
+    setFormName(v.visitorName);
+    setFormPhone(v.visitorPhone ?? "");
+    setFormCompany(v.visitorCompany ?? "");
+    setFormPurpose(v.purpose);
+    setFormUnit(v.unitToVisit ?? "");
+    setFormVehiclePlate(v.vehiclePlate ?? "");
+    setFormNotes(v.notes ?? "");
+    setEditingVisitor({ id: v.id });
+  }
+
+  function handleUpdate() {
+    if (!editingVisitor || !formName.trim()) return;
+    updateMutation.mutate({
+      id: editingVisitor.id,
+      visitorName: formName.trim(),
+      visitorPhone: formPhone.trim() || null,
+      visitorCompany: formCompany.trim() || null,
+      purpose: formPurpose as Parameters<typeof createMutation.mutate>[0]["purpose"],
+      unitToVisit: formUnit.trim() || null,
+      vehiclePlate: formVehiclePlate.trim() || null,
+      notes: formNotes.trim() || null,
     });
   }
 
@@ -499,6 +535,17 @@ export default function VisitorsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
+                              {!departed && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Edit visitor ${visitor.visitorName}`}
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openEditVisitor(visitor)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               {!arrived && (
                                 <Button
                                   size="sm"
@@ -545,6 +592,122 @@ export default function VisitorsPage() {
           </Card>
         </>
       )}
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editingVisitor}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingVisitor(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-6 pt-6">Edit Visitor</DialogTitle>
+            <DialogDescription className="px-6">
+              Update visitor details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto px-7 pb-6">
+            <div className="flex flex-col gap-5 py-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="col-span-2 flex flex-col gap-1.5">
+                  <Label htmlFor="editVisitorName">Visitor Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="editVisitorName"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="Full name"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editVisitorPhone">Phone</Label>
+                  <Input
+                    id="editVisitorPhone"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="04XX XXX XXX"
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editVisitorCompany">Company</Label>
+                  <Input
+                    id="editVisitorCompany"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="Company name"
+                    value={formCompany}
+                    onChange={(e) => setFormCompany(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editUnitToVisit">Unit to Visit</Label>
+                  <Input
+                    id="editUnitToVisit"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="e.g. 302"
+                    value={formUnit}
+                    onChange={(e) => setFormUnit(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="editVehiclePlate">Vehicle Plate</Label>
+                  <Input
+                    id="editVehiclePlate"
+                    className="h-11 rounded-xl bg-background"
+                    placeholder="e.g. ABC123"
+                    value={formVehiclePlate}
+                    onChange={(e) => setFormVehiclePlate(e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 flex flex-col gap-1.5">
+                  <Label htmlFor="editVisitorNotes">Notes</Label>
+                  <Textarea
+                    id="editVisitorNotes"
+                    className="min-h-24 rounded-xl bg-background"
+                    placeholder="Additional instructions or notes..."
+                    value={formNotes}
+                    onChange={(e) => setFormNotes(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Purpose</Label>
+                <Select value={formPurpose} onValueChange={(v) => v !== null && setFormPurpose(v)} itemToStringLabel={(v) => PURPOSES.find(([val]) => val === v)?.[1] ?? String(v)}>
+                  <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PURPOSES.map(([value, label]) => (
+                      <SelectItem key={value} value={value} label={label}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="px-7">
+            <Button
+              variant="outline"
+              onClick={() => { setEditingVisitor(null); resetForm(); }}
+              disabled={updateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={!formName.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

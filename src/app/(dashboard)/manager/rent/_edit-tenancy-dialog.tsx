@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ function toDateInput(v: Date | string | null | undefined) {
 export default function EditTenancyDialog({ tenancy, open, onOpenChange }: Props) {
   const utils = trpc.useUtils();
 
+  const [prevTenancyId, setPrevTenancyId] = useState(tenancy?.id);
   const [form, setForm] = useState({
     leaseStartDate: "",
     leaseEndDate: "",
@@ -52,17 +53,16 @@ export default function EditTenancyDialog({ tenancy, open, onOpenChange }: Props
     bondAmountCents: "",
   });
 
-  useEffect(() => {
-    if (tenancy) {
-      setForm({
-        leaseStartDate: toDateInput(tenancy.leaseStartDate),
-        leaseEndDate: toDateInput(tenancy.leaseEndDate),
-        rentAmountCents: String(tenancy.rentAmountCents),
-        rentFrequency: tenancy.rentFrequency,
-        bondAmountCents: String(tenancy.bondAmountCents),
-      });
-    }
-  }, [tenancy?.id]);
+  if (tenancy && tenancy.id !== prevTenancyId) {
+    setPrevTenancyId(tenancy.id);
+    setForm({
+      leaseStartDate: toDateInput(tenancy.leaseStartDate),
+      leaseEndDate: toDateInput(tenancy.leaseEndDate),
+      rentAmountCents: String(tenancy.rentAmountCents),
+      rentFrequency: tenancy.rentFrequency,
+      bondAmountCents: String(tenancy.bondAmountCents),
+    });
+  }
 
   const updateMutation = trpc.tenancy.update.useMutation({
     onSuccess: () => {

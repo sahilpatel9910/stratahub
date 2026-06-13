@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { skipToken } from "@tanstack/react-query";
-import { Plus, Trash2, FileText, ExternalLink, Upload, X, File } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ExternalLink, Upload, X, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,6 +91,7 @@ export default function DocumentsPage() {
   const { selectedBuildingId } = useBuildingContext();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<{ id: string } | null>(null);
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -123,6 +124,16 @@ export default function DocumentsPage() {
       toast.success("Document uploaded");
     },
     onError: (err) => toast.error(err.message ?? "Failed to save document"),
+  });
+
+  const updateMutation = trpc.documents.update.useMutation({
+    onSuccess: () => {
+      utils.documents.listByBuilding.invalidate();
+      setEditingDoc(null);
+      resetForm();
+      toast.success("Document updated");
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update document"),
   });
 
   const deleteMutation = trpc.documents.delete.useMutation({
@@ -228,13 +239,34 @@ export default function DocumentsPage() {
     }
   }
 
-  async function handleDelete(doc: { id: string }) {
-    deleteMutation.mutate({ id: doc.id });
+  async function handleDelete(doc: { id: string; title: string }) {
+    if (confirm(`Delete "${doc.title}"? The file will be permanently removed.`)) {
+      deleteMutation.mutate({ id: doc.id });
+    }
   }
 
   async function handleOpenDocument(documentId: string) {
     const result = await downloadMutation.mutateAsync({ id: documentId });
     window.open(result.url, "_blank", "noopener,noreferrer");
+  }
+
+  function openEditDoc(doc: { id: string; title: string; description: string | null; category: string; isPublic: boolean }) {
+    setFormTitle(doc.title);
+    setFormDescription(doc.description ?? "");
+    setFormCategory(doc.category);
+    setFormIsPublic(doc.isPublic ? "true" : "false");
+    setEditingDoc({ id: doc.id });
+  }
+
+  function handleUpdate() {
+    if (!editingDoc || !formTitle.trim()) return;
+    updateMutation.mutate({
+      id: editingDoc.id,
+      title: formTitle.trim(),
+      description: formDescription.trim() || null,
+      category: formCategory as DocCategory,
+      isPublic: formIsPublic === "true",
+    });
   }
 
   const documents = query.data ?? [];
@@ -507,6 +539,15 @@ export default function DocumentsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label={`Edit document ${doc.title}`}
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditDoc(doc)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               aria-label={`Delete document ${doc.title}`}
                               className="h-8 w-8 text-muted-foreground hover:text-red-600"
                               disabled={deleteMutation.isPending}
@@ -525,6 +566,95 @@ export default function DocumentsPage() {
           </Card>
         </>
       )}
+      {/* Edit Dialog */}
+      <Dialog
+        open={!!editingDoc}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingDoc(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg p-0">
+          <DialogHeader>
+            <DialogTitle className="px-0 pt-0">Edit Document</DialogTitle>
+            <DialogDescription className="px-0">
+              Update document metadata
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-7 py-5">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editDocTitle">Title <span className="text-destructive">*</span></Label>
+                <Input
+                  id="editDocTitle"
+                  placeholder="e.g. Building Rules 2024"
+                  className="h-12 rounded-xl"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="editDocDesc">Description</Label>
+                <Textarea
+                  id="editDocDesc"
+                  rows={3}
+                  className="min-h-24 rounded-xl"
+                  placeholder="Brief description..."
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                />
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-muted/25 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Access
+                </p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Category</Label>
+                    <Select value={formCategory} onValueChange={(v) => { if (v) setFormCategory(v); }} itemToStringLabel={(v) => CATEGORY_LABELS[v as keyof typeof CATEGORY_LABELS] ?? String(v)}>
+                      <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(([v, l]) => (
+                          <SelectItem key={v} value={v} label={l}>{l}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Visibility</Label>
+                    <Select value={formIsPublic} onValueChange={(v) => { if (v) setFormIsPublic(v); }} itemToStringLabel={(v) => v === "true" ? "Public (residents)" : "Staff only"}>
+                      <SelectTrigger className="h-12 w-full rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="false" label="Staff only">Staff only</SelectItem>
+                        <SelectItem value="true" label="Public (residents)">Public (residents)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setEditingDoc(null); resetForm(); }}
+              disabled={updateMutation.isPending}
+              className="h-11 rounded-xl px-5"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={!formTitle.trim() || updateMutation.isPending}
+              className="h-11 rounded-xl px-5"
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

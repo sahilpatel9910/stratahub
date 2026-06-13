@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
   Building2,
@@ -35,6 +36,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -82,7 +84,13 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { setOpenMobile } = useSidebar();
   const { data: unreadCount } = trpc.notifications.unreadCount.useQuery(undefined);
+
+  // Close the mobile sidebar sheet when navigating to a new page.
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   const isAdmin = isSuperAdmin;
   const propertyNavItems = isReceptionOnly ? receptionNavItems : managerNavItems;
@@ -90,7 +98,10 @@ export function AppSidebar({
 
   async function handleSignOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    // scope: 'local' clears only this browser's session without invalidating
+    // other active sessions globally (the default 'global' would sign out
+    // the user from all devices simultaneously).
+    await supabase.auth.signOut({ scope: 'local' });
     router.push("/login");
     router.refresh();
   }

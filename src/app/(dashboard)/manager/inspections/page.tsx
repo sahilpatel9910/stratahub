@@ -12,8 +12,11 @@ export default async function InspectionsPage() {
   }
 
   return (
-    <HydrateClient>
-      <InspectionsClient />
-    </HydrateClient>
+    <>
+      <h1 className="sr-only">Inspections</h1>
+      <HydrateClient>
+        <InspectionsClient />
+      </HydrateClient>
+    </>
   );
 }

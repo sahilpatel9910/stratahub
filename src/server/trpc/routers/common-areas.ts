@@ -120,6 +120,23 @@ export const commonAreasRouter = createTRPCRouter({
           message: "End time must be after start time.",
         });
       }
+
+      // Prevent overlapping bookings for the same common area
+      const overlap = await ctx.db.commonAreaBooking.findFirst({
+        where: {
+          commonAreaId: input.commonAreaId,
+          status: { not: "CANCELLED" },
+          startTime: { lt: endTime },
+          endTime: { gt: startTime },
+        },
+      });
+      if (overlap) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This time slot overlaps with an existing booking.",
+        });
+      }
+
       return ctx.db.commonAreaBooking.create({
         data: {
           commonAreaId: input.commonAreaId,
