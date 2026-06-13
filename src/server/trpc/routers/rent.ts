@@ -30,9 +30,12 @@ function buildRentScheduleEntries({
 }) {
   const payments = [];
   const startDate = new Date(leaseStartDate);
+  // A year has 52 weeks / 26 fortnights / 12 months — NOT 4 weeks or 2 fortnights
+  // per month (that undercounts a 12-month schedule by ~8%). The loop below still
+  // breaks at leaseEndDate, so this is the horizon when no end date is set.
   const count =
-    rentFrequency === "WEEKLY" ? months * 4 :
-    rentFrequency === "FORTNIGHTLY" ? months * 2 :
+    rentFrequency === "WEEKLY" ? Math.round((months * 52) / 12) :
+    rentFrequency === "FORTNIGHTLY" ? Math.round((months * 26) / 12) :
     months;
 
   for (let i = 0; i < count; i++) {

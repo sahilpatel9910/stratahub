@@ -50,7 +50,7 @@ export default function ResidentDocumentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Building Documents</h1>
+        <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Building Documents</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Public documents shared by building management
         </p>

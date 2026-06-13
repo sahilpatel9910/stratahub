@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 
 const INCOME_CATEGORIES = [
@@ -61,14 +61,6 @@ const EXPENSE_CATEGORIES = [
   "Repairs",
   "Other Expense",
 ];
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export default function FinancialsPage() {
   const { selectedBuildingId } = useBuildingContext();

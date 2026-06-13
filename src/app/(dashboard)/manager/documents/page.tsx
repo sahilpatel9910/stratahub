@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,14 +62,6 @@ const ACCEPTED_TYPES = [
   "image/png",
   "text/plain",
 ];
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function formatFileSize(bytes: number) {
   if (bytes === 0) return "—";
@@ -276,7 +269,7 @@ export default function DocumentsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Documents</h1>
           <p className="text-muted-foreground">
             Store and manage building documents and files
           </p>

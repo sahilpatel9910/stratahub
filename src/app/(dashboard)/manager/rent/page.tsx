@@ -47,7 +47,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { formatCurrency, BOND_LODGEMENT_AUTHORITIES, AUSTRALIAN_STATES } from "@/lib/constants";
+import { formatCurrency, formatDate, BOND_LODGEMENT_AUTHORITIES, AUSTRALIAN_STATES } from "@/lib/constants";
 import { toast } from "sonner";
 
 type PaymentStatus = "ALL" | "PENDING" | "OVERDUE" | "PAID" | "PARTIAL";
@@ -87,15 +87,6 @@ function paymentStatusBadge(status: string) {
       {PAYMENT_STATUS_LABELS[status] ?? status}
     </span>
   );
-}
-
-function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 export default function RentPage() {
@@ -971,7 +962,7 @@ export default function RentPage() {
                             {formatCurrency(t.rentAmountCents)} / {t.rentFrequency.toLowerCase()}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
-                            {t.leaseEndDate ? new Date(t.leaseEndDate).toLocaleDateString("en-AU") : "Ongoing"}
+                            {t.leaseEndDate ? formatDate(t.leaseEndDate) : "Ongoing"}
                           </TableCell>
                           <TableCell>
                             {overdue > 0 ? (

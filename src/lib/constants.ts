@@ -125,6 +125,28 @@ export function formatCurrency(cents: number): string {
   }).format(cents / 100);
 }
 
+/** Canonical date display (en-AU). Returns an em dash for null/invalid dates. */
+export function formatDate(
+  date: Date | string | null | undefined,
+  opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }
+): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-AU", opts).format(d);
+}
+
+/** Canonical date + time display (en-AU). Returns an em dash for null/invalid dates. */
+export function formatDateTime(date: Date | string | null | undefined): string {
+  return formatDate(date, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/** Percentage display to 1 decimal place. Input is an already-computed percentage (e.g. 80 → "80.0%"). */
+export function formatPercent(percent: number, fractionDigits = 1): string {
+  if (!Number.isFinite(percent)) return "—";
+  return `${percent.toFixed(fractionDigits)}%`;
+}
+
 export const CUSTOM_BILL_CATEGORY_LABELS: Record<string, string> = {
   WATER_USAGE: "Water Usage",
   PARKING_FINE: "Parking Fine",

@@ -272,7 +272,7 @@ export const strataRouter = createTRPCRouter({
       z.object({
         buildingId: z.string(),
         levyType: levyTypeEnum,
-        amountCents: z.number().int().positive(),
+        totalAmountCents: z.number().int().positive(),
         quarterStart: z.string(),
         dueDate: z.string(),
       })
@@ -292,7 +292,8 @@ export const strataRouter = createTRPCRouter({
 
       const units = await ctx.db.unit.findMany({
         where: { buildingId: input.buildingId },
-        select: { id: true },
+        select: { id: true, unitEntitlement: true },
+        orderBy: { unitNumber: "asc" },
       });
 
       if (units.length === 0) {
@@ -302,16 +303,34 @@ export const strataRouter = createTRPCRouter({
         });
       }
 
-      const result = await ctx.db.strataLevy.createMany({
-        data: units.map((u) => ({
+      // Apportion the total levy across units by unit entitlement (the legally
+      // correct basis under strata law). Falls back to an equal split if no
+      // entitlements are recorded. The rounding remainder is placed on the last
+      // unit so the per-unit amounts sum EXACTLY to the requested total.
+      const totalEntitlement = units.reduce((s, u) => s + (u.unitEntitlement ?? 0), 0);
+      const useEqualSplit = totalEntitlement <= 0;
+      let allocated = 0;
+      const levyData = units.map((u, idx) => {
+        let amountCents: number;
+        if (idx === units.length - 1) {
+          amountCents = input.totalAmountCents - allocated; // remainder → exact total
+        } else {
+          const share = useEqualSplit ? 1 / units.length : (u.unitEntitlement ?? 0) / totalEntitlement;
+          amountCents = Math.round(input.totalAmountCents * share);
+          allocated += amountCents;
+        }
+        return {
           strataInfoId: strataInfo.id,
           unitId: u.id,
           levyType: input.levyType,
-          amountCents: input.amountCents,
+          amountCents,
           quarterStart: new Date(input.quarterStart),
           dueDate: new Date(input.dueDate),
-        })),
+        };
       });
+      const amountByUnit = new Map(levyData.map((d) => [d.unitId, d.amountCents]));
+
+      const result = await ctx.db.strataLevy.createMany({ data: levyData });
 
       // Notify + email all active unit owners (fire-and-forget)
       const unitsWithOwners = await ctx.db.unit.findMany({
@@ -343,7 +362,7 @@ export const strataRouter = createTRPCRouter({
             buildingName: unit.building.name,
             unitNumber: unit.unitNumber,
             levyType: input.levyType,
-            amountCents: input.amountCents,
+            amountCents: amountByUnit.get(unit.id) ?? 0,
             dueDate: new Date(input.dueDate),
           });
         }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,10 +34,6 @@ const FREQ_LABELS: Record<string, string> = {
   WEEKLY: "Weekly", FORTNIGHTLY: "Fortnightly", MONTHLY: "Monthly",
 };
 
-function formatDate(d: Date | string | null | undefined) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export default function TenancyDetailClient({ id }: { id: string }) {
   const utils = trpc.useUtils();

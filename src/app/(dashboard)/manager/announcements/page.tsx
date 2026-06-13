@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -49,14 +50,6 @@ const SCOPE_LABELS: Record<string, string> = {
   FLOOR: "Specific Floors",
   ALL_BUILDINGS: "All Buildings",
 };
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export default function AnnouncementsPage() {
   const { selectedBuildingId } = useBuildingContext();

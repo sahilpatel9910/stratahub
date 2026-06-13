@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { MAINTENANCE_CATEGORY_LABELS, NEXT_STATUSES, PRIORITY_LABELS } from "@/lib/constants";
+import { formatDate, MAINTENANCE_CATEGORY_LABELS, NEXT_STATUSES, PRIORITY_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 
 type TabValue = "all" | "active" | "completed" | "cancelled";
@@ -78,13 +78,6 @@ const CATEGORIES = Object.entries(MAINTENANCE_CATEGORY_LABELS) as [
 const PRIORITIES = Object.entries(PRIORITY_LABELS) as [
   keyof typeof PRIORITY_LABELS, string,
 ][];
-
-function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
 
 export default function MaintenanceClient() {
   const router = useRouter();

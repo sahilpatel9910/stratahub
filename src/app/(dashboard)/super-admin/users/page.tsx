@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc/client";
-import { USER_ROLE_LABELS } from "@/lib/constants";
+import { formatDate, USER_ROLE_LABELS } from "@/lib/constants";
 import { toast } from "sonner";
 import { roleCanTargetBuilding, roleRequiresUnit } from "@/lib/auth/invite-scope";
 import { getInvitationStatus, INVITATION_STATUS_LABELS, type InvitationStatus } from "@/lib/auth/invitations";
@@ -63,14 +63,6 @@ type AssignableBuildingRole = (typeof ASSIGNABLE_BUILDING_ROLES)[number]["value"
 
 function initials(first: string, last: string) {
   return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase();
-}
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function getAppUrl() {
@@ -277,7 +269,7 @@ export default function SuperAdminUsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Users</h1>
           <p className="text-muted-foreground">
             Manage user access across the platform
           </p>
