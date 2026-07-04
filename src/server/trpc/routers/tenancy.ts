@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import {
   assertBuildingManagementAccess,
 } from "@/server/auth/building-access";
+import { buildRentScheduleEntries } from "@/server/lib/rent-schedule";
 
 const rentFrequencyEnum = z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY"]);
 
@@ -106,7 +107,7 @@ export const tenancyRouter = createTRPCRouter({
         });
 
         if (generateSchedule) {
-          const payments = buildSchedule({
+          const payments = buildRentScheduleEntries({
             tenancyId: tenancy.id,
             leaseStartDate: tenancy.leaseStartDate,
             rentFrequency: tenancy.rentFrequency,
@@ -116,6 +117,12 @@ export const tenancyRouter = createTRPCRouter({
           });
           await tx.rentPayment.createMany({ data: payments });
         }
+
+        // Keep the denormalised occupancy flag in sync with the active tenancy
+        await tx.unit.update({
+          where: { id: input.unitId },
+          data: { isOccupied: true },
+        });
 
         return tenancy;
       });
@@ -154,52 +161,33 @@ export const tenancyRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const tenancy = await ctx.db.tenancy.findUniqueOrThrow({
         where: { id: input.id },
-        select: { unit: { select: { buildingId: true } } },
+        select: { unitId: true, unit: { select: { buildingId: true } } },
       });
       await assertBuildingManagementAccess(ctx.db, ctx.user!, tenancy.unit.buildingId);
 
-      return ctx.db.tenancy.update({
-        where: { id: input.id },
-        data: {
-          isActive: false,
-          moveOutDate: input.moveOutDate ?? new Date(),
-        },
+      return ctx.db.$transaction(async (tx) => {
+        const ended = await tx.tenancy.update({
+          where: { id: input.id },
+          data: {
+            isActive: false,
+            moveOutDate: input.moveOutDate ?? new Date(),
+          },
+        });
+
+        // Keep the denormalised occupancy flag in sync — the unit is vacant
+        // unless another active tenancy remains (owner-occupancy is set
+        // manually via units.update).
+        const remaining = await tx.tenancy.count({
+          where: { unitId: tenancy.unitId, isActive: true },
+        });
+        if (remaining === 0) {
+          await tx.unit.update({
+            where: { id: tenancy.unitId },
+            data: { isOccupied: false },
+          });
+        }
+
+        return ended;
       });
     }),
 });
-
-// ── Shared schedule builder ───────────────────────────────────────────────────
-function buildSchedule({
-  tenancyId,
-  leaseStartDate,
-  rentFrequency,
-  rentAmountCents,
-  months,
-  leaseEndDate,
-}: {
-  tenancyId: string;
-  leaseStartDate: Date;
-  rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
-  rentAmountCents: number;
-  months: number;
-  leaseEndDate?: Date | null;
-}) {
-  const payments = [];
-  const start = new Date(leaseStartDate);
-  const count =
-    rentFrequency === "WEEKLY" ? months * 4 :
-    rentFrequency === "FORTNIGHTLY" ? months * 2 :
-    months;
-
-  for (let i = 0; i < count; i++) {
-    const dueDate = new Date(start);
-    if (rentFrequency === "WEEKLY") dueDate.setDate(start.getDate() + i * 7);
-    else if (rentFrequency === "FORTNIGHTLY") dueDate.setDate(start.getDate() + i * 14);
-    else dueDate.setMonth(start.getMonth() + i);
-
-    if (leaseEndDate && dueDate >= leaseEndDate) break;
-
-    payments.push({ tenancyId, amountCents: rentAmountCents, dueDate, status: "PENDING" as const });
-  }
-  return payments;
-}
