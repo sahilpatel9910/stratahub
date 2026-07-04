@@ -77,7 +77,7 @@ export default function SettingsPage() {
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !me) return;
+    if (!file || !me?.supabaseAuthId) return;
 
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Image must be under 2 MB");
@@ -87,8 +87,10 @@ export default function SettingsPage() {
     setUploading(true);
     try {
       const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${me.supabaseAuthId}.${ext}`;
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      // Storage RLS requires the first path segment to be the caller's
+      // auth.uid() — a top-level filename is rejected by the policy.
+      const path = `${me.supabaseAuthId}/avatar.${ext}`;
 
       const { error } = await supabase.storage
         .from("avatars")
@@ -100,9 +102,12 @@ export default function SettingsPage() {
         .from("avatars")
         .getPublicUrl(path);
 
-      setAvatarUrl.mutate({ url: publicUrl });
+      // Cache-bust: upsert reuses the same path, so browsers would keep
+      // showing the previous image without a fresh query string.
+      setAvatarUrl.mutate({ url: `${publicUrl}?v=${Date.now()}` });
     } catch (err) {
-      toast.error("Upload failed");
+      const message = err instanceof Error ? err.message : "Upload failed";
+      toast.error(`Upload failed: ${message}`);
       console.error(err);
     } finally {
       setUploading(false);
@@ -116,10 +121,11 @@ export default function SettingsPage() {
     try {
       const supabase = createClient();
       await supabase.storage.from("avatars").remove([
-        `${me.supabaseAuthId}.jpg`,
-        `${me.supabaseAuthId}.jpeg`,
-        `${me.supabaseAuthId}.png`,
-        `${me.supabaseAuthId}.webp`,
+        `${me.supabaseAuthId}/avatar.jpg`,
+        `${me.supabaseAuthId}/avatar.jpeg`,
+        `${me.supabaseAuthId}/avatar.png`,
+        `${me.supabaseAuthId}/avatar.webp`,
+        `${me.supabaseAuthId}/avatar.gif`,
       ]);
       setAvatarUrl.mutate({ url: null });
     } catch (err) {
