@@ -1,6 +1,6 @@
 import { ResidentSidebar } from "@/components/layout/resident-sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthClaims } from "@/server/auth/request-auth";
 import { db } from "@/server/db/client";
 import { redirect } from "next/navigation";
 
@@ -9,17 +9,14 @@ export default async function ResidentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const { claims } = await getAuthClaims();
 
-  if (!authUser) {
+  if (!claims) {
     redirect("/login");
   }
 
   const dbUser = await db.user.findUnique({
-    where: { supabaseAuthId: authUser.id },
+    where: { supabaseAuthId: claims.sub },
     include: {
       ownerships: {
         where: { isActive: true },

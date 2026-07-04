@@ -276,6 +276,7 @@ model OrganisationMembership {
   organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organisationId])
+  @@index([organisationId])
   @@map("organisation_memberships")
 }
 
@@ -291,6 +292,7 @@ model BuildingAssignment {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
   @@unique([userId, buildingId, role])
+  @@index([buildingId])
   @@map("building_assignments")
 }
 
@@ -304,6 +306,7 @@ model EmergencyContact {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("emergency_contacts")
 }
 
@@ -356,6 +359,7 @@ model Building {
   keyRecords    KeyRecord[]
   customBills   CustomBill[]
 
+  @@index([organisationId])
   @@map("buildings")
 }
 
@@ -401,6 +405,7 @@ model Unit {
   inspections     Inspection[]
 
   @@unique([buildingId, unitNumber])
+  @@index([floorId])
   @@map("units")
 }
 
@@ -412,6 +417,7 @@ model ParkingSpot {
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
+  @@index([unitId])
   @@map("parking_spots")
 }
 
@@ -422,6 +428,7 @@ model StorageUnit {
 
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
+  @@index([unitId])
   @@map("storage_units")
 }
 
@@ -440,6 +447,7 @@ model CommonArea {
   building Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   bookings CommonAreaBooking[]
 
+  @@index([buildingId])
   @@map("common_areas")
 }
 
@@ -480,6 +488,7 @@ model Ownership {
   unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@unique([userId, unitId])
+  @@index([unitId])
   @@map("ownerships")
 }
 
@@ -505,6 +514,8 @@ model Tenancy {
   rentPayments RentPayment[]
   bondRecord   BondRecord?
 
+  @@index([unitId])
+  @@index([userId])
   @@map("tenancies")
 }
 
@@ -579,6 +590,7 @@ model MaintenanceRequest {
   comments    MaintenanceComment[]
 
   @@index([unitId])
+  @@index([requestedById])
   @@map("maintenance_requests")
 }
 
@@ -592,6 +604,7 @@ model MaintenanceImage {
 
   maintenanceRequest MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
 
+  @@index([maintenanceRequestId])
   @@map("maintenance_images")
 }
 
@@ -605,6 +618,8 @@ model MaintenanceComment {
   maintenanceRequest MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
   user               User               @relation(fields: [userId], references: [id])
 
+  @@index([maintenanceRequestId])
+  @@index([userId])
   @@map("maintenance_comments")
 }
 
@@ -632,6 +647,8 @@ model VisitorEntry {
   building     Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   registeredBy User     @relation("registeredBy", fields: [registeredById], references: [id])
 
+  @@index([buildingId])
+  @@index([registeredById])
   @@map("visitor_entries")
 }
 
@@ -657,6 +674,8 @@ model Parcel {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   loggedBy User     @relation("loggedBy", fields: [loggedById], references: [id])
 
+  @@index([buildingId])
+  @@index([loggedById])
   @@map("parcels")
 }
 
@@ -683,6 +702,8 @@ model KeyRecord {
   unit     Unit?    @relation(fields: [unitId], references: [id])
   logs     KeyLog[]
 
+  @@index([buildingId])
+  @@index([unitId])
   @@map("key_records")
 }
 
@@ -697,6 +718,8 @@ model KeyLog {
   keyRecord   KeyRecord @relation(fields: [keyRecordId], references: [id], onDelete: Cascade)
   performedBy User      @relation("performedBy", fields: [performedById], references: [id])
 
+  @@index([keyRecordId])
+  @@index([performedById])
   @@map("key_logs")
 }
 
@@ -720,6 +743,8 @@ model Announcement {
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   author   User     @relation("author", fields: [authorId], references: [id])
 
+  @@index([authorId])
+  @@index([buildingId])
   @@map("announcements")
 }
 
@@ -741,6 +766,8 @@ model Document {
   building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   uploadedBy User      @relation("uploadedBy", fields: [uploadedById], references: [id])
 
+  @@index([buildingId])
+  @@index([uploadedById])
   @@map("documents")
 }
 
@@ -758,6 +785,8 @@ model Message {
   recipient User @relation("recipient", fields: [recipientId], references: [id])
 
   @@index([threadId])
+  @@index([recipientId])
+  @@index([senderId])
   @@map("messages")
 }
 
@@ -804,6 +833,7 @@ model StrataLevy {
   strataInfo StrataInfo @relation(fields: [strataInfoId], references: [id], onDelete: Cascade)
 
   @@index([stripeSessionId])
+  @@index([strataInfoId])
   @@map("strata_levies")
 }
 
@@ -818,6 +848,7 @@ model StrataBylaw {
 
   strataInfo StrataInfo @relation(fields: [strataInfoId], references: [id], onDelete: Cascade)
 
+  @@index([strataInfoId])
   @@map("strata_bylaws")
 }
 
@@ -834,6 +865,7 @@ model StrataMeeting {
 
   strataInfo StrataInfo @relation(fields: [strataInfoId], references: [id], onDelete: Cascade)
 
+  @@index([strataInfoId])
   @@map("strata_meetings")
 }
 
@@ -854,6 +886,7 @@ model FinancialRecord {
 
   building Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
 
+  @@index([buildingId])
   @@map("financial_records")
 }
 
@@ -884,6 +917,8 @@ model CustomBill {
   @@index([stripeSessionId])
   @@index([buildingId])
   @@index([unitId, recipientId])
+  @@index([createdById])
+  @@index([recipientId])
   @@map("custom_bills")
 }
 
@@ -943,6 +978,8 @@ model Inspection {
   rooms       InspectionRoom[]
   images      InspectionImage[]
 
+  @@index([inspectedById])
+  @@index([unitId])
   @@map("inspections")
 }
 
@@ -955,6 +992,7 @@ model InspectionRoom {
   inspection Inspection      @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   items      InspectionItem[]
 
+  @@index([inspectionId])
   @@map("inspection_rooms")
 }
 
@@ -967,6 +1005,7 @@ model InspectionItem {
 
   room InspectionRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
+  @@index([roomId])
   @@map("inspection_items")
 }
 
@@ -979,5 +1018,6 @@ model InspectionImage {
 
   inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
 
+  @@index([inspectionId])
   @@map("inspection_images")
 }

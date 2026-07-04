@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
+import { getRequestUser } from "@/server/auth/request-auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import {
@@ -19,20 +19,9 @@ export default async function ManagerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const { claims, user: dbUser } = await getRequestUser();
 
-  if (!authUser) redirect("/login");
-
-  const dbUser = await db.user.findUnique({
-    where: { supabaseAuthId: authUser.id },
-    include: {
-      orgMemberships: { where: { isActive: true }, select: { role: true } },
-      buildingAssignments: { where: { isActive: true }, select: { role: true } },
-    },
-  });
+  if (!claims) redirect("/login");
 
   const roles = [
     ...(dbUser?.orgMemberships.map((m) => m.role) ?? []),
@@ -103,7 +92,10 @@ export default async function ManagerLayout({
         <Topbar
           buildings={buildings}
           showBuildingSwitcher={isSuperAdmin || buildings.length > 1}
-          greetingName={dbUser?.firstName ?? authUser.user_metadata?.first_name ?? null}
+          greetingName={
+            dbUser?.firstName ??
+            ((claims.user_metadata as Record<string, string> | undefined)?.first_name ?? null)
+          }
           userInitials={
             dbUser
               ? `${dbUser.firstName[0]}${dbUser.lastName[0]}`.toUpperCase()

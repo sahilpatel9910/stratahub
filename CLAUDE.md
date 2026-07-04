@@ -58,6 +58,8 @@ Every layout: `supabase.auth.getUser()` → `db.user.findUnique({ supabaseAuthId
 - **Sidebar conditional nav** — runtime-gated items rendered separately with explicit query guard
 - **`resident.getMyTenancy`** — returns `null` for non-tenants, never throws
 - **Select `onValueChange`** — needs null guard: `(v) => v !== null && setState(v)`
+- **Server auth** — use `getAuthClaims`/`getRequestUser` from `src/server/auth/request-auth.ts`, NEVER `supabase.auth.getUser()` in layouts/context (getUser = ~50ms Auth-server round trip per call; getClaims verifies the ES256 JWT locally and `cache()` dedupes layout+prefetch)
+- **DATABASE_URL must use the transaction pooler (port 6543)** — session mode (5432) caps at 15 backend connections on free tier and crashes prod with EMAXCONNSESSION; Vercel functions are pinned to `syd1` (vercel.json) next to the Supabase region
 - **Rent schedules** — ONLY via `buildRentScheduleEntries` in `src/server/lib/rent-schedule.ts` (52 wk / 26 fn / 12 mo per year); never re-implement per router
 - **One action, one page** — Record Payment lives on `/manager/rent` only; tenancy detail is read-only history + Generate Schedule; cross-link instead of duplicating
 - **Sidebar gating** — resident sidebar uses `resident.getMyAccess` ({hasOwnership, hasTenancy}); levies nav label is role-aware ("My Levies" vs "My Bills")

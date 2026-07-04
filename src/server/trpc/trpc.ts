@@ -2,30 +2,18 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { db } from "@/server/db/client";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/server/auth/request-auth";
 import type { UserRole } from "@/generated/prisma/client";
 
 export async function createTRPCContext() {
-  const supabase = await createClient();
-  const {
-    data: { user: supabaseUser },
-  } = await supabase.auth.getUser();
-
-  let user = null;
-  if (supabaseUser) {
-    user = await db.user.findUnique({
-      where: { supabaseAuthId: supabaseUser.id },
-      include: {
-        orgMemberships: { where: { isActive: true } },
-        buildingAssignments: { where: { isActive: true } },
-      },
-    });
-  }
+  // Locally-verified JWT + app user; deduped with the layout lookup when
+  // called during an RSC render (see request-auth.ts).
+  const { supabase, claims, user } = await getRequestUser();
 
   return {
     db,
     supabase,
-    supabaseUser,
+    claims,
     user,
   };
 }
