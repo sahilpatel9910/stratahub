@@ -12,6 +12,7 @@ import { createNotification } from "@/server/trpc/lib/create-notification";
 import {
   assertBuildingManagementAccess,
   assertBuildingOperationsAccess,
+  hasBuildingManagementAccess,
 } from "@/server/auth/building-access";
 
 const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
@@ -514,21 +515,12 @@ export const strataRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Levy not found." });
       }
 
-      // 2. Verify caller owns the unit (admins bypass this check)
-      const callerMemberships = await ctx.db.organisationMembership.findMany({
-        where: { userId: ctx.user!.id, isActive: true },
-        select: { role: true },
-      });
-      const callerAssignments = await ctx.db.buildingAssignment.findMany({
-        where: { userId: ctx.user!.id, isActive: true },
-        select: { role: true },
-      });
-      const allRoles = [
-        ...callerMemberships.map((m) => m.role),
-        ...callerAssignments.map((a) => a.role),
-      ];
-      const isAdmin = allRoles.some(
-        (r) => r === "SUPER_ADMIN" || r === "BUILDING_MANAGER"
+      // 2. Verify caller owns the unit. Managers of THIS building (or super
+      // admins) may pay on behalf of an owner — a manager of an unrelated
+      // building must not bypass the ownership check.
+      const isAdmin = hasBuildingManagementAccess(
+        ctx.user!,
+        levy.strataInfo.buildingId
       );
 
       if (!isAdmin) {
@@ -574,9 +566,13 @@ export const strataRouter = createTRPCRouter({
 
       // 5. Reuse existing open session if one exists (prevents double-click creating duplicate sessions)
       if (levy.stripeSessionId) {
-        const existing = await getStripe().checkout.sessions.retrieve(levy.stripeSessionId);
-        if (existing.status === "open") {
-          return { url: existing.url! };
+        try {
+          const existing = await getStripe().checkout.sessions.retrieve(levy.stripeSessionId);
+          if (existing.status === "open") {
+            return { url: existing.url! };
+          }
+        } catch {
+          // Session expired or invalid — create a new one below
         }
       }
 

@@ -245,9 +245,13 @@ export const customBillsRouter = createTRPCRouter({
 
       // Reuse existing open session if one exists (prevents double-click creating duplicate sessions)
       if (bill.stripeSessionId) {
-        const existing = await getStripe().checkout.sessions.retrieve(bill.stripeSessionId);
-        if (existing.status === "open") {
-          return { url: existing.url! };
+        try {
+          const existing = await getStripe().checkout.sessions.retrieve(bill.stripeSessionId);
+          if (existing.status === "open") {
+            return { url: existing.url! };
+          }
+        } catch {
+          // Session expired or invalid — create a new one below
         }
       }
 

@@ -32,6 +32,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
+    // checkout.session.completed also fires for delayed payment methods while the
+    // payment is still processing — only mark records PAID once Stripe confirms.
+    if (session.payment_status !== "paid") {
+      return NextResponse.json({ received: true });
+    }
+
     // ── Levy payment ─────────────────────────────────────────
     const levy = await db.strataLevy.findFirst({
       where: { stripeSessionId: session.id },
