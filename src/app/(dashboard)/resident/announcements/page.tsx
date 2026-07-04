@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
+import { formatDate } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,10 +47,7 @@ export default function ResidentAnnouncementsPage() {
                 label="Latest update"
                 value={
                   announcements[0]
-                    ? new Date(announcements[0].createdAt).toLocaleDateString("en-AU", {
-                        day: "numeric",
-                        month: "short",
-                      })
+                    ? formatDate(announcements[0].createdAt, { day: "numeric", month: "short" })
                     : "No updates"
                 }
               />
@@ -91,14 +89,14 @@ export default function ResidentAnnouncementsPage() {
                 <div className="shrink-0 text-right">
                   <p className="flex items-center justify-end gap-1.5 text-xs uppercase tracking-[0.14em] text-muted-foreground">
                     <CalendarDays className="h-3.5 w-3.5" />
-                    {new Date(a.createdAt).toLocaleDateString("en-AU")}
+                    {formatDate(a.createdAt)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {a.author.firstName} {a.author.lastName}
                   </p>
                   {a.expiresAt && (
                     <p className="text-xs text-orange-500 mt-1">
-                      Expires {new Date(a.expiresAt).toLocaleDateString("en-AU")}
+                      Expires {formatDate(a.expiresAt)}
                     </p>
                   )}
                 </div>

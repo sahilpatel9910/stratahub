@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
+import { hasBuildingOperationsAccess } from "@/server/auth/building-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "inspections";
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
 
 /**
  * POST /api/storage/inspection-upload-url
  * Body: { filename: string, contentType: string, inspectionId: string }
  *
  * Returns a signed upload URL so the client can PUT the image directly to
- * Supabase Storage. Caller must be an authenticated user with access to the inspection.
+ * Supabase Storage. Inspections are staff-run, so the caller must have
+ * operations access (manager/reception) to the inspection's building.
  */
 export async function POST(req: NextRequest) {
   const authClient = await createServerClient();
@@ -44,6 +53,26 @@ export async function POST(req: NextRequest) {
       { error: "filename, contentType, and inspectionId are required" },
       { status: 400 }
     );
+  }
+
+  if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
+    return NextResponse.json(
+      { error: "Only image uploads are allowed for inspections." },
+      { status: 400 }
+    );
+  }
+
+  const inspection = await db.inspection.findUnique({
+    where: { id: inspectionId },
+    select: { unit: { select: { buildingId: true } } },
+  });
+
+  if (!inspection) {
+    return NextResponse.json({ error: "Inspection not found" }, { status: 404 });
+  }
+
+  if (!hasBuildingOperationsAccess(dbUser, inspection.unit.buildingId)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const adminClient = createAdminClient();

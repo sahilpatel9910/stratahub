@@ -186,7 +186,7 @@ export default function CommonAreasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Common Areas</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Common Areas</h1>
           <p className="text-muted-foreground">
             Manage shared facilities and resident bookings
           </p>

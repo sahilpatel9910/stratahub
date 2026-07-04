@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { formatDate } from "@/lib/constants";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
@@ -164,7 +165,7 @@ export default function InspectionDetailClient({ id }: { id: string }) {
             </Button>
           )}
         </div>
-        {isCompleted && <Badge className="mt-4 bg-green-100 text-green-800">Completed {insp.completedAt ? new Date(insp.completedAt).toLocaleDateString("en-AU") : ""}</Badge>}
+        {isCompleted && <Badge className="mt-4 bg-green-100 text-green-800">Completed {insp.completedAt ? formatDate(insp.completedAt) : ""}</Badge>}
         {isCancelled && <Badge className="mt-4 bg-gray-100 text-gray-600">Cancelled</Badge>}
       </section>
 

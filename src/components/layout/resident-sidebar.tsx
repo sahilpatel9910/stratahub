@@ -16,6 +16,8 @@ import {
   Settings,
   Wallet,
   ClipboardList,
+  Package,
+  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,9 +38,9 @@ import { Building2 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 
 const residentNavItems = [
-  { title: "My Home", href: "/resident", icon: Home },
-  { title: "My Levies", href: "/resident/levies", icon: DollarSign },
   { title: "Maintenance", href: "/resident/maintenance", icon: Wrench },
+  { title: "Parcels", href: "/resident/parcels", icon: Package },
+  { title: "Visitors", href: "/resident/visitors", icon: Users },
   { title: "Common Areas", href: "/resident/common-areas", icon: DoorOpen },
   { title: "Documents", href: "/resident/documents", icon: FileText },
   { title: "Inspections", href: "/resident/inspections", icon: ClipboardList },
@@ -62,7 +64,9 @@ export function ResidentSidebar() {
   const { data: unreadNotifications } = trpc.notifications.unreadCount.useQuery(undefined, {
     refetchInterval: 30_000,
   });
-  const { data: myTenancy } = trpc.resident.getMyTenancy.useQuery();
+  // hasTenancy gates "My Rent"; hasOwnership decides the levies label —
+  // the levies page serves owners (levy statements) AND tenants (custom bills).
+  const { data: myAccess } = trpc.resident.getMyAccess.useQuery();
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -95,19 +99,27 @@ export function ResidentSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {residentNavItems.slice(0, 2).map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={pathname === item.href}
-                    className="sidebar-nav-button"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              {myTenancy && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/resident" />}
+                  isActive={pathname === "/resident"}
+                  className="sidebar-nav-button"
+                >
+                  <Home className="h-4 w-4" />
+                  <span>My Home</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/resident/levies" />}
+                  isActive={pathname === "/resident/levies"}
+                  className="sidebar-nav-button"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  <span>{myAccess?.hasOwnership ? "My Levies" : "My Bills"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {myAccess?.hasTenancy && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     render={<Link href="/resident/rent" />}
@@ -119,7 +131,7 @@ export function ResidentSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {residentNavItems.slice(2).map((item) => (
+              {residentNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}

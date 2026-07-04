@@ -28,7 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { CustomBillsTab } from "./custom-bills-tab";
 import { toast } from "sonner";
 
@@ -45,15 +45,6 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   PARTIAL:  { label: "Partial",  variant: "outline" },
   WAIVED:   { label: "Waived",   variant: "outline" },
 };
-
-function formatDate(d: Date | string | null | undefined) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function toInputDate(d: Date | string | null | undefined) {
   if (!d) return "";
@@ -388,7 +379,7 @@ export default function StrataPage() {
     bulkCreateMutation.mutate({
       buildingId: selectedBuildingId,
       levyType: bulkLevyType as "ADMIN_FUND" | "CAPITAL_WORKS" | "SPECIAL_LEVY",
-      amountCents: Math.round(parseFloat(bulkLevyAmount) * 100),
+      totalAmountCents: Math.round(parseFloat(bulkLevyAmount) * 100),
       quarterStart: bulkLevyQuarterStart,
       dueDate: bulkLevyDueDate,
     });
@@ -429,7 +420,7 @@ export default function StrataPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Strata</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Strata</h1>
           <p className="text-muted-foreground">
             Manage strata plan details, levies, bylaws, and meetings
           </p>
@@ -1088,7 +1079,7 @@ export default function StrataPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="blkAmount">Amount per Unit ($) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="blkAmount">Total Levy — all units ($) <span className="text-destructive">*</span></Label>
               <Input
                 id="blkAmount"
                 type="number"
@@ -1111,7 +1102,7 @@ export default function StrataPage() {
             </div>
             {unitsQuery.data && (
               <p className="text-sm text-muted-foreground">
-                This will create {unitsQuery.data.length} levies — one per unit.
+                Apportioned across {unitsQuery.data.length} units by unit entitlement — the per-unit amounts sum to the total above.
               </p>
             )}
           </div>

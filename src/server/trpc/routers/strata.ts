@@ -12,6 +12,7 @@ import { createNotification } from "@/server/trpc/lib/create-notification";
 import {
   assertBuildingManagementAccess,
   assertBuildingOperationsAccess,
+  hasBuildingManagementAccess,
 } from "@/server/auth/building-access";
 
 const levyTypeEnum = z.enum(["ADMIN_FUND", "CAPITAL_WORKS", "SPECIAL_LEVY"]);
@@ -272,7 +273,7 @@ export const strataRouter = createTRPCRouter({
       z.object({
         buildingId: z.string(),
         levyType: levyTypeEnum,
-        amountCents: z.number().int().positive(),
+        totalAmountCents: z.number().int().positive(),
         quarterStart: z.string(),
         dueDate: z.string(),
       })
@@ -292,7 +293,8 @@ export const strataRouter = createTRPCRouter({
 
       const units = await ctx.db.unit.findMany({
         where: { buildingId: input.buildingId },
-        select: { id: true },
+        select: { id: true, unitEntitlement: true },
+        orderBy: { unitNumber: "asc" },
       });
 
       if (units.length === 0) {
@@ -302,16 +304,34 @@ export const strataRouter = createTRPCRouter({
         });
       }
 
-      const result = await ctx.db.strataLevy.createMany({
-        data: units.map((u) => ({
+      // Apportion the total levy across units by unit entitlement (the legally
+      // correct basis under strata law). Falls back to an equal split if no
+      // entitlements are recorded. The rounding remainder is placed on the last
+      // unit so the per-unit amounts sum EXACTLY to the requested total.
+      const totalEntitlement = units.reduce((s, u) => s + (u.unitEntitlement ?? 0), 0);
+      const useEqualSplit = totalEntitlement <= 0;
+      let allocated = 0;
+      const levyData = units.map((u, idx) => {
+        let amountCents: number;
+        if (idx === units.length - 1) {
+          amountCents = input.totalAmountCents - allocated; // remainder → exact total
+        } else {
+          const share = useEqualSplit ? 1 / units.length : (u.unitEntitlement ?? 0) / totalEntitlement;
+          amountCents = Math.round(input.totalAmountCents * share);
+          allocated += amountCents;
+        }
+        return {
           strataInfoId: strataInfo.id,
           unitId: u.id,
           levyType: input.levyType,
-          amountCents: input.amountCents,
+          amountCents,
           quarterStart: new Date(input.quarterStart),
           dueDate: new Date(input.dueDate),
-        })),
+        };
       });
+      const amountByUnit = new Map(levyData.map((d) => [d.unitId, d.amountCents]));
+
+      const result = await ctx.db.strataLevy.createMany({ data: levyData });
 
       // Notify + email all active unit owners (fire-and-forget)
       const unitsWithOwners = await ctx.db.unit.findMany({
@@ -343,7 +363,7 @@ export const strataRouter = createTRPCRouter({
             buildingName: unit.building.name,
             unitNumber: unit.unitNumber,
             levyType: input.levyType,
-            amountCents: input.amountCents,
+            amountCents: amountByUnit.get(unit.id) ?? 0,
             dueDate: new Date(input.dueDate),
           });
         }
@@ -495,21 +515,12 @@ export const strataRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Levy not found." });
       }
 
-      // 2. Verify caller owns the unit (admins bypass this check)
-      const callerMemberships = await ctx.db.organisationMembership.findMany({
-        where: { userId: ctx.user!.id, isActive: true },
-        select: { role: true },
-      });
-      const callerAssignments = await ctx.db.buildingAssignment.findMany({
-        where: { userId: ctx.user!.id, isActive: true },
-        select: { role: true },
-      });
-      const allRoles = [
-        ...callerMemberships.map((m) => m.role),
-        ...callerAssignments.map((a) => a.role),
-      ];
-      const isAdmin = allRoles.some(
-        (r) => r === "SUPER_ADMIN" || r === "BUILDING_MANAGER"
+      // 2. Verify caller owns the unit. Managers of THIS building (or super
+      // admins) may pay on behalf of an owner — a manager of an unrelated
+      // building must not bypass the ownership check.
+      const isAdmin = hasBuildingManagementAccess(
+        ctx.user!,
+        levy.strataInfo.buildingId
       );
 
       if (!isAdmin) {
@@ -555,9 +566,13 @@ export const strataRouter = createTRPCRouter({
 
       // 5. Reuse existing open session if one exists (prevents double-click creating duplicate sessions)
       if (levy.stripeSessionId) {
-        const existing = await getStripe().checkout.sessions.retrieve(levy.stripeSessionId);
-        if (existing.status === "open") {
-          return { url: existing.url! };
+        try {
+          const existing = await getStripe().checkout.sessions.retrieve(levy.stripeSessionId);
+          if (existing.status === "open") {
+            return { url: existing.url! };
+          }
+        } catch {
+          // Session expired or invalid — create a new one below
         }
       }
 

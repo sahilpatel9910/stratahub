@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDate } from "@/lib/constants";
 import dynamic from "next/dynamic";
 import { skipToken } from "@tanstack/react-query";
 import { Home, Phone, Search, Users, UserRound, UserPlus } from "lucide-react";
@@ -237,7 +238,7 @@ export default function ResidentsClient() {
                             <TableCell>
                               {leaseEnd ? (
                                 <span className="text-sm">
-                                  {new Date(leaseEnd).toLocaleDateString("en-AU")}
+                                  {formatDate(leaseEnd)}
                                 </span>
                               ) : (
                                 <span className="text-sm text-muted-foreground">N/A</span>

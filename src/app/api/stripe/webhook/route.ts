@@ -29,8 +29,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
+  if (
+    event.type === "checkout.session.completed" ||
+    event.type === "checkout.session.async_payment_succeeded"
+  ) {
     const session = event.data.object;
+
+    // checkout.session.completed also fires for delayed payment methods while
+    // the payment is still processing — only mark records PAID once Stripe
+    // confirms (async_payment_succeeded covers the delayed confirmation).
+    if (session.payment_status !== "paid") {
+      return NextResponse.json({ received: true });
+    }
 
     // ── Levy payment ─────────────────────────────────────────
     const levy = await db.strataLevy.findFirst({

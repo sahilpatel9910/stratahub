@@ -1,23 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pending", PAID: "Paid", OVERDUE: "Overdue",
@@ -34,31 +25,10 @@ const FREQ_LABELS: Record<string, string> = {
   WEEKLY: "Weekly", FORTNIGHTLY: "Fortnightly", MONTHLY: "Monthly",
 };
 
-function formatDate(d: Date | string | null | undefined) {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export default function TenancyDetailClient({ id }: { id: string }) {
   const utils = trpc.useUtils();
   const { data: tenancy, isLoading, isError } = trpc.tenancy.getById.useQuery({ id });
-
-  const [recordOpen, setRecordOpen] = useState(false);
-  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
-  const [paymentForm, setPaymentForm] = useState({
-    amountCents: "", paidDate: "", paymentMethod: "",
-  });
-
-  const recordPaymentMutation = trpc.rent.recordPayment.useMutation({
-    onSuccess: () => {
-      toast.success("Payment recorded");
-      void utils.tenancy.getById.invalidate({ id });
-      setRecordOpen(false);
-      setSelectedPaymentId(null);
-      setPaymentForm({ amountCents: "", paidDate: "", paymentMethod: "" });
-    },
-    onError: (e) => toast.error(e.message ?? "Failed to record payment"),
-  });
 
   const generateScheduleMutation = trpc.rent.generateSchedule.useMutation({
     onSuccess: () => {
@@ -92,10 +62,14 @@ export default function TenancyDetailClient({ id }: { id: string }) {
     );
   }
 
-  const overdueCount = tenancy.rentPayments.filter((p) => p.status === "OVERDUE").length;
-  const oldestPending = tenancy.rentPayments
-    .filter((p) => p.status === "PENDING" || p.status === "OVERDUE")
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+  // Live-derived: PENDING past its due date counts as overdue even if the
+  // mark-overdue cron hasn't run yet.
+  const now = new Date();
+  const overdueCount = tenancy.rentPayments.filter(
+    (p) =>
+      p.status === "OVERDUE" ||
+      (p.status === "PENDING" && new Date(p.dueDate) < now)
+  ).length;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -141,16 +115,18 @@ export default function TenancyDetailClient({ id }: { id: string }) {
         </div>
       </section>
 
-      {/* Payment schedule */}
+      {/* Payment schedule — read-only here. Recording payments is the Rent
+          page's job (single owner per action); this page owns the lease
+          lifecycle: terms, bond, schedule generation, move-in/out. */}
       <section className="app-panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
           <div>
             <p className="panel-kicker">Payment Schedule</p>
             <h2 className="mt-1 text-lg font-semibold tracking-[-0.03em] text-foreground">
               Rent history &amp; upcoming payments
             </h2>
           </div>
-          {tenancy.rentPayments.length === 0 && (
+          {tenancy.rentPayments.length === 0 ? (
             <Button
               size="sm"
               className="h-9 rounded-lg"
@@ -159,6 +135,13 @@ export default function TenancyDetailClient({ id }: { id: string }) {
             >
               {generateScheduleMutation.isPending ? "Generating…" : "Generate Schedule"}
             </Button>
+          ) : (
+            <Link
+              href="/manager/rent"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Record payments on the Rent page →
+            </Link>
           )}
         </div>
         <Table>
@@ -169,13 +152,12 @@ export default function TenancyDetailClient({ id }: { id: string }) {
               <TableHead>Status</TableHead>
               <TableHead>Paid Date</TableHead>
               <TableHead>Method</TableHead>
-              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {tenancy.rentPayments.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                   No payment schedule yet. Click &quot;Generate Schedule&quot; to create one.
                 </TableCell>
               </TableRow>
@@ -191,94 +173,11 @@ export default function TenancyDetailClient({ id }: { id: string }) {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(p.paidDate)}</TableCell>
                 <TableCell className="text-muted-foreground">{p.paymentMethod ?? "—"}</TableCell>
-                <TableCell>
-                  {oldestPending && p.id === oldestPending.id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 rounded-lg text-xs"
-                      onClick={() => {
-                        setSelectedPaymentId(p.id);
-                        setPaymentForm({
-                          amountCents: String(p.amountCents),
-                          paidDate: new Date().toISOString().split("T")[0],
-                          paymentMethod: "",
-                        });
-                        setRecordOpen(true);
-                      }}
-                    >
-                      Record
-                    </Button>
-                  )}
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </section>
-
-      {/* Record payment dialog */}
-      <Dialog open={recordOpen} onOpenChange={setRecordOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 px-7 py-5">
-            <div className="space-y-1.5">
-              <Label>Payment amount (cents)</Label>
-              <Input
-                type="number"
-                className="rounded-xl"
-                value={paymentForm.amountCents}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, amountCents: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Date paid</Label>
-              <Input
-                type="date"
-                className="rounded-xl"
-                value={paymentForm.paidDate}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, paidDate: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Payment method</Label>
-              <Select
-                value={paymentForm.paymentMethod}
-                onValueChange={(v) => v !== null && setPaymentForm((f) => ({ ...f, paymentMethod: v }))}
-              >
-                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select method" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Bank transfer">Bank transfer</SelectItem>
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="Cheque">Cheque</SelectItem>
-                  <SelectItem value="Direct debit">Direct debit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRecordOpen(false)} disabled={recordPaymentMutation.isPending}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!paymentForm.amountCents || !paymentForm.paidDate || recordPaymentMutation.isPending}
-              onClick={() => {
-                if (!selectedPaymentId) return;
-                recordPaymentMutation.mutate({
-                  id: selectedPaymentId,
-                  amountCents: parseInt(paymentForm.amountCents, 10),
-                  paidDate: paymentForm.paidDate,
-                  paymentMethod: paymentForm.paymentMethod || undefined,
-                });
-              }}
-            >
-              {recordPaymentMutation.isPending ? "Saving…" : "Record Payment"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

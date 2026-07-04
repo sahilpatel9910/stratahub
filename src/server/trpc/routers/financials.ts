@@ -36,17 +36,34 @@ export const financialsRouter = createTRPCRouter({
     }),
 
   getSummary: buildingManagerProcedure
-    .input(z.object({ buildingId: z.string() }))
+    .input(
+      z.object({
+        buildingId: z.string(),
+        // Optional period bounds — omitted = all-time totals
+        from: z.string().optional(),
+        to: z.string().optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       await assertBuildingManagementAccess(ctx.db, ctx.user!, input.buildingId);
 
+      const dateFilter =
+        input.from || input.to
+          ? {
+              date: {
+                ...(input.from ? { gte: new Date(input.from) } : {}),
+                ...(input.to ? { lte: new Date(input.to) } : {}),
+              },
+            }
+          : {};
+
       const [income, expense] = await Promise.all([
         ctx.db.financialRecord.aggregate({
-          where: { buildingId: input.buildingId, type: "INCOME" },
+          where: { buildingId: input.buildingId, type: "INCOME", ...dateFilter },
           _sum: { amountCents: true },
         }),
         ctx.db.financialRecord.aggregate({
-          where: { buildingId: input.buildingId, type: "EXPENSE" },
+          where: { buildingId: input.buildingId, type: "EXPENSE", ...dateFilter },
           _sum: { amountCents: true },
         }),
       ]);

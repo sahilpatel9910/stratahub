@@ -136,7 +136,7 @@ export default function ResidentMessagesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Messages</h1>
           <p className="text-muted-foreground">
             Contact your building manager or reception
           </p>

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { AlertCircle, Clock3, Plus, Wrench } from "lucide-react";
 import {
+  formatDate,
   STATUS_LABELS,
   STATUS_COLORS,
   PRIORITY_LABELS as PRIORITY_LABELS_CONST,
@@ -265,7 +266,7 @@ export default function ResidentMaintenancePage() {
                       {PRIORITY_LABELS[req.priority] ?? req.priority}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-muted-foreground">
-                      {new Date(req.createdAt).toLocaleDateString("en-AU")}
+                      {formatDate(req.createdAt)}
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge className={STATUS_COLORS[req.status] ?? ""}>

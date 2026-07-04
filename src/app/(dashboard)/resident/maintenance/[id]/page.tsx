@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageIcon, Upload, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
+  formatDate,
   STATUS_LABELS,
   STATUS_COLORS,
   PRIORITY_LABELS as PRIORITY_LABELS_CONST,
@@ -370,11 +371,7 @@ export default function ResidentMaintenanceDetailPage({
               />
               <MetaRow
                 label="Submitted"
-                value={new Date(req.createdAt).toLocaleDateString("en-AU", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                value={formatDate(req.createdAt, { day: "numeric", month: "long", year: "numeric" })}
               />
             </div>
 

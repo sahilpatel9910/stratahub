@@ -61,6 +61,18 @@ export const residentRouter = createTRPCRouter({
     return assignment?.building ?? null;
   }),
 
+  // Lightweight role summary for sidebar gating (rent = tenants, levies = owners)
+  getMyAccess: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    const [ownershipCount, tenancyCount] = await Promise.all([
+      ctx.db.ownership.count({ where: { userId: ctx.user!.id, isActive: true } }),
+      ctx.db.tenancy.count({ where: { userId: ctx.user!.id, isActive: true } }),
+    ]);
+    return {
+      hasOwnership: ownershipCount > 0,
+      hasTenancy: tenancyCount > 0,
+    };
+  }),
+
   // Levies for this resident's owned units
   getMyLevies: tenantOrAboveProcedure
     .input(z.object({ status: paymentStatusEnum.optional() }))

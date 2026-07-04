@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/constants";
 
 export default function ManagerDashboardClient() {
   const { selectedBuildingId, selectedBuildingName } = useBuildingContext();
@@ -91,7 +91,7 @@ export default function ManagerDashboardClient() {
               <div>
                 <p className="panel-kicker">Building Health</p>
                 <p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-foreground">
-                  {stats ? `${stats.occupancyRate}%` : "—"}
+                  {stats ? formatPercent(stats.occupancyRate) : "—"}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {stats
@@ -145,14 +145,18 @@ export default function ManagerDashboardClient() {
         <StatPanel
           title="Rent Collected"
           value={stats ? formatCurrency(stats.rentCollectedThisMonthCents) : null}
-          description="Collections recorded this month"
+          description={
+            stats?.collectionRatePct != null
+              ? `${formatPercent(stats.collectionRatePct)} of rent due this month`
+              : "Collections recorded this month"
+          }
           icon={DollarSign}
           loading={statsQuery.isLoading && hasBuilding}
           href="/manager/rent"
         />
         <StatPanel
           title="Occupancy Rate"
-          value={stats ? `${stats.occupancyRate}%` : null}
+          value={stats ? formatPercent(stats.occupancyRate) : null}
           description={stats ? `${stats.occupiedUnits} occupied of ${stats.totalUnits}` : "Occupied versus total units"}
           icon={TrendingUp}
           loading={statsQuery.isLoading && hasBuilding}
@@ -299,10 +303,7 @@ export default function ManagerDashboardClient() {
                   <div className="flex items-center gap-3">
                     <PriorityBadge priority={request.priority} />
                     <p className="text-xs text-muted-foreground">
-                      {new Date(request.createdAt).toLocaleDateString("en-AU", {
-                        day: "numeric",
-                        month: "short",
-                      })}
+                      {formatDate(request.createdAt, { day: "numeric", month: "short" })}
                     </p>
                   </div>
                 </Link>

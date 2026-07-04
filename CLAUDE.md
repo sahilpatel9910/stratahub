@@ -58,6 +58,9 @@ Every layout: `supabase.auth.getUser()` → `db.user.findUnique({ supabaseAuthId
 - **Sidebar conditional nav** — runtime-gated items rendered separately with explicit query guard
 - **`resident.getMyTenancy`** — returns `null` for non-tenants, never throws
 - **Select `onValueChange`** — needs null guard: `(v) => v !== null && setState(v)`
+- **Rent schedules** — ONLY via `buildRentScheduleEntries` in `src/server/lib/rent-schedule.ts` (52 wk / 26 fn / 12 mo per year); never re-implement per router
+- **One action, one page** — Record Payment lives on `/manager/rent` only; tenancy detail is read-only history + Generate Schedule; cross-link instead of duplicating
+- **Sidebar gating** — resident sidebar uses `resident.getMyAccess` ({hasOwnership, hasTenancy}); levies nav label is role-aware ("My Levies" vs "My Bills")
 
 ---
 

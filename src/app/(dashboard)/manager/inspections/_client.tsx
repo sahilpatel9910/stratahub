@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { skipToken } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +29,6 @@ const STATUS_STYLES: Record<string, string> = {
   COMPLETED: "bg-green-100 text-green-800",
   CANCELLED: "bg-gray-100 text-gray-600",
 };
-
-function formatDate(d: Date | string) {
-  return new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export default function InspectionsClient() {
   const router = useRouter();

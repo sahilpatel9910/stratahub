@@ -5,6 +5,13 @@ import { hasBuildingManagementAccess } from "@/server/auth/building-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const BUCKET = "maintenance";
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
 
 /**
  * POST /api/storage/maintenance-upload-url
@@ -43,6 +50,13 @@ export async function POST(req: NextRequest) {
   if (!filename || !contentType || !maintenanceRequestId) {
     return NextResponse.json(
       { error: "filename, contentType, and maintenanceRequestId are required" },
+      { status: 400 }
+    );
+  }
+
+  if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
+    return NextResponse.json(
+      { error: "Only image uploads are allowed for maintenance requests." },
       { status: 400 }
     );
   }

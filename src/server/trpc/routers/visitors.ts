@@ -14,6 +14,15 @@ const purposeEnum = z.enum([
 ]);
 
 export const visitorsRouter = createTRPCRouter({
+  // Resident view: visitors they registered
+  listMyVisitors: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    return ctx.db.visitorEntry.findMany({
+      where: { registeredById: ctx.user!.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }),
+
   listByBuilding: managerProcedure
     .input(
       z.object({

@@ -216,6 +216,7 @@ export const buildingsRouter = createTRPCRouter({
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
       const [
         totalUnits,
@@ -226,6 +227,7 @@ export const buildingsRouter = createTRPCRouter({
         overdueRentCount,
         rentThisMonth,
         keysToRotate,
+        paymentsDueThisMonth,
       ] = await Promise.all([
         ctx.db.unit.count({ where: { buildingId: input.buildingId } }),
         ctx.db.unit.count({ where: { buildingId: input.buildingId, isOccupied: true } }),
@@ -248,10 +250,15 @@ export const buildingsRouter = createTRPCRouter({
             status: { in: ["RECEIVED", "NOTIFIED"] },
           },
         }),
+        // Live-derived: a PENDING payment past its due date is overdue even if
+        // the mark-overdue cron hasn't run yet.
         ctx.db.rentPayment.count({
           where: {
             tenancy: { unit: { buildingId: input.buildingId }, isActive: true },
-            status: "OVERDUE",
+            OR: [
+              { status: "OVERDUE" },
+              { status: "PENDING", dueDate: { lt: now } },
+            ],
           },
         }),
         ctx.db.rentPayment.aggregate({
@@ -269,7 +276,27 @@ export const buildingsRouter = createTRPCRouter({
             rotationDue: { lte: now },
           },
         }),
+        ctx.db.rentPayment.findMany({
+          where: {
+            tenancy: { unit: { buildingId: input.buildingId }, isActive: true },
+            dueDate: { gte: startOfMonth, lt: startOfNextMonth },
+          },
+          select: { status: true, amountCents: true, originalAmountCents: true },
+        }),
       ]);
+
+      // Collection rate for the current month: collected / expected.
+      // PARTIAL rows store the paid amount in amountCents and preserve the
+      // owed amount in originalAmountCents.
+      const expectedCents = paymentsDueThisMonth.reduce(
+        (sum, p) => sum + (p.originalAmountCents ?? p.amountCents),
+        0
+      );
+      const collectedCents = paymentsDueThisMonth.reduce(
+        (sum, p) =>
+          sum + (p.status === "PAID" || p.status === "PARTIAL" ? p.amountCents : 0),
+        0
+      );
 
       return {
         totalUnits,
@@ -284,6 +311,11 @@ export const buildingsRouter = createTRPCRouter({
           totalUnits > 0
             ? Math.round((occupiedUnits / totalUnits) * 1000) / 10
             : 0,
+        // null when no rent is due this month (avoids a misleading 0%)
+        collectionRatePct:
+          expectedCents > 0
+            ? Math.round((collectedCents / expectedCents) * 1000) / 10
+            : null,
       };
     }),
 });

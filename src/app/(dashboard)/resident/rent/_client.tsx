@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, CreditCard, DollarSign, AlertTriangle, Wallet, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc/client";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,15 +29,6 @@ const FREQUENCY_LABELS: Record<string, string> = {
   FORTNIGHTLY: "Fortnightly",
   MONTHLY: "Monthly",
 };
-
-function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function PaymentStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {

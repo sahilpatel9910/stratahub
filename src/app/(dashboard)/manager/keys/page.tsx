@@ -44,6 +44,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 
 type TabValue = "all" | "active" | "inactive";
@@ -58,15 +59,6 @@ const KEY_TYPE_LABELS: Record<string, string> = {
 };
 
 const KEY_TYPES = Object.entries(KEY_TYPE_LABELS) as [string, string][];
-
-function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function isOverdue(date: Date | string | null | undefined) {
   if (!date) return false;
@@ -202,7 +194,7 @@ export default function KeysPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Keys & Access</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">Keys & Access</h1>
           <p className="text-muted-foreground">
             Manage physical keys, fobs, and access credentials
           </p>

@@ -2,7 +2,6 @@ import { z } from "zod";
 import {
   buildingManagerProcedure,
   createTRPCRouter,
-  managerProcedure,
   protectedProcedure,
   tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
@@ -10,56 +9,9 @@ import { TRPCError } from "@trpc/server";
 import { assertBuildingManagementAccess, hasBuildingManagementAccess } from "@/server/auth/building-access";
 import { isTenancySetupPending } from "@/lib/tenancies";
 import { getStripe } from "@/lib/stripe/client";
+import { buildRentScheduleEntries } from "@/server/lib/rent-schedule";
 
 const rentFrequencyEnum = z.enum(["WEEKLY", "FORTNIGHTLY", "MONTHLY"]);
-
-function buildRentScheduleEntries({
-  tenancyId,
-  leaseStartDate,
-  rentFrequency,
-  rentAmountCents,
-  months,
-  leaseEndDate,
-}: {
-  tenancyId: string;
-  leaseStartDate: Date;
-  rentFrequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY";
-  rentAmountCents: number;
-  months: number;
-  leaseEndDate?: Date | null;
-}) {
-  const payments = [];
-  const startDate = new Date(leaseStartDate);
-  const count =
-    rentFrequency === "WEEKLY" ? months * 4 :
-    rentFrequency === "FORTNIGHTLY" ? months * 2 :
-    months;
-
-  for (let i = 0; i < count; i++) {
-    let dueDate: Date;
-    if (rentFrequency === "WEEKLY") {
-      dueDate = new Date(startDate);
-      dueDate.setDate(dueDate.getDate() + i * 7);
-    } else if (rentFrequency === "FORTNIGHTLY") {
-      dueDate = new Date(startDate);
-      dueDate.setDate(dueDate.getDate() + i * 14);
-    } else {
-      dueDate = new Date(startDate);
-      dueDate.setMonth(dueDate.getMonth() + i);
-    }
-
-    if (leaseEndDate && dueDate >= leaseEndDate) break;
-
-    payments.push({
-      tenancyId,
-      amountCents: rentAmountCents,
-      dueDate,
-      status: "PENDING" as const,
-    });
-  }
-
-  return payments;
-}
 
 export const rentRouter = createTRPCRouter({
   listByBuilding: buildingManagerProcedure
@@ -314,6 +266,9 @@ export const rentRouter = createTRPCRouter({
         },
       });
 
+      // Live-derived: PENDING past its due date counts as overdue even if the
+      // mark-overdue cron hasn't run yet.
+      const now = new Date();
       return tenancies.map((t) => ({
         tenancyId: t.id,
         unitNumber: t.unit.unitNumber,
@@ -322,7 +277,11 @@ export const rentRouter = createTRPCRouter({
         rentFrequency: t.rentFrequency,
         leaseEnd: t.leaseEndDate,
         moveInDate: t.moveInDate,
-        overduePayments: t.rentPayments.filter((p) => p.status === "OVERDUE").length,
+        overduePayments: t.rentPayments.filter(
+          (p) =>
+            p.status === "OVERDUE" ||
+            (p.status === "PENDING" && p.dueDate < now)
+        ).length,
         nextDue: t.rentPayments[0]?.dueDate ?? null,
       }));
     }),

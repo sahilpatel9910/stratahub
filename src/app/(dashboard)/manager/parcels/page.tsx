@@ -35,6 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc/client";
 import { useBuildingContext } from "@/hooks/use-building-context";
+import { formatDate } from "@/lib/constants";
 import { toast } from "sonner";
 
 type TabValue = "pending" | "all" | "collected" | "returned";
@@ -54,15 +55,6 @@ const STATUS_LABELS: Record<string, string> = {
   COLLECTED: "Collected",
   RETURNED: "Returned",
 };
-
-function formatDate(date: Date | string | null | undefined) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export default function ParcelsPage() {
   const { selectedBuildingId } = useBuildingContext();
