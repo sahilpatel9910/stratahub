@@ -138,17 +138,26 @@ Status: ⬜ todo · 🟡 in-progress · ✅ done · ⏸ blocked (needs user)
 - ✅ **D6** Rewrote `seed/wipe.ts` — robust, clears all orgs/buildings/non-super-admin users (handles orphans), preserves super-admin.
 - ✅ **D7** Wiped + re-seeded live DB; verified with `seed/_audit.ts`. All integrity checks pass (0 expired-active leases, 0 missing entitlements/owners, 0 future-dated payments, 0 past-due-PENDING).
 
+### Phase S — Security hardening (2026-07-04)
+- ✅ **S1** `api/storage/inspection-upload-url` had NO authorization (any authenticated user could get a signed upload URL for any inspection). Now resolves inspection → building and requires operations access; image-only content-type allowlist added here and on `maintenance-upload-url`.
+- ✅ **S2** Stripe webhook now requires `session.payment_status === "paid"` before marking levy/bill/rent PAID (checkout.session.completed also fires for delayed payment methods).
+- ✅ **S3** `strata.createCheckoutSession` admin bypass narrowed: only managers of THAT levy's building (or super admins) skip the unit-ownership check (was: any BUILDING_MANAGER anywhere). Stripe session-reuse now wrapped in try/catch in strata + custom-bills (parity with rent.ts — an expired saved session no longer makes the item unpayable).
+- ✅ **S4** `api/auth/callback` `next` param restricted to relative paths (open-redirect hardening, parity with signout).
+- ✅ **S5** Supabase: revoked EXECUTE on SECURITY DEFINER `public.rls_auto_enable()` from anon/authenticated/public (was WARN in security advisors). Remaining advisor items: "RLS enabled no policy" INFO lints are expected (app uses Prisma direct connection; deny-by-default via PostgREST is the intent); "leaked password protection" toggle is Pro-tier — skipped (free tier only).
+
 ### Phase L — Logic correctness
 - ✅ **L1** Fixed WEEKLY/FORTNIGHTLY schedule counts in `rent.ts` → `Math.round(months*52/12)` / `*26/12` (was `*4` / `*2`, ~8% short). Loop still breaks at `leaseEndDate`.
 - ✅ **L5** **Bug found + fixed:** `strata.bulkCreateLevies` charged a FLAT amount to every unit, ignoring `unitEntitlement`. Now apportions the **total** by entitlement (exact-sum via remainder-on-last; equal-split fallback). Per-unit levy emails now send the apportioned amount. UI relabelled "Amount per Unit" → "Total Levy — all units".
-- 🟡 **L6** No rent collection-rate **%** is shown anywhere (dashboard shows `rentCollectedThisMonthCents` + `overdueRentCount`; occupancy % is accurate). Verified-correct as-is; adding a collection-rate StatCard is an optional enhancement (left for U/owner sign-off).
-- ⬜ **L2** Overdue strategy: seed now sets correct OVERDUE/PENDING/PAID statuses (no past-due-PENDING), so the `mark-overdue` cron is a safe no-op. Optional: live-derived display status. (Low priority.)
-- ⬜ **L3/L4** Review financial period filters (`getSummary` is all-time) & `isOccupied` sync on all write paths (tenancy create/end, owner-occupancy).
+- ✅ **L6** Collection rate now computed server-side in `buildings.getStats` (`collectionRatePct`: collected/expected for payments due this month, null when none due) and shown in the manager dashboard "Rent Collected" panel description.
+- ✅ **L2** Live-derived overdue: `buildings.getStats.overdueRentCount`, `rent.getRentRoll.overduePayments` and tenancy-detail overdue count all treat PENDING-past-due as overdue even if the `mark-overdue` cron hasn't run.
+- ✅ **L3** `financials.getSummary` accepts optional `from`/`to` (default remains all-time — backward compatible).
+- ✅ **L4** `isOccupied` sync fixed: `tenancy.create` sets it true in the same transaction; `tenancy.end` sets it false when no other active tenancy remains (owner-occupancy stays a manual flag via `units.update`). Previously NOTHING ever set it back to false.
+- ✅ **L7 (dedupe, 2026-07-04)** Rent-schedule builder existed in THREE copies — `rent.ts` (fixed), `tenancy.ts` and `units.ts` (both still had the old ×4/×2 undercount bug). Consolidated into `src/server/lib/rent-schedule.ts`; all routers import it. Never re-implement per router.
 
 ### Phase A — Ambiguities
 - ✅ **A1** Deleted empty `/(dashboard)/owner` & `/(dashboard)/tenant` route dirs.
-- ⬜ **A2** Enforce page-ownership matrix (§4); remove duplicated actions; add cross-links.
-- ⬜ **A3** Verify resident sidebar role gating (rent vs levies).
+- ✅ **A2** (2026-07-04) Record Payment removed from `manager/tenancies/[id]` (it duplicated the Rent page's action AND asked for the amount in raw cents); tenancy detail is now read-only payment history + Generate Schedule (lease lifecycle), with a "Record payments on the Rent page →" cross-link. Rent page already links to tenancy detail. Verified: levy creation only on Strata, financial records only on Financials, Analytics is read-only.
+- ✅ **A3** (2026-07-04) Resident sidebar now gates via lightweight `resident.getMyAccess` ({hasOwnership, hasTenancy}): "My Rent" only for tenants; levies item labelled "My Levies" (owners) vs "My Bills" (tenants — same page, serves custom bills). Levies page h1/description/default-tab adapt to role. Added Parcels + Visitors nav items.
 
 ### Phase U — Design / UI pass (every page) — scope: **consistency pass** (user-chosen)
 - ✅ **U0** Formatters: `formatCurrency` already existed in `src/lib/constants.ts`; **added** `formatDate`, `formatDateTime`, `formatPercent` (null-safe → "—"; % to 1dp) there. Adopted on the manager dashboard (`manager/_client.tsx`) as the reference pattern.
@@ -168,6 +177,7 @@ Status: ⬜ todo · 🟡 in-progress · ✅ done · ⏸ blocked (needs user)
 ---
 
 ## 6. Change Log (newest first)
+- 2026-07-04 — **Security + logic + dedupe pass (full codebase audit).** Phase S (S1–S5): inspection-upload authz hole closed, webhook payment_status check, payLevy bypass narrowed, redirect hardening, Supabase RPC revoke. L2/L3/L4/L6/L7 done: shared `src/server/lib/rent-schedule.ts` (killed 2 buggy duplicate builders), isOccupied sync on tenancy create/end, live-derived overdue, collection-rate stat, getSummary period filters. A2/A3 done: Record Payment de-duplicated from tenancy detail (+cross-link), resident sidebar role gating via `resident.getMyAccess`, role-aware levies page. New resident features: `/resident/parcels` (listMyParcels) + `/resident/visitors` (listMyVisitors + pre-registration). Formatter consolidation: 9 more files onto shared `formatDate`. tsc + eslint (changed files) + production build clean.
 - 2026-06-13 — **Phase U consistency pass.** Normalised all 9 outlier headings → standard style (all headings now consistent). Consolidated 12 duplicate `formatDate` helpers → shared `constants.ts` helper; fixed inline date outlier in manager/rent. Confirmed loading/empty-state coverage is adequate. tsc + eslint clean. Remaining inline `toLocaleDateString` (~19 files) is optional cosmetic DRY (renders correctly already).
 - 2026-06-13 — **Phase U0.** Added `formatDate`/`formatDateTime`/`formatPercent` to `constants.ts`; adopted on manager dashboard. Documented heading-style outliers + that the 8 inline `/100` are legitimate. tsc clean.
 - 2026-06-13 — **Phase L/A partial.** L1 rent-schedule count fix; L5 levy apportionment-by-entitlement (server+client+emails); A1 deleted dead `/owner` `/tenant` dirs; V1 `tsc --noEmit` clean.
@@ -177,7 +187,7 @@ Status: ⬜ todo · 🟡 in-progress · ✅ done · ⏸ blocked (needs user)
 ---
 
 ## 7. Resume Pointer
-**DONE & verified:** Phase D (data rebuild + re-seed), L1, L5, A1, U0 + U-headings + U1/U2/U3 core (formatters added, all headings normalised, 12 duplicate helpers consolidated), V1 (tsc + eslint clean).
-**NEXT ACTION:** **A2/A3** (page-ownership cross-links per §4; resident sidebar rent-vs-levies role gating). Then optional polish: U-remaining (inline `toLocaleDateString` → shared helper, ~19 files, cosmetic), U4 mobile spot-check, L6 collection-rate StatCard, L3/L4 (period filters & `isOccupied` sync), V2 Playwright on money pages.
+**DONE & verified:** Phase D (data rebuild + re-seed), Phase S (security S1–S5), L1–L7, A1–A3, U0 + U-headings + U1/U2/U3 + most U-remaining (formatter consolidation), V1 (tsc + build clean). Resident parcels/visitors pages shipped with sidebar links.
+**NEXT ACTION:** Optional: U4 mobile spot-check, V2 targeted Playwright on money pages, V3 manual walkthrough. Consider configuring the `mark-overdue` cron in deployment (dashboards no longer depend on it, but statuses in the DB do).
 **Run the app:** `npm run dev` → logins `Demo1234!` (manager@/reception@/owner1–5@/tenant1–5@demo.com); super-admin `admin@stratahub.com.au`/`Admin1234!`. Re-verify data anytime: `tsx seed/_audit.ts`.
 **Verified demo facts:** B1 Harbour View 30 units 80% occ; B2 Parkline 18 units 78% occ; collection 97/98.8%; logins `Demo1234!` (manager@, reception@, owner1–5@, tenant1–5@demo.com); super-admin `admin@stratahub.com.au` / `Admin1234!`.

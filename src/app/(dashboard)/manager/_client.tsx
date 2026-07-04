@@ -145,7 +145,11 @@ export default function ManagerDashboardClient() {
         <StatPanel
           title="Rent Collected"
           value={stats ? formatCurrency(stats.rentCollectedThisMonthCents) : null}
-          description="Collections recorded this month"
+          description={
+            stats?.collectionRatePct != null
+              ? `${formatPercent(stats.collectionRatePct)} of rent due this month`
+              : "Collections recorded this month"
+          }
           icon={DollarSign}
           loading={statsQuery.isLoading && hasBuilding}
           href="/manager/rent"

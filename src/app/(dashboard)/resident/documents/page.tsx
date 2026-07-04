@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDate } from "@/lib/constants";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -113,7 +114,7 @@ export default function ResidentDocumentsPage() {
                     {formatFileSize(doc.fileSize)}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-muted-foreground">
-                    {new Date(doc.createdAt).toLocaleDateString("en-AU")}
+                    {formatDate(doc.createdAt)}
                   </TableCell>
                   <TableCell className="px-4 py-3">
                     <Button

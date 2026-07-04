@@ -1,7 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import { formatCurrency } from "@/lib/constants";
+import { formatCurrency, formatDate } from "@/lib/constants";
 import { Building2, Calendar, ChevronRight, DollarSign, Megaphone, Wrench } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,10 +141,7 @@ export default function ResidentDashboardClient() {
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    {new Date(announcement.createdAt).toLocaleDateString("en-AU", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {formatDate(announcement.createdAt, { day: "numeric", month: "short" })}
                   </div>
                 </div>
               </div>

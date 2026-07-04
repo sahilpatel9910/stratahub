@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { trpc } from "@/lib/trpc/client";
 import {
   formatCurrency,
+  formatDate,
   CUSTOM_BILL_CATEGORY_LABELS,
   CUSTOM_BILL_CATEGORY_COLORS,
 } from "@/lib/constants";
@@ -49,6 +50,7 @@ const LEVY_TYPE_LABELS: Record<string, string> = {
 
 export default function ResidentLeviesClient() {
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [selectedTab, setSelectedTab] = useState<string | null>(null);
 
   const checkoutMutation = trpc.strata.createCheckoutSession.useMutation({
     onSuccess: (data) => {
@@ -77,6 +79,11 @@ export default function ResidentLeviesClient() {
 
   const { data: financials, isLoading: financialsLoading } = trpc.owner.getFinancialSummary.useQuery();
 
+  // Owners see levies first; tenants (bills only) land on their bills.
+  const isOwner = financials?.hasOwnerships ?? false;
+  const activeTab =
+    selectedTab ?? (financialsLoading || isOwner ? "levies" : "custom-bills");
+
   const levyUnpaidTotal = levies
     .filter((l) => l.status === "PENDING" || l.status === "OVERDUE")
     .reduce((sum, l) => sum + l.amountCents, 0);
@@ -92,7 +99,7 @@ export default function ResidentLeviesClient() {
     const rows = [
       ["Date", "Type", "Description", "Amount (AUD)", "Status"],
       ...financials.transactions.map((t) => [
-        new Date(t.date).toLocaleDateString("en-AU"),
+        formatDate(t.date),
         t.type === "LEVY" ? "Levy" : t.type === "CUSTOM_BILL" ? "Custom Bill" : "Rent Income",
         t.description,
         (t.amountCents / 100).toFixed(2),
@@ -119,10 +126,12 @@ export default function ResidentLeviesClient() {
           <div>
             <p className="eyebrow-label text-primary/80">Resident Workspace</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground md:text-4xl">
-              Levy history and balances
+              {isOwner ? "Levy history and balances" : "Bills and charges"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-              Track your strata charges, see what is overdue, and keep a clear record of paid quarters.
+              {isOwner
+                ? "Track your strata charges, see what is overdue, and keep a clear record of paid quarters."
+                : "Track bills addressed to you, see what is overdue, and pay online where available."}
             </p>
           </div>
           <div className="rounded-3xl border border-orange-200/70 bg-orange-50/90 px-5 py-4 text-left shadow-sm lg:min-w-60 lg:text-right">
@@ -155,7 +164,7 @@ export default function ResidentLeviesClient() {
         />
       </div>
 
-      <Tabs defaultValue="levies">
+      <Tabs value={activeTab} onValueChange={(v) => v !== null && setSelectedTab(v)}>
         <TabsList>
           <TabsTrigger value="levies">Levies</TabsTrigger>
           <TabsTrigger value="custom-bills">Custom Bills</TabsTrigger>
@@ -229,7 +238,7 @@ export default function ResidentLeviesClient() {
                         {new Date(levy.quarterStart).toLocaleDateString("en-AU", { month: "short", year: "numeric" })}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-muted-foreground">
-                        {new Date(levy.dueDate).toLocaleDateString("en-AU")}
+                        {formatDate(levy.dueDate)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-right font-medium">
                         {formatCurrency(levy.amountCents)}
@@ -448,7 +457,7 @@ export default function ResidentLeviesClient() {
                     return (
                       <TableRow key={i}>
                         <TableCell className="text-muted-foreground">
-                          {new Date(t.date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                          {formatDate(t.date)}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${typeBadgeClass}`}>

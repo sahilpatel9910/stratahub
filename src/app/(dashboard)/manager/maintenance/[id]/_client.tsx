@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageIcon, Upload, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import {
+  formatDate,
   STATUS_LABELS,
   STATUS_COLORS,
   PRIORITY_LABELS,
@@ -358,11 +359,7 @@ export default function ManagerMaintenanceDetailClient({ id }: { id: string }) {
               />
               <MetaRow
                 label="Submitted"
-                value={new Date(req.createdAt).toLocaleDateString("en-AU", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                value={formatDate(req.createdAt, { day: "numeric", month: "long", year: "numeric" })}
               />
               {req.assignedTo && (
                 <MetaRow label="Assigned to" value={req.assignedTo} />
