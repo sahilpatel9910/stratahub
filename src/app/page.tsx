@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthClaims } from "@/server/auth/request-auth";
 import { db } from "@/server/db/client";
 import { findPendingInvitationByEmail } from "@/server/auth/invitations";
 import { getRootRedirectPath } from "@/lib/auth/redirects";
@@ -15,12 +15,9 @@ function getPrimaryRole(roles: UserRole[]): UserRole | null {
 }
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const { supabase, claims } = await getAuthClaims();
 
-  if (!authUser) {
+  if (!claims) {
     redirect(
       getRootRedirectPath({
         hasAuthUser: false,
@@ -30,12 +27,14 @@ export default async function Home() {
     );
   }
 
-  // Fast path: use cached role from user metadata (avoids DB round-trip on warm sessions)
+  // Fast path: use cached role from user metadata (avoids DB round-trip on
+  // warm sessions). With getClaims the metadata rides in the JWT itself.
   const VALID_ROLES = new Set<string>(['SUPER_ADMIN', 'BUILDING_MANAGER', 'RECEPTION', 'OWNER', 'TENANT']);
   const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-  const cachedRole = authUser.user_metadata?.primaryRole as string | undefined;
-  const cachedAt = authUser.user_metadata?.primaryRoleCachedAt as number | undefined;
+  const metadata = (claims.user_metadata ?? {}) as Record<string, unknown>;
+  const cachedRole = metadata.primaryRole as string | undefined;
+  const cachedAt = metadata.primaryRoleCachedAt as number | undefined;
 
   if (
     typeof cachedRole === 'string' &&
@@ -54,7 +53,7 @@ export default async function Home() {
 
   // Slow path: full DB lookup (first login, or metadata not yet set)
   const dbUser = await db.user.findUnique({
-    where: { supabaseAuthId: authUser.id },
+    where: { supabaseAuthId: claims.sub },
     include: {
       orgMemberships: { where: { isActive: true }, select: { role: true } },
       buildingAssignments: { where: { isActive: true }, select: { role: true } },
@@ -62,8 +61,8 @@ export default async function Home() {
   });
 
   if (!dbUser) {
-    const pendingInvite = authUser.email
-      ? await findPendingInvitationByEmail(authUser.email)
+    const pendingInvite = claims.email
+      ? await findPendingInvitationByEmail(claims.email)
       : null;
 
     redirect(

@@ -30,9 +30,10 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims verifies the ES256 session JWT locally (and refreshes it when
+  // near expiry) — unlike getUser, no round trip to the Auth server per request.
+  const { data, error } = await supabase.auth.getClaims();
+  const user = error ? null : (data?.claims ?? null);
 
   const { pathname } = request.nextUrl;
 

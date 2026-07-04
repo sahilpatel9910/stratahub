@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { db } from "@/server/db/client";
+import { getRequestUser } from "@/server/auth/request-auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
 
@@ -9,24 +9,11 @@ export default async function SuperAdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  const { claims, user: dbUser } = await getRequestUser();
 
-  if (!authUser) {
+  if (!claims) {
     redirect("/login");
   }
-
-  const dbUser = await db.user.findUnique({
-    where: { supabaseAuthId: authUser.id },
-    include: {
-      orgMemberships: {
-        where: { isActive: true },
-        select: { role: true },
-      },
-    },
-  });
 
   const isSuperAdmin = dbUser?.orgMemberships.some((membership) => membership.role === "SUPER_ADMIN") ?? false;
 
