@@ -2,11 +2,47 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   managerProcedure,
+  tenantOrAboveProcedure,
 } from "@/server/trpc/trpc";
 import { assertBuildingOperationsAccess } from "@/server/auth/building-access";
 import { createNotification } from "@/server/trpc/lib/create-notification";
 
 export const parcelsRouter = createTRPCRouter({
+  // Resident view: parcels addressed to their unit(s)
+  listMyParcels: tenantOrAboveProcedure.query(async ({ ctx }) => {
+    // Find all units the user owns or rents
+    const [ownerships, tenancies] = await Promise.all([
+      ctx.db.ownership.findMany({
+        where: { userId: ctx.user!.id, isActive: true },
+        select: { unit: { select: { buildingId: true, unitNumber: true } } },
+      }),
+      ctx.db.tenancy.findMany({
+        where: { userId: ctx.user!.id, isActive: true },
+        select: { unit: { select: { buildingId: true, unitNumber: true } } },
+      }),
+    ]);
+
+    const unitKeys = new Set<string>();
+    const conditions: { buildingId: string; unitNumber: string }[] = [];
+    for (const { unit } of [...ownerships, ...tenancies]) {
+      const key = `${unit.buildingId}:${unit.unitNumber}`;
+      if (!unitKeys.has(key)) {
+        unitKeys.add(key);
+        conditions.push({ buildingId: unit.buildingId, unitNumber: unit.unitNumber });
+      }
+    }
+    if (conditions.length === 0) return [];
+
+    return ctx.db.parcel.findMany({
+      where: { OR: conditions },
+      include: {
+        loggedBy: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { loggedAt: "desc" },
+      take: 100,
+    });
+  }),
+
   listByBuilding: managerProcedure
     .input(
       z.object({
