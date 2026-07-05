@@ -42,6 +42,23 @@ export default async function globalSetup() {
       { timeout: 60_000 },
     );
 
+    // Manager-scoped pages require a building selection (persisted in
+    // localStorage via Zustand). With 2 demo buildings nothing auto-selects,
+    // so pick Harbour View here — storageState() captures localStorage and
+    // loginAs() restores it alongside cookies.
+    // The manager sees 2 buildings and must pick one via the switcher.
+    // Reception is assigned to B1 only — the switcher is hidden and the
+    // Topbar effect auto-selects the single building into localStorage.
+    if (role === 'manager' || role === 'reception') {
+      if (role === 'manager') {
+        await page.getByRole('button', { name: /select building/i }).click();
+        await page.getByRole('button', { name: /harbour view/i }).click();
+      }
+      await page.waitForFunction(
+        () => localStorage.getItem('strata-hub-building')?.includes('Harbour View'),
+      );
+    }
+
     await context.storageState({ path: path.join(authDir, `${role}.json`) });
     await context.close();
 

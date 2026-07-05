@@ -81,7 +81,10 @@ test.describe('Manager Tenancy Detail (/manager/tenancies/[id])', () => {
     await page.screenshot({ path: 'test-results/screenshots/manager-tenancy-detail-full.png' });
   });
 
-  test('Record Payment button is present on tenancy detail', async ({ page }) => {
+  test('tenancy detail is read-only: no Record Payment, cross-link to Rent page', async ({ page }) => {
+    // Production-readiness A2: "one action, one page" — Record Payment lives
+    // on /manager/rent only; the tenancy detail shows read-only history plus
+    // a "Record payments on the Rent page →" cross-link.
     await loginAs(page, 'manager');
     await page.goto('/manager/rent');
     await page.waitForLoadState('networkidle');
@@ -97,13 +100,11 @@ test.describe('Manager Tenancy Detail (/manager/tenancies/[id])', () => {
     await page.waitForURL(/\/manager\/tenancies\/\w+/, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
-    const recordBtn = page.getByRole('button', { name: /record payment/i });
-    if (await recordBtn.isVisible()) {
-      await recordBtn.click();
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-      await page.screenshot({ path: 'test-results/screenshots/manager-tenancy-record-payment.png' });
-      await page.keyboard.press('Escape');
-    }
+    await expect(page.getByRole('button', { name: /record payment/i })).toHaveCount(0);
+    const crossLink = page.getByRole('link', { name: /record payments on the rent page/i });
+    await expect(crossLink).toBeVisible();
+    await expect(crossLink).toHaveAttribute('href', '/manager/rent');
+    await page.screenshot({ path: 'test-results/screenshots/manager-tenancy-readonly.png' });
   });
 
   test('Generate Schedule button shown when no rent payments exist', async ({ page }) => {
