@@ -18,6 +18,10 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // mobile disabled — run manually with: npx playwright test --project=mobile
+    // Mobile is excluded from default runs — enable manually with:
+    //   MOBILE=1 npx playwright test --project=mobile
+    ...(process.env.MOBILE
+      ? [{ name: 'mobile', use: { ...devices['Pixel 7'] } }]
+      : []),
   ],
 });

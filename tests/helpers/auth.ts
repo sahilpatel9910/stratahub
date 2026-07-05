@@ -44,6 +44,17 @@ export async function loginAs(page: Page, role: keyof typeof DEMO_ACCOUNTS) {
     // heavy parallel load.
     await page.goto('/login');
     await page.context().addCookies(state.cookies ?? []);
+    // Restore localStorage captured by global-setup (e.g. the selected
+    // building) — building-scoped manager pages render an empty state
+    // without it. Must run while already on the localhost origin.
+    const origin = (state.origins ?? []).find(
+      (o: { origin: string }) => o.origin === 'http://localhost:3000',
+    );
+    if (origin?.localStorage?.length) {
+      await page.evaluate((items: { name: string; value: string }[]) => {
+        for (const { name, value } of items) localStorage.setItem(name, value);
+      }, origin.localStorage);
+    }
     await page.goto(ROLE_HOME[role] ?? '/');
     return;
   }
